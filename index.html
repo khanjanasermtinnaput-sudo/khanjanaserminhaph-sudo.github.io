@@ -79,7 +79,60 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .king-banner,[data-style="lite"] #profileCard.king-profile .profile-name{-webkit-text-fill-color:#ffd700!important;background:none!important}
 [data-style="lite"] #profileCard.king-profile .profile-avatar{box-shadow:0 0 0 2px #ffd700!important}
 [data-style="lite"] .elo-x2-banner{animation:none!important}.
-[data-style="lite"] .live-dot{animation:none!important}</style>
+[data-style="lite"] .live-dot{animation:none!important}
+/* ══════ KING RANK UP OVERLAY (Valorant Radiant + Crown) ══════ */
+#kingRankUpOverlay{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0a;cursor:pointer;overflow:hidden}
+#kingRankUpOverlay.kru-show{display:flex}
+.kru-hex{position:absolute;inset:0;z-index:1;background-image:radial-gradient(circle at 50% 50%,rgba(255,215,0,0.05) 0%,transparent 60%),linear-gradient(60deg,transparent 49.5%,rgba(255,215,0,0.06) 49.5%,rgba(255,215,0,0.06) 50.5%,transparent 50.5%),linear-gradient(-60deg,transparent 49.5%,rgba(255,215,0,0.06) 49.5%,rgba(255,215,0,0.06) 50.5%,transparent 50.5%),linear-gradient(0deg,transparent 49.5%,rgba(255,215,0,0.06) 49.5%,rgba(255,215,0,0.06) 50.5%,transparent 50.5%);background-size:100% 100%,44px 76px,44px 76px,44px 76px;opacity:0;animation:kruFade 1s ease 0.2s forwards}
+@keyframes kruFade{to{opacity:0.55}}
+.kru-hud{position:absolute;inset:0;z-index:2;pointer-events:none;opacity:0;animation:kruFade 0.6s ease 1.0s forwards}
+.kru-corner{position:absolute;width:60px;height:60px;border:2px solid rgba(255,215,0,0.5)}
+.kru-corner.kru-tl{top:24px;left:24px;border-right:none;border-bottom:none}
+.kru-corner.kru-tr{top:24px;right:24px;border-left:none;border-bottom:none}
+.kru-corner.kru-bl{bottom:24px;left:24px;border-right:none;border-top:none}
+.kru-corner.kru-br{bottom:24px;right:24px;border-left:none;border-top:none}
+.kru-beams{position:absolute;inset:0;z-index:3;pointer-events:none}
+.kru-beam{position:absolute;bottom:0;left:50%;width:2px;height:0;background:linear-gradient(180deg,transparent,rgba(255,215,0,0.9) 30%,#ffd700 80%,#fff);box-shadow:0 0 18px rgba(255,215,0,0.9),0 0 36px rgba(255,215,0,0.5);transform-origin:bottom center;animation:kruBeamRise 0.9s cubic-bezier(0.2,0.7,0.2,1) forwards;opacity:0}
+@keyframes kruBeamRise{0%{height:0;opacity:0}20%{opacity:1}70%{opacity:1}100%{height:100vh;opacity:0}}
+.kru-embers{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.kru-ember{position:absolute;border-radius:50%;background:#ffd700;box-shadow:0 0 8px rgba(255,215,0,0.9);animation:kruEmberFloat linear forwards;opacity:0}
+@keyframes kruEmberFloat{0%{opacity:0;transform:translateY(0) translateX(0)}10%{opacity:1}90%{opacity:1}100%{opacity:0;transform:translateY(-100vh) translateX(var(--drift,0px))}}
+.kru-flash{position:absolute;inset:0;z-index:20;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,0.7) 0%,transparent 50%);opacity:0;pointer-events:none;animation:kruFlashOut 0.5s ease 1.0s forwards}
+@keyframes kruFlashOut{0%{opacity:1}100%{opacity:0}}
+.kru-wrap{position:relative;z-index:12;width:180px;height:180px;display:flex;align-items:center;justify-content:center;margin-bottom:24px;opacity:0;transform:scale(0.4) translateY(-40px) rotate(-15deg);animation:kruCrownLand 0.85s cubic-bezier(0.22,1.2,0.36,1) 0.7s forwards}
+@keyframes kruCrownLand{to{opacity:1;transform:scale(1) translateY(0) rotate(0deg)}}
+.kru-crown{position:relative;z-index:4;font-size:6.5rem;line-height:1;filter:drop-shadow(0 0 30px rgba(255,215,0,1)) drop-shadow(0 0 60px rgba(255,180,0,0.7));animation:kruCrownPulse 2.5s ease-in-out infinite}
+@keyframes kruCrownPulse{0%,100%{transform:scale(1);filter:drop-shadow(0 0 30px rgba(255,215,0,0.9)) drop-shadow(0 0 60px rgba(255,180,0,0.6))}50%{transform:scale(1.06);filter:drop-shadow(0 0 45px rgba(255,255,255,1)) drop-shadow(0 0 90px rgba(255,215,0,0.95))}}
+.kru-ring{position:absolute;inset:0;border:2px solid rgba(255,215,0,0.6);clip-path:polygon(25% 0%,75% 0%,100% 50%,75% 100%,25% 100%,0% 50%);animation:kruRingRot 8s linear infinite reverse,kruRingPulse 2.5s ease-in-out infinite}
+.kru-ring.kru-r2{inset:-10px;border-color:rgba(255,215,0,0.25);animation-duration:12s,3.5s}
+@keyframes kruRingRot{to{transform:rotate(-360deg)}}
+@keyframes kruRingPulse{0%,100%{box-shadow:0 0 20px rgba(255,215,0,0.5)}50%{box-shadow:0 0 50px rgba(255,215,0,0.95)}}
+.kru-halo{position:absolute;inset:-50px;background:radial-gradient(circle,rgba(255,215,0,0.5) 0%,rgba(255,140,0,0.15) 35%,transparent 70%);animation:kruHaloPulse 2s ease-in-out infinite}
+@keyframes kruHaloPulse{0%,100%{opacity:0.5;transform:scale(1)}50%{opacity:0.95;transform:scale(1.18)}}
+.kru-spark{position:absolute;font-size:1.2rem;filter:drop-shadow(0 0 8px rgba(255,255,255,1));animation:kruSparkOrbit 4s linear infinite;transform-origin:0 0;opacity:0.9;top:50%;left:50%}
+.kru-spark.kru-s2{animation-delay:-1.3s}
+.kru-spark.kru-s3{animation-delay:-2.6s}
+@keyframes kruSparkOrbit{0%{transform:rotate(0deg) translateX(105px) rotate(0deg) scale(0.6);opacity:0.4}50%{opacity:1;transform:rotate(180deg) translateX(105px) rotate(-180deg) scale(1.1)}100%{transform:rotate(360deg) translateX(105px) rotate(-360deg) scale(0.6);opacity:0.4}}
+.kru-center{position:relative;z-index:12;text-align:center;display:flex;flex-direction:column;align-items:center}
+.kru-label{font-family:'Rajdhani','Arial Narrow',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.55em;color:rgba(255,215,0,0.85);text-transform:uppercase;opacity:0;transform:translateY(12px);animation:kruFadeUp 0.5s ease 1.3s forwards;margin-bottom:12px;padding:4px 16px;border:1px solid rgba(255,215,0,0.4);border-left:none;border-right:none}
+.kru-title{font-family:'Rajdhani','Impact',sans-serif;font-size:clamp(1.7rem,6vw,2.8rem);font-weight:900;letter-spacing:0.12em;text-transform:uppercase;color:#fff;text-shadow:0 0 20px rgba(255,215,0,0.9),0 0 40px rgba(255,215,0,0.5);opacity:0;clip-path:inset(0 100% 0 0);animation:kruWipe 0.7s cubic-bezier(0.7,0,0.3,1) 1.55s forwards}
+@keyframes kruWipe{0%{opacity:0;clip-path:inset(0 100% 0 0)}10%{opacity:1}100%{opacity:1;clip-path:inset(0 0 0 0)}}
+.kru-divider{width:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,215,0,0.8),transparent);margin:14px auto;animation:kruDivGrow 0.6s ease 2.15s forwards}
+@keyframes kruDivGrow{to{width:240px}}
+.kru-player{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:600;color:rgba(255,255,255,0.75);letter-spacing:0.08em;opacity:0;animation:kruFadeUp 0.5s ease 2.3s forwards}
+.kru-pts{font-family:'Rajdhani',sans-serif;font-size:1.6rem;font-weight:700;color:#fff;opacity:0;animation:kruFadeUp 0.5s ease 2.5s forwards;margin-top:8px}
+.kru-pts span{color:#ffd700;font-size:2rem}
+@keyframes kruFadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.kru-tap{font-size:0.7rem;letter-spacing:0.3em;color:rgba(255,215,0,0.35);position:absolute;bottom:50px;left:50%;transform:translateX(-50%);animation:kruTapBlink 1.6s ease 3s infinite;z-index:12;text-transform:uppercase}
+@keyframes kruTapBlink{0%,100%{opacity:0.35}50%{opacity:0.85}}
+[data-style="lite"] #kingRankUpOverlay{background:#0a0a0a!important}
+[data-style="lite"] .kru-hex,[data-style="lite"] .kru-beams,[data-style="lite"] .kru-embers,[data-style="lite"] .kru-flash,[data-style="lite"] .kru-halo,[data-style="lite"] .kru-spark{display:none!important}
+[data-style="lite"] .kru-ring{animation:none!important;border-color:rgba(255,215,0,0.6)!important;box-shadow:0 0 0 1px rgba(255,215,0,0.3)!important}
+[data-style="lite"] .kru-crown{animation:none!important;filter:drop-shadow(0 0 12px rgba(255,215,0,0.9))!important}
+[data-style="lite"] .kru-wrap{animation:none!important;opacity:1!important;transform:none!important}
+[data-style="lite"] .kru-label,[data-style="lite"] .kru-title,[data-style="lite"] .kru-player,[data-style="lite"] .kru-pts{animation:none!important;opacity:1!important;transform:none!important;clip-path:none!important}
+[data-style="lite"] .kru-divider{animation:none!important;width:200px!important}
+[data-style="lite"] .kru-tap{transform:translateX(-50%)!important}</style>
 </head>
 <body>
 
@@ -2653,33 +2706,54 @@ let _ruQueue = [];
 let _ruShowing = false;
 
 function showRankUp(rc, playerName, gainPts) {
-  _ruQueue.push({ rc, playerName, gainPts });
+  const rankId = Object.keys(RANKS_DATA_RU).find(k => RANKS_DATA_RU[k] === rc) || '';
+  _ruQueue.push({ rc, playerName, gainPts, rankId });
   if (!_ruShowing) _processRuQueue();
 }
 
 function _processRuQueue() {
   if (_ruQueue.length === 0) { _ruShowing = false; return; }
   _ruShowing = true;
-  const { rc, playerName, gainPts } = _ruQueue.shift();
+  const item = _ruQueue.shift();
+  _ruCurrentRankId = item.rankId || '';
+  if (item.rankId === 'king') _showKingRankUp(item);
+  else _showStandardRankUp(item);
+}
+
+function _showStandardRankUp({ rc, playerName, gainPts }) {
   const overlay = document.getElementById('rankUpOverlay');
   const bgGlow  = document.getElementById('ruBgGlow');
-
   overlay.style.setProperty('--ru-color', rc.color);
   bgGlow.style.background = `radial-gradient(ellipse 60% 60% at 50% 50%, ${rc.glow} 0%, transparent 70%)`;
-
-  // clone ก่อนเพื่อ reset animation แล้วค่อยเซ็ตข้อมูลบน element ใหม่
   const center = document.querySelector('.ru-center');
   const newCenter = center.cloneNode(true);
   center.parentNode.replaceChild(newCenter, center);
-
   newCenter.querySelector('#ruIcon').textContent = rc.icon;
   newCenter.querySelector('#ruRankName').textContent = rc.name;
   newCenter.querySelector('#ruPlayerName').textContent = playerName;
   newCenter.querySelector('#ruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
-
   ruSpawnParticles(rc.color);
   overlay.classList.add('ru-show');
-  // ใช้ data-attr แทนการเขียนทับ body.overflow โดยตรง
+  document.body.dataset.ruLock = '1';
+  document.body.style.overflow = 'hidden';
+}
+
+function _showKingRankUp({ playerName, gainPts }) {
+  const overlay = document.getElementById('kingRankUpOverlay');
+  // Clone wrap + center to reset all CSS animations
+  const wrap = overlay.querySelector('.kru-wrap');
+  const center = overlay.querySelector('.kru-center');
+  const wrapNew = wrap.cloneNode(true);
+  const centerNew = center.cloneNode(true);
+  wrap.parentNode.replaceChild(wrapNew, wrap);
+  center.parentNode.replaceChild(centerNew, center);
+  // Set dynamic content
+  overlay.querySelector('#kruPlayerName').textContent = playerName;
+  overlay.querySelector('#kruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
+  // Spawn beams + embers
+  kruSpawnBeams();
+  kruSpawnEmbers();
+  overlay.classList.add('kru-show');
   document.body.dataset.ruLock = '1';
   document.body.style.overflow = 'hidden';
 }
@@ -2693,14 +2767,65 @@ function closeRankUp() {
     overlay.style.opacity = '';
     overlay.style.transition = '';
     document.getElementById('ruParticles').innerHTML = '';
-    // คืน overflow เฉพาะเมื่อไม่มี overlay อื่นค้างอยู่
     delete document.body.dataset.ruLock;
     if (!document.body.dataset.ppLock && !document.body.dataset.refLock) {
       document.body.style.overflow = '';
     }
-    // แสดงอันต่อไปในคิว (ถ้ามี)
     setTimeout(_processRuQueue, 200);
   }, 400);
+}
+
+function closeKingRankUp() {
+  const overlay = document.getElementById('kingRankUpOverlay');
+  overlay.style.transition = 'opacity 0.4s ease';
+  overlay.style.opacity = '0';
+  setTimeout(() => {
+    overlay.classList.remove('kru-show');
+    overlay.style.opacity = '';
+    overlay.style.transition = '';
+    const b = overlay.querySelector('#kruBeams'); if (b) b.innerHTML = '';
+    const e = overlay.querySelector('#kruEmbers'); if (e) e.innerHTML = '';
+    delete document.body.dataset.ruLock;
+    if (!document.body.dataset.ppLock && !document.body.dataset.refLock) {
+      document.body.style.overflow = '';
+    }
+    setTimeout(_processRuQueue, 200);
+  }, 400);
+}
+
+function kruSpawnBeams() {
+  const container = document.getElementById('kruBeams');
+  if (!container) return;
+  container.innerHTML = '';
+  const count = 6;
+  for (let i = 0; i < count; i++) {
+    const beam = document.createElement('div');
+    beam.className = 'kru-beam';
+    const offset = (i - (count-1)/2) * 60;
+    const dur = 0.7 + Math.random() * 0.5;
+    const del = 0.85 + Math.random() * 0.3;
+    const width = 2 + Math.random() * 2;
+    beam.style.cssText = `transform:translateX(${offset}px);animation-duration:${dur}s;animation-delay:${del}s;width:${width}px;`;
+    container.appendChild(beam);
+  }
+}
+
+function kruSpawnEmbers() {
+  const container = document.getElementById('kruEmbers');
+  if (!container) return;
+  container.innerHTML = '';
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    const e = document.createElement('div');
+    e.className = 'kru-ember';
+    const x = Math.random() * 100;
+    const size = 2 + Math.random() * 4;
+    const dur = 4 + Math.random() * 4;
+    const del = 1.0 + Math.random() * 4;
+    const drift = (Math.random() - 0.5) * 80;
+    e.style.cssText = `left:${x}%;bottom:-10px;width:${size}px;height:${size}px;animation-duration:${dur}s;animation-delay:${del}s;--drift:${drift}px;`;
+    container.appendChild(e);
+  }
 }
 
 function ruSpawnParticles(color) {
@@ -2725,11 +2850,6 @@ function ruSpawnParticles(color) {
 }
 
 let _ruCurrentRankId = '';
-const _origShowRankUp_v4 = showRankUp;
-showRankUp = function(rc, playerName, gainPts) {
-  _ruCurrentRankId = Object.keys(RANKS_DATA_RU).find(k => RANKS_DATA_RU[k] === rc) || '';
-  _origShowRankUp_v4(rc, playerName, gainPts);
-};
 
 /* ══════════════════════════════════════════════════
    v4.0 FINAL — 14 FEATURES
@@ -3203,6 +3323,32 @@ renderProfile = async function() {
     <div class="ru-pts" id="ruPts"></div>
   </div>
   <div class="ru-tap">TAP TO CONTINUE</div>
+</div>
+
+<!-- ===== KING RANK UP OVERLAY (Valorant Radiant style) ===== -->
+<div id="kingRankUpOverlay" onclick="closeKingRankUp()">
+  <div class="kru-hex"></div>
+  <div class="kru-hud"><div class="kru-corner kru-tl"></div><div class="kru-corner kru-tr"></div><div class="kru-corner kru-bl"></div><div class="kru-corner kru-br"></div></div>
+  <div class="kru-beams" id="kruBeams"></div>
+  <div class="kru-embers" id="kruEmbers"></div>
+  <div class="kru-flash"></div>
+  <div class="kru-wrap" id="kruWrap">
+    <div class="kru-halo"></div>
+    <div class="kru-ring kru-r2"></div>
+    <div class="kru-ring"></div>
+    <div class="kru-crown">👑</div>
+    <div class="kru-spark">✨</div>
+    <div class="kru-spark kru-s2">⭐</div>
+    <div class="kru-spark kru-s3">✨</div>
+  </div>
+  <div class="kru-center" id="kruCenter">
+    <div class="kru-label">UNIQUE RANK</div>
+    <div class="kru-title">KING OF BADMINTON</div>
+    <div class="kru-divider"></div>
+    <div class="kru-player" id="kruPlayerName"></div>
+    <div class="kru-pts" id="kruPts"></div>
+  </div>
+  <div class="kru-tap">TAP TO CONTINUE</div>
 </div>
 </body>
 </html>
