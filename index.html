@@ -1098,11 +1098,18 @@ function switchMatchTab(tab) {
 }
 
 function normalizePlayer(p) {
+  const CACH_PFX = '__cach:';
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
-  let ca = []; try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {}
-  // Fallback: merge localStorage awards when custom_ach column doesn't exist yet
+  // Extract custom achievements embedded in prime_titles as __cach: prefix
+  const cachEntry = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
+  const realPt = pt.filter(t => !(typeof t === 'string' && t.startsWith(CACH_PFX)));
+  let ca = [];
+  if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
+  // Also try custom_ach column (if it exists)
+  if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
+  // Fallback to localStorage
   if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: pt, customAch: ca };
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca };
 }
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts }; }
@@ -1808,6 +1815,7 @@ async function renderAdmin() {
     }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
     renderCachAdmin();
+    migrateCachToSupabase();
   } catch(e) { console.error(e); }
 }
 
@@ -2734,6 +2742,26 @@ const CACH_AWARDS_LS = 'badminton_cach_awards';
 function getCachAwardsLS() { try { return JSON.parse(localStorage.getItem(CACH_AWARDS_LS)||'{}'); } catch(e) { return {}; } }
 function saveCachAwardLS(playerId, cur) { const all = getCachAwardsLS(); all[playerId] = cur; localStorage.setItem(CACH_AWARDS_LS, JSON.stringify(all)); }
 
+// Migrate any localStorage-only awards to Supabase prime_titles (one-time)
+async function migrateCachToSupabase() {
+  if (sessionStorage.getItem('cach_migrated')) return;
+  sessionStorage.setItem('cach_migrated', '1');
+  const CACH_PFX = '__cach:';
+  const ls = getCachAwardsLS();
+  for (const [pid, awards] of Object.entries(ls)) {
+    if (!awards.length) continue;
+    const pl = db.players.find(p => p.id === Number(pid));
+    if (!pl) continue;
+    if (pl.customAch && pl.customAch.length) continue; // already in Supabase
+    try {
+      const pt = [...(pl.primeTitles || [])].filter(t => !t.startsWith(CACH_PFX));
+      pt.push(CACH_PFX + JSON.stringify(awards));
+      await dbUpdatePlayer(Number(pid), { prime_titles: JSON.stringify(pt) });
+      pl.customAch = awards;
+    } catch(e) { /* silent */ }
+  }
+}
+
 async function toggleCachAward(achId, playerId, give) {
   const player = db.players.find(p=>p.id===playerId);
   if (!player) return;
@@ -2745,19 +2773,21 @@ async function toggleCachAward(achId, playerId, give) {
   } else {
     cur = cur.filter(a=>a.id!==achId);
   }
-  // Always save to localStorage first (works without Supabase column)
+  // Save to localStorage (instant local update)
   saveCachAwardLS(playerId, cur);
   player.customAch = cur;
-  // Try Supabase silently — ignore PGRST204 (column not yet added)
+  // Save to Supabase via prime_titles column (works on all devices)
   try {
-    await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) });
+    const CACH_PFX = '__cach:';
+    const pt = [...(player.primeTitles || [])].filter(t => !t.startsWith(CACH_PFX));
+    if (cur.length > 0) pt.push(CACH_PFX + JSON.stringify(cur));
+    await dbUpdatePlayer(playerId, { prime_titles: JSON.stringify(pt) });
   } catch(e) {
-    const colMissing = e.message && (e.message.includes('PGRST204') || e.message.includes('custom_ach'));
-    if (!colMissing) { toast('บันทึกไม่ได้: '+e.message, 'error'); return; }
-    if (!sessionStorage.getItem('cach_sql_hint')) {
-      sessionStorage.setItem('cach_sql_hint', '1');
-      toast('💡 บันทึกในเครื่องแล้ว — รัน SQL ใน Admin เพื่อ sync ข้ามเครื่อง', 'info');
-    }
+    // If prime_titles fails too, try custom_ach column as last resort
+    try {
+      await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) });
+    } catch(e2) { /* silent if column missing */ }
+    toast('⚠️ sync บางส่วนอาจไม่ครบ', 'info');
   }
   toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
   renderCachAdmin();
