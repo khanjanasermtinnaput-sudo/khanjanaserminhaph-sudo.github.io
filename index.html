@@ -1571,10 +1571,12 @@ async function renderProfile() {
     const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id), prog = rankProgress(p.pts);
     const av = getAvatar(p.id, p.name);
     const wr = p.wins + p.losses > 0 ? Math.round(p.wins/(p.wins+p.losses)*100) : 0;
+    const rankPos = [...db.players].sort((a,b)=>b.pts-a.pts).findIndex(x=>x.id===p.id) + 1;
+    const achHtml = (p.customAch||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${(p.customAch||[]).map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header">
         <div class="profile-avatar" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
-        <div><div class="profile-name">${p.name}</div><div class="mt-8"><span class="rank-badge ${rank.class}">${rank.label}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}</div>
+        <div><div class="profile-name">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="rank-badge ${rank.class}">${rank.label}</span><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">อันดับ #${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
       <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">ความคืบหน้า ${prog.next ? '→ '+prog.next.label : '(ระดับสูงสุด)'}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
       <div class="profile-stats">
@@ -1589,8 +1591,7 @@ async function renderProfile() {
       </div>
       <div class="divider"></div>
       ${renderPrimeSSTitles(p)}
-      ${renderCustomAchievements(p)}
-      <div class="divider" style="${((p.primeTitles||[]).length||(p.customAch||[]).length) ? '' : 'display:none'}"></div>
+      <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
       ${buildRankingChart(p.id)}`;
     const myMatches = db.matches.filter(m => [...m.teamA,...m.teamB].some(x=>x.id===p.id)).slice(0, 20);
