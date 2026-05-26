@@ -2017,7 +2017,28 @@ async function approvePending(pendingId) {
     toast('กำลังยืนยัน...', 'info');
     const winners = r.win_team === 'A' ? r.team_a : r.team_b;
     const losers  = r.win_team === 'A' ? r.team_b : r.team_a;
-    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const boostedGain = applyAchBoost(r.pts_gain, pl); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain); } } }
+    // King's Challenge detection
+    const _kcAp = getKingChallenge();
+    let _kcApActive = false, _kcApChallengerId = null;
+    if (_kcAp && Date.now() - _kcAp.ts < 86400000) {
+      const _kingSortedAp = [...db.players].sort((a,b)=>b.pts-a.pts);
+      const _kingAp = _kingSortedAp[0] && _kingSortedAp[0].pts >= 3000 ? _kingSortedAp[0] : null;
+      if (_kingAp) {
+        const kingInWin = winners.some(p => p.id === _kingAp.id);
+        const kingInLose = losers.some(p => p.id === _kingAp.id);
+        const challInWin = winners.some(p => p.id === _kcAp.id);
+        const challInLose = losers.some(p => p.id === _kcAp.id);
+        if (kingInLose && challInWin) {
+          _kcApActive = true; _kcApChallengerId = _kcAp.id;
+          localStorage.removeItem('badminton_kc');
+          setTimeout(() => toast(`🤺 ${_kcAp.name} ท้าชิง King สำเร็จ! +50 ELO โบนัส!`, 'success', 5000), 1200);
+        } else if (kingInWin && challInLose) {
+          localStorage.removeItem('badminton_kc');
+          setTimeout(() => toast(`👑 ${_kingAp.name} ปกป้องบัลลังก์!`, 'info', 4000), 1200);
+        }
+      }
+    }
+    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const boostedGain = applyAchBoost(r.pts_gain, pl); const kcBonus = (_kcApActive && pl.id === _kcApChallengerId) ? 50 : 0; const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain + kcBonus); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain + kcBonus); } } }
     for (const p of losers)  {
       const pl = db.players.find(x=>x.id===p.id);
       if(pl) {
@@ -3034,10 +3055,12 @@ async function performSeasonReset(monthKey) {
     let kingTitle = '';
     if (king) {
       const titles = [...(king.primeTitles || [])];
-      // Check if king defended (had previous season's title)
-      const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 2);
-      const prevSS = getPrimeSSeasonLabel(prevDate.getMonth() < 0 ? prevDate.getFullYear()-1 : prevDate.getFullYear(), ((prevDate.getMonth()+12)%12)+1);
-      const defended = titles.some(t => t === prevSS);
+      // Check if king defended (had previous season's title — what getAwardedSSLabel returned 1 month ago)
+      const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+      const prevY = oneMonthAgo.getMonth() === 0 ? oneMonthAgo.getFullYear() - 1 : oneMonthAgo.getFullYear();
+      const prevM = oneMonthAgo.getMonth() === 0 ? 11 : oneMonthAgo.getMonth() - 1;
+      const prevSS = getPrimeSSeasonLabel(prevY, prevM);
+      const defended = titles.includes(prevSS);
       if (!titles.includes(ssLabel)) {
         titles.push(ssLabel);
         if (defended && !titles.includes('🛡️ Season Defender')) { titles.push('🛡️ Season Defender'); kingTitle += ' 🛡️ Defended!'; }
@@ -3495,13 +3518,13 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
   // Resolve effective old rank (getRankByPts skips king, so check manually)
   let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && playerOldPts >= 1500) {
+  if (oldRank.id === 'master' && playerOldPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
   }
   // Resolve effective new rank
   let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && playerNewPts >= 1500) {
+  if (newRank.id === 'master' && playerNewPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
