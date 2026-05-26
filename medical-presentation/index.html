@@ -28,8 +28,535 @@
   <!-- GSAP -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 
-  <!-- Custom CSS -->
-  <link rel="stylesheet" href="style.css">
+  <!-- Custom CSS (embedded) -->
+  <style>
+/* ============================================================
+   MEDICAL INTERACTIVE PRESENTATION - STYLES
+   ============================================================ */
+
+/* ---------- CSS Variables ---------- */
+:root {
+  --bg-primary: #030A1A;
+  --bg-secondary: #060E22;
+  --accent-cyan: #00D4FF;
+  --accent-blue: #4A9EFF;
+  --accent-red: #FF3B6B;
+  --accent-orange: #FF6B35;
+  --accent-green: #00FF9D;
+  --accent-purple: #9B59FF;
+  --text-primary: #E8F4FF;
+  --text-secondary: #7A9BBF;
+  --glass-bg: rgba(10, 20, 50, 0.55);
+  --glass-bg-strong: rgba(5, 12, 35, 0.80);
+  --glass-border: rgba(0, 212, 255, 0.18);
+  --glass-border-red: rgba(255, 59, 107, 0.25);
+  --glow-cyan: 0 0 20px rgba(0, 212, 255, 0.4);
+  --glow-red: 0 0 20px rgba(255, 59, 107, 0.4);
+  --glow-blue: 0 0 20px rgba(74, 158, 255, 0.4);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  font-family: 'Prompt', 'Space Grotesk', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+#progress-bar-container {
+  position: fixed; top: 0; left: 0; width: 100%; height: 3px;
+  background: rgba(255,255,255,0.08);
+  z-index: 1000;
+}
+#progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+  width: 0%;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: var(--glow-cyan);
+}
+
+#slide-dots {
+  position: fixed; right: 24px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 10px; z-index: 1000;
+}
+.dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 1px solid rgba(255,255,255,0.15);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.dot.active {
+  background: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+  transform: scale(1.3);
+}
+
+#nav-prev, #nav-next {
+  position: fixed; bottom: 36px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  color: var(--text-primary);
+  border-radius: 50%;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; z-index: 1000;
+  transition: all 0.3s ease;
+  font-size: 20px;
+}
+#nav-prev { left: 50%; transform: translateX(calc(-50% - 36px)); }
+#nav-next { left: 50%; transform: translateX(calc(-50% + 36px)); }
+#nav-prev:hover, #nav-next:hover {
+  background: rgba(0, 212, 255, 0.15);
+  border-color: var(--accent-cyan);
+  box-shadow: var(--glow-cyan);
+}
+#slide-counter {
+  position: fixed; bottom: 48px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px; color: var(--text-secondary);
+  letter-spacing: 0.1em; z-index: 1000;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+#app {
+  position: relative;
+  width: 100vw; height: 100vh;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+.slide.active { opacity: 1; pointer-events: all; }
+
+#bg-canvas {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 0; pointer-events: none;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+}
+.glass-card-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+}
+.glass-card-red {
+  background: rgba(255, 59, 107, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border-red);
+  border-radius: 20px;
+}
+
+.glow-cyan { text-shadow: 0 0 30px rgba(0,212,255,0.7), 0 0 60px rgba(0,212,255,0.3); }
+.glow-red  { text-shadow: 0 0 30px rgba(255,59,107,0.7), 0 0 60px rgba(255,59,107,0.3); }
+.glow-blue { text-shadow: 0 0 30px rgba(74,158,255,0.7), 0 0 60px rgba(74,158,255,0.3); }
+
+.gradient-text-cyan {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-red {
+  background: linear-gradient(135deg, var(--accent-red), var(--accent-orange));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.gradient-text-purple {
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.animated-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(0,212,255,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 80% 70%, rgba(74,158,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(155,89,255,0.04) 0%, transparent 60%),
+    var(--bg-primary);
+  animation: bgShift 15s ease-in-out infinite alternate;
+}
+.animated-bg-red {
+  position: absolute; inset: 0; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 30% 40%, rgba(255,59,107,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 60% at 70% 60%, rgba(255,107,53,0.06) 0%, transparent 60%),
+    var(--bg-primary);
+  animation: bgShiftRed 15s ease-in-out infinite alternate;
+}
+@keyframes bgShift {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.7; background-position: 5% 5%; }
+  100% { opacity: 1; }
+}
+@keyframes bgShiftRed {
+  0%   { opacity: 1; }
+  100% { opacity: 0.8; }
+}
+
+/* SLIDE 1 — INTRO */
+#slide-1 { flex-direction: column; text-align: center; }
+.intro-title {
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.4em;
+}
+.intro-subtitle {
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  color: var(--text-secondary);
+  font-weight: 300;
+  max-width: 600px;
+  line-height: 1.6;
+  margin: 0 auto 2.5rem;
+}
+.start-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 16px 42px;
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  border: none; border-radius: 50px;
+  color: #000; font-size: 1.05rem; font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 0 40px rgba(0,212,255,0.4), 0 0 80px rgba(0,212,255,0.15);
+  transition: all 0.3s ease;
+  position: relative; z-index: 2;
+  animation: btnPulse 3s ease-in-out infinite;
+}
+.start-btn:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 0 60px rgba(0,212,255,0.6), 0 0 100px rgba(0,212,255,0.25);
+}
+@keyframes btnPulse {
+  0%, 100% { box-shadow: 0 0 40px rgba(0,212,255,0.4), 0 0 80px rgba(0,212,255,0.15); }
+  50%      { box-shadow: 0 0 60px rgba(0,212,255,0.6), 0 0 120px rgba(0,212,255,0.25); }
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  animation: orbFloat 8s ease-in-out infinite;
+  pointer-events: none;
+}
+.orb-1 { width: 400px; height: 400px; background: rgba(0,212,255,0.07); top: 5%; left: -10%; animation-delay: 0s; }
+.orb-2 { width: 300px; height: 300px; background: rgba(74,158,255,0.06); bottom: 10%; right: -5%; animation-delay: -3s; }
+.orb-3 { width: 200px; height: 200px; background: rgba(155,89,255,0.05); top: 40%; right: 15%; animation-delay: -6s; }
+@keyframes orbFloat {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50%      { transform: translateY(-40px) scale(1.05); }
+}
+
+.float-icon {
+  position: absolute;
+  font-size: 2rem;
+  opacity: 0.12;
+  animation: floatIcon 10s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* SLIDE 2 — Lungs */
+.lung-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 280px; height: 280px;
+  position: relative;
+}
+.lung-svg {
+  animation: breathe 4s ease-in-out infinite;
+  transform-origin: center bottom;
+  filter: drop-shadow(0 0 20px rgba(0,212,255,0.4));
+}
+@keyframes breathe {
+  0%, 100% { transform: scale(1); }
+  40%      { transform: scale(1.12); }
+  60%      { transform: scale(1.12); }
+}
+.breath-label {
+  position: absolute;
+  font-size: 11px;
+  color: var(--accent-cyan);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  animation: breatheLabel 4s ease-in-out infinite;
+}
+@keyframes breatheLabel {
+  0%, 100% { opacity: 0.6; }
+  40%, 60% { opacity: 1; color: #00ffcc; }
+}
+
+.info-badge {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 3px solid transparent;
+}
+.info-badge:hover {
+  background: rgba(0,212,255,0.1);
+  border-left-color: var(--accent-cyan);
+  transform: translateX(4px);
+}
+.badge-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+/* SLIDE 3 — Gas Exchange */
+#gas-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none; z-index: 1;
+}
+.alveoli-diagram { position: relative; z-index: 2; width: 300px; height: 300px; }
+.molecule-legend { display: flex; gap: 24px; justify-content: center; margin-top: 16px; }
+.mol-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.mol-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+/* SLIDE 4 — Heart */
+.heart-wrapper {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  width: 280px; height: 280px;
+}
+.heart-svg {
+  animation: heartbeat 0.85s ease-in-out infinite;
+  transform-origin: center;
+  filter: drop-shadow(0 0 24px rgba(255,59,107,0.6));
+}
+@keyframes heartbeat {
+  0%   { transform: scale(1); }
+  14%  { transform: scale(1.13); }
+  28%  { transform: scale(1); }
+  42%  { transform: scale(1.1); }
+  70%  { transform: scale(1); }
+  100% { transform: scale(1); }
+}
+.pulse-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(255,59,107,0.5);
+  animation: pulseRing 0.85s ease-out infinite;
+}
+.pulse-ring-1 { width: 200px; height: 200px; }
+.pulse-ring-2 { width: 240px; height: 240px; animation-delay: 0.15s; opacity: 0.5; }
+@keyframes pulseRing {
+  0%   { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(1.2); opacity: 0; }
+}
+
+.ekg-container {
+  width: 100%; height: 40px;
+  position: relative; overflow: hidden;
+  margin-top: 12px;
+}
+.ekg-line {
+  position: absolute;
+  width: 200%; height: 100%;
+  animation: ekgScroll 2.5s linear infinite;
+}
+@keyframes ekgScroll {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* SLIDE 5 — Blood Flow */
+#flow-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 1; pointer-events: none;
+}
+.flow-legend { display: flex; flex-direction: column; gap: 12px; }
+.flow-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.flow-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* SLIDE 6 — Compare */
+.compare-left, .compare-right {
+  flex: 1;
+  padding: 28px;
+  min-height: 400px;
+  display: flex; flex-direction: column;
+}
+.compare-divider {
+  width: 2px; height: 100%; min-height: 400px;
+  background: linear-gradient(to bottom, transparent, var(--accent-cyan), transparent);
+  flex-shrink: 0;
+  box-shadow: var(--glow-cyan);
+}
+.compare-stat {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.compare-stat-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* SLIDE 7 — Quiz */
+.quiz-option {
+  width: 100%;
+  padding: 14px 20px;
+  margin-bottom: 10px;
+  border-radius: 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Prompt', sans-serif;
+  display: flex; align-items: center; gap: 12px;
+}
+.quiz-option:hover:not(:disabled) {
+  background: rgba(0,212,255,0.1);
+  border-color: var(--accent-cyan);
+  transform: translateX(4px);
+}
+.quiz-option.correct {
+  background: rgba(0,255,157,0.12);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 20px rgba(0,255,157,0.2);
+}
+.quiz-option.wrong {
+  background: rgba(255,59,107,0.12);
+  border-color: var(--accent-red);
+  box-shadow: 0 0 20px rgba(255,59,107,0.2);
+}
+.quiz-option:disabled { cursor: not-allowed; }
+
+.score-display {
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 700;
+  animation: scoreReveal 0.6s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes scoreReveal {
+  from { transform: scale(0) rotate(-10deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+.quiz-progress-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: all 0.3s ease;
+}
+.quiz-progress-dot.done  { background: var(--accent-green); }
+.quiz-progress-dot.wrong { background: var(--accent-red); }
+.quiz-progress-dot.curr  { background: var(--accent-cyan); transform: scale(1.3); }
+
+/* SLIDE 8 — Conclusion */
+.takeaway-card {
+  padding: 20px 24px;
+  border-radius: 18px;
+  display: flex; align-items: flex-start; gap: 14px;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+.takeaway-card:hover { transform: translateY(-4px); }
+.takeaway-num {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* Shared */
+.section-label {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+.section-label-red { color: var(--accent-red); }
+
+.slide-content {
+  position: relative; z-index: 2;
+  width: 100%; max-width: 1200px;
+  padding: 80px 40px 90px;
+  margin: 0 auto;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.slide h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.8rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  margin-bottom: 12px;
+}
+.slide p {
+  color: var(--text-secondary);
+  line-height: 1.75;
+  font-weight: 300;
+}
+
+::-webkit-scrollbar { display: none; }
+
+@media (max-width: 768px) {
+  .slide-content { padding: 70px 20px 80px; }
+  #slide-dots { display: none; }
+  .intro-title { font-size: 2rem; }
+  .compare-left, .compare-right { padding: 16px; }
+}
+@media (max-width: 480px) {
+  .start-btn { padding: 14px 30px; font-size: 0.95rem; }
+}
+  </style>
 </head>
 <body>
 
@@ -886,6 +1413,512 @@
 
 </div><!-- /app -->
 
-<script src="script.js"></script>
+<script>
+/* ============================================================
+   MEDICAL INTERACTIVE PRESENTATION - JAVASCRIPT
+   ============================================================ */
+
+/* ---- State ---- */
+let currentSlide = 0;
+let isAnimating = false;
+const TOTAL_SLIDES = 8;
+
+/* ---- Quiz Data ---- */
+const quizData = [
+  { q: "อวัยวะใดที่ทำหน้าที่แลกเปลี่ยนก๊าซออกซิเจนและคาร์บอนไดออกไซด์?",
+    opts: ["หัวใจ", "ถุงลม (Alveoli)", "หลอดลม", "ไต"], ans: 1 },
+  { q: "หัวใจของมนุษย์แบ่งออกเป็นกี่ห้อง?",
+    opts: ["2 ห้อง", "3 ห้อง", "4 ห้อง", "5 ห้อง"], ans: 2 },
+  { q: "เลือดที่มีออกซิเจนสูง (Oxygenated Blood) มีสีอะไร?",
+    opts: ["สีน้ำเงิน", "สีม่วง", "สีแดงสด", "สีส้ม"], ans: 2 },
+  { q: "ก๊าซใดที่ร่างกายหายใจเอาเข้าสู่ร่างกาย?",
+    opts: ["คาร์บอนไดออกไซด์", "ไนโตรเจน", "ออกซิเจน", "ไฮโดรเจน"], ans: 2 }
+];
+let quizAnswers = new Array(quizData.length).fill(null);
+let currentQuestion = 0;
+let quizDone = false;
+
+const progressBar = document.getElementById('progress-bar');
+const slideCounter = document.getElementById('slide-counter');
+const dots = document.querySelectorAll('.dot');
+
+/* ============================================================
+   BACKGROUND PARTICLE SYSTEM
+   ============================================================ */
+function initBgCanvas() {
+  const canvas = document.getElementById('bg-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let particles = [];
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 80; i++) {
+    particles.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: Math.random() * 1.5 + 0.3,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.1,
+      color: Math.random() > 0.5 ? '0,212,255' : '74,158,255'
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0) p.x = canvas.width;
+      if (p.x > canvas.width) p.x = 0;
+      if (p.y < 0) p.y = canvas.height;
+      if (p.y > canvas.height) p.y = 0;
+    });
+    ctx.strokeStyle = 'rgba(0,212,255,0.04)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x;
+        const dy = particles[i].y - particles[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 120) {
+          ctx.globalAlpha = 0.04 * (1 - d/120);
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(particles[j].x, particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ============================================================
+   GAS EXCHANGE CANVAS (Slide 3)
+   ============================================================ */
+function initGasCanvas() {
+  const canvas = document.getElementById('gas-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+
+  let mols = [];
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+
+  function spawnMol() {
+    const isO2 = Math.random() > 0.5;
+    const side = isO2 ? -1 : 1;
+    mols.push({
+      x: cx + side * (80 + Math.random() * 200),
+      y: cy + (Math.random() - 0.5) * 200,
+      tx: cx + side * -80,
+      ty: cy + (Math.random() - 0.5) * 60,
+      r: 5 + Math.random() * 3,
+      color: isO2 ? '0,212,255' : '255,59,107',
+      label: isO2 ? 'O₂' : 'CO₂',
+      alpha: 0,
+      progress: 0,
+      speed: 0.004 + Math.random() * 0.003,
+      isO2
+    });
+  }
+  for (let i = 0; i < 10; i++) spawnMol();
+  setInterval(spawnMol, 800);
+
+  function drawArrow(ctx, fromX, fromY, toX, toY, color) {
+    const dx = toX - fromX, dy = toY - fromY;
+    const angle = Math.atan2(dy, dx);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.3;
+    ctx.beginPath();
+    ctx.moveTo(fromX, fromY);
+    ctx.lineTo(toX, toY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(toX, toY);
+    ctx.lineTo(toX - 8 * Math.cos(angle - 0.4), toY - 8 * Math.sin(angle - 0.4));
+    ctx.lineTo(toX - 8 * Math.cos(angle + 0.4), toY - 8 * Math.sin(angle + 0.4));
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const r = 70;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(0,212,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+    grad.addColorStop(0, 'rgba(0,212,255,0.06)');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.rect(cx - 180, cy - 18, 360, 36);
+    ctx.strokeStyle = 'rgba(255,100,100,0.2)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    const capGrad = ctx.createLinearGradient(cx - 180, 0, cx + 180, 0);
+    capGrad.addColorStop(0, 'rgba(255,59,107,0.08)');
+    capGrad.addColorStop(0.5, 'rgba(255,100,100,0.03)');
+    capGrad.addColorStop(1, 'rgba(0,212,255,0.08)');
+    ctx.fillStyle = capGrad;
+    ctx.fill();
+
+    drawArrow(ctx, cx - 180, cy, cx - 100, cy, 'rgba(255,59,107,0.7)');
+    drawArrow(ctx, cx + 100, cy, cx + 180, cy, 'rgba(0,212,255,0.7)');
+
+    mols = mols.filter(m => m.alpha > -0.1);
+    mols.forEach(m => {
+      m.progress = Math.min(1, m.progress + m.speed);
+      m.x += (m.tx - m.x) * m.speed * 8;
+      m.y += (m.ty - m.y) * m.speed * 8;
+      m.alpha = m.progress < 0.1 ? m.progress * 10
+              : m.progress > 0.85 ? (1 - m.progress) * (1/0.15)
+              : 1;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${m.color},${m.alpha * 0.85})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${m.color},${m.alpha * 0.5})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.r * 3);
+      g.addColorStop(0, `rgba(${m.color},${m.alpha * 0.3})`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(m.x, m.y, m.r * 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.fillStyle = 'rgba(0,212,255,0.6)';
+    ctx.font = '12px Space Grotesk, sans-serif';
+    ctx.fillText('ถุงลม', cx - 18, cy + 4);
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ============================================================
+   BLOOD FLOW CANVAS (Slide 5)
+   ============================================================ */
+function initFlowCanvas() {
+  const canvas = document.getElementById('flow-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = canvas.offsetHeight;
+  const W = canvas.width, H = canvas.height;
+  const cx = W * 0.48, cy = H * 0.5;
+
+  let particles = [];
+  for (let i = 0; i < 40; i++) {
+    particles.push({
+      angle: Math.random() * Math.PI * 2,
+      radius: Math.random() > 0.5 ? 100 + Math.random()*60 : 60 + Math.random()*40,
+      speed: 0.01 + Math.random()*0.015,
+      size: 4 + Math.random()*3,
+      color: Math.random()>0.45?'220,30,60':'40,80,200',
+      alpha: Math.random()*0.6+0.4,
+      isRich: Math.random()>0.45,
+      trail: []
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(74,158,255,0.08)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(cx, cy - 160, 45, 0, Math.PI * 2); ctx.stroke();
+    if (ctx.roundRect) {
+      ctx.beginPath(); ctx.roundRect(cx - 55, cy - 110, 110, 150, 10); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(cx - 50, cy + 40, 40, 120, 8); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(cx + 10, cy + 40, 40, 120, 8); ctx.stroke();
+    } else {
+      ctx.strokeRect(cx - 55, cy - 110, 110, 150);
+      ctx.strokeRect(cx - 50, cy + 40, 40, 120);
+      ctx.strokeRect(cx + 10, cy + 40, 40, 120);
+    }
+    ctx.restore();
+
+    const hg = ctx.createRadialGradient(cx, cy - 30, 0, cx, cy - 30, 40);
+    hg.addColorStop(0, 'rgba(255,59,107,0.2)');
+    hg.addColorStop(1, 'transparent');
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 30, 40, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30);
+    ctx.quadraticCurveTo(cx + 30, cy - 80, cx + 10, cy - 150);
+    ctx.strokeStyle = 'rgba(220,30,60,0.3)';
+    ctx.lineWidth = 6;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30);
+    ctx.quadraticCurveTo(cx - 50, cy, cx - 50, cy + 80);
+    ctx.strokeStyle = 'rgba(40,80,200,0.25)';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 30);
+    ctx.quadraticCurveTo(cx + 50, cy, cx + 50, cy + 80);
+    ctx.strokeStyle = 'rgba(40,80,200,0.25)';
+    ctx.lineWidth = 5;
+    ctx.stroke();
+
+    particles.forEach(p => {
+      p.angle += p.speed;
+      const x = cx + Math.cos(p.angle) * p.radius * (p.isRich ? 1 : 0.6);
+      const y = (cy - 30) + Math.sin(p.angle) * p.radius * 0.55;
+      p.trail.push({ x, y });
+      if (p.trail.length > 6) p.trail.shift();
+      p.trail.forEach((pt, i) => {
+        const ta = (i / p.trail.length) * p.alpha * 0.4;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, p.size * (i/p.trail.length), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.color},${ta})`;
+        ctx.fill();
+      });
+      ctx.beginPath();
+      ctx.arc(x, y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${p.color},${p.alpha})`;
+      ctx.fill();
+      const g = ctx.createRadialGradient(x, y, 0, x, y, p.size * 3);
+      g.addColorStop(0, `rgba(${p.color},0.3)`);
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, p.size * 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    const lg = ctx.createRadialGradient(cx - 55, cy - 30, 0, cx - 55, cy - 30, 50);
+    lg.addColorStop(0, 'rgba(0,212,255,0.12)');
+    lg.addColorStop(1, 'transparent');
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.arc(cx - 55, cy - 30, 50, 0, Math.PI * 2); ctx.fill();
+    const lg2 = ctx.createRadialGradient(cx + 55, cy - 30, 0, cx + 55, cy - 30, 50);
+    lg2.addColorStop(0, 'rgba(0,212,255,0.12)');
+    lg2.addColorStop(1, 'transparent');
+    ctx.fillStyle = lg2;
+    ctx.beginPath(); ctx.arc(cx + 55, cy - 30, 50, 0, Math.PI * 2); ctx.fill();
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ============================================================
+   SLIDE NAVIGATION
+   ============================================================ */
+function updateUI() {
+  progressBar.style.width = ((currentSlide + 1) / TOTAL_SLIDES * 100) + '%';
+  slideCounter.textContent = `${currentSlide + 1} / ${TOTAL_SLIDES}`;
+  dots.forEach((d, i) => d.classList.toggle('active', i === currentSlide));
+}
+
+function goToSlide(index, direction = 1) {
+  if (isAnimating || index === currentSlide || index < 0 || index >= TOTAL_SLIDES) return;
+  isAnimating = true;
+  const slides = document.querySelectorAll('.slide');
+  const current = slides[currentSlide];
+  const next = slides[index];
+  const xOut = direction > 0 ? '-60px' : '60px';
+  const xIn  = direction > 0 ? '60px'  : '-60px';
+  gsap.to(current, {
+    opacity: 0, x: xOut, duration: 0.5, ease: 'power2.in',
+    onComplete: () => {
+      current.classList.remove('active');
+      gsap.set(current, { x: 0 });
+    }
+  });
+  gsap.fromTo(next,
+    { opacity: 0, x: xIn },
+    {
+      opacity: 1, x: 0, duration: 0.6, ease: 'power2.out', delay: 0.1,
+      onStart: () => {
+        next.classList.add('active');
+        currentSlide = index;
+        updateUI();
+        onSlideEnter(index);
+      },
+      onComplete: () => { isAnimating = false; }
+    }
+  );
+}
+function nextSlide() { goToSlide(currentSlide + 1, 1); }
+function prevSlide() { goToSlide(currentSlide - 1, -1); }
+
+function onSlideEnter(index) {
+  if (index === 2) initGasCanvas();
+  if (index === 4) initFlowCanvas();
+  if (index === 6) renderQuiz();
+}
+
+/* ============================================================
+   QUIZ
+   ============================================================ */
+function renderQuiz() {
+  const container = document.getElementById('quiz-area');
+  if (!container) return;
+  if (quizDone) { showScore(); return; }
+  const q = quizData[currentQuestion];
+  container.innerHTML = `
+    <div class="mb-4">
+      <div style="display:flex;gap:8px;margin-bottom:20px;">
+        ${quizData.map((_, i) => `
+          <div class="quiz-progress-dot ${i < currentQuestion ? (quizAnswers[i]===quizData[i].ans?'done':'wrong') : i===currentQuestion?'curr':''}"></div>
+        `).join('')}
+      </div>
+      <p style="font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent-cyan);margin-bottom:10px;">
+        คำถามที่ ${currentQuestion + 1} จาก ${quizData.length}
+      </p>
+      <p style="font-size:clamp(1rem,2vw,1.15rem);font-weight:500;line-height:1.5;margin-bottom:24px;color:var(--text-primary);">
+        ${q.q}
+      </p>
+    </div>
+    <div>
+      ${q.opts.map((opt, i) => `
+        <button class="quiz-option" onclick="answerQuiz(${i})" id="opt-${i}">
+          <span style="width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,0.06);
+            display:flex;align-items:center;justify-content:center;font-size:12px;
+            font-weight:600;flex-shrink:0;">${['A','B','C','D'][i]}</span>
+          ${opt}
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function answerQuiz(chosen) {
+  const q = quizData[currentQuestion];
+  quizAnswers[currentQuestion] = chosen;
+  const opts = document.querySelectorAll('.quiz-option');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.ans) btn.classList.add('correct');
+    else if (i === chosen && chosen !== q.ans) btn.classList.add('wrong');
+  });
+  setTimeout(() => {
+    currentQuestion++;
+    if (currentQuestion >= quizData.length) {
+      quizDone = true;
+      showScore();
+    } else {
+      renderQuiz();
+    }
+  }, 1200);
+}
+
+function showScore() {
+  const container = document.getElementById('quiz-area');
+  if (!container) return;
+  const score = quizAnswers.reduce((acc, ans, i) => acc + (ans === quizData[i].ans ? 1 : 0), 0);
+  const pct = Math.round(score / quizData.length * 100);
+  const emoji = score === quizData.length ? '🏆' : score >= quizData.length * 0.75 ? '⭐' : score >= quizData.length * 0.5 ? '👍' : '📚';
+  const msg   = score === quizData.length ? 'ยอดเยี่ยมมาก! คุณเข้าใจเนื้อหาได้อย่างสมบูรณ์แบบ'
+              : score >= quizData.length * 0.75 ? 'ดีมาก! คุณเข้าใจเนื้อหาเป็นอย่างดี'
+              : score >= quizData.length * 0.5 ? 'ผ่านได้ ลองทบทวนเนื้อหาอีกครั้ง'
+              : 'ลองศึกษาเนื้อหาใหม่อีกครั้งนะ';
+  container.innerHTML = `
+    <div style="text-align:center;padding:20px 0;">
+      <div style="font-size:3rem;margin-bottom:12px;">${emoji}</div>
+      <div class="score-display gradient-text-cyan">${score}/${quizData.length}</div>
+      <div style="font-size:2rem;font-weight:700;color:var(--accent-cyan);margin:4px 0;">${pct}%</div>
+      <p style="color:var(--text-secondary);font-size:15px;margin:16px 0 24px;">${msg}</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;">
+        ${quizData.map((q, i) => `
+          <div style="padding:8px 14px;border-radius:10px;font-size:13px;
+            background:${quizAnswers[i]===q.ans?'rgba(0,255,157,0.1)':'rgba(255,59,107,0.1)'};
+            border:1px solid ${quizAnswers[i]===q.ans?'rgba(0,255,157,0.3)':'rgba(255,59,107,0.3)'};
+            color:${quizAnswers[i]===q.ans?'var(--accent-green)':'var(--accent-red)'};">
+            ข้อ ${i+1} ${quizAnswers[i]===q.ans?'✓':'✗'}
+          </div>
+        `).join('')}
+      </div>
+      <button onclick="retryQuiz()" style="padding:12px 32px;border-radius:50px;
+        background:linear-gradient(135deg,var(--accent-cyan),var(--accent-blue));
+        border:none;color:#000;font-weight:600;font-size:14px;cursor:pointer;
+        font-family:'Prompt',sans-serif;">
+        ทำใหม่อีกครั้ง
+      </button>
+    </div>
+  `;
+}
+
+function retryQuiz() {
+  quizAnswers = new Array(quizData.length).fill(null);
+  currentQuestion = 0;
+  quizDone = false;
+  renderQuiz();
+}
+
+/* ============================================================
+   NAVIGATION (Keyboard / Touch / Wheel)
+   ============================================================ */
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')                    { e.preventDefault(); prevSlide(); }
+  if (e.key >= '1' && e.key <= '8') goToSlide(parseInt(e.key) - 1);
+});
+
+let touchStartX = 0, touchStartY = 0;
+document.addEventListener('touchstart', e => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    dx < 0 ? nextSlide() : prevSlide();
+  }
+}, { passive: true });
+
+let wheelTimeout = null;
+document.addEventListener('wheel', e => {
+  if (wheelTimeout) return;
+  e.deltaY > 0 ? nextSlide() : prevSlide();
+  wheelTimeout = setTimeout(() => { wheelTimeout = null; }, 800);
+}, { passive: true });
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', () => {
+  initBgCanvas();
+  const first = document.querySelector('.slide');
+  if (first) {
+    first.classList.add('active');
+    gsap.fromTo(first, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 1.2, ease: 'power2.out' });
+  }
+  gsap.from('#intro-title',    { opacity: 0, y: 40, duration: 1,   delay: 0.3, ease: 'power2.out' });
+  gsap.from('#intro-subtitle', { opacity: 0, y: 30, duration: 0.9, delay: 0.6, ease: 'power2.out' });
+  gsap.from('#intro-meta',     { opacity: 0, y: 20, duration: 0.8, delay: 0.9, ease: 'power2.out' });
+  gsap.from('#intro-btn',      { opacity: 0, y: 20, scale: 0.9, duration: 0.8, delay: 1.1, ease: 'back.out(1.7)' });
+  updateUI();
+});
+</script>
 </body>
 </html>
