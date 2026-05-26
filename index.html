@@ -2050,6 +2050,13 @@ function openPlayerProfile(playerId) {
   const colors = getAvatarColor(p.id);
   const wr = p.wins + p.losses > 0 ? Math.round(p.wins / (p.wins + p.losses) * 100) : 0;
 
+  // Current leaderboard position
+  const rankPos = [...db.players].sort((a,b)=>b.pts-a.pts).findIndex(x=>x.id===p.id) + 1;
+  // Track peak position in localStorage
+  const _ppk = 'badminton_peak_pos_' + p.id;
+  let peakPos = parseInt(localStorage.getItem(_ppk) || rankPos);
+  if (!localStorage.getItem(_ppk) || rankPos < peakPos) { peakPos = rankPos; localStorage.setItem(_ppk, rankPos); }
+
   // Peak rank from ELO history
   const eloHistory = buildEloHistory(p.id);
   const peakElo = eloHistory.length ? Math.max(...eloHistory) : p.pts;
@@ -2124,12 +2131,12 @@ function openPlayerProfile(playerId) {
     const opp = inA ? m.teamB : m.teamA;
     const date = new Date(m.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     return `<div class="pp2-hist">
-      <div class="pp2-hist-res ${win ? 'w' : 'l'}">${win ? '🏆 ชนะ' : '💔 แพ้'}</div>
+      <div class="pp2-hist-res ${win ? 'w' : 'l'}">${win ? t('win_label') : t('lose_label')}</div>
       <div style="flex:1;color:var(--muted)">vs ${opp.map(x => x.name).join(' & ')}</div>
       <div style="font-family:'Rajdhani';font-weight:700;font-size:0.88rem">${m.scoreA}-${m.scoreB}</div>
       <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${date}</div>
     </div>`;
-  }).join('') || '<div class="text-muted" style="font-size:0.8rem;padding:8px 0">ยังไม่มีแมตช์</div>';
+  }).join('') || `<div class="text-muted" style="font-size:0.8rem;padding:8px 0">${t('no_match')}</div>`;
 
   const rankGradients = {
     king: 'linear-gradient(135deg,#ffd700,#ffaa00)',
@@ -2155,12 +2162,14 @@ function openPlayerProfile(playerId) {
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--glass-border)">
-              <div style="font-size:0.62rem;color:var(--muted);margin-bottom:5px;letter-spacing:0.03em">${t('cur_rank')}</div>
-              <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span>
+              <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('cur_rank_pos')}</div>
+              <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--neon);line-height:1">#${rankPos}</div>
+              <span class="rank-badge ${rank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${rank.label}</span>
             </div>
-            <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid ${isPeakHigher?'rgba(255,215,0,0.4)':'var(--glass-border)'}">
-              <div style="font-size:0.62rem;color:var(--muted);margin-bottom:5px;letter-spacing:0.03em">${t('peak_rank')}${isPeakHigher?' 👑':''}</div>
-              <span class="rank-badge ${peakRank.class}" style="font-size:0.68rem">${peakRank.label}</span>
+            <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid ${peakPos < rankPos?'rgba(255,215,0,0.4)':'var(--glass-border)'}">
+              <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('peak_rank_pos')}${peakPos < rankPos?' 👑':''}</div>
+              <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--gold);line-height:1">#${peakPos}</div>
+              <span class="rank-badge ${peakRank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${peakRank.label}</span>
             </div>
           </div>
         </div>
