@@ -162,7 +162,22 @@ body.x2-active .toast-wrap{bottom:120px}
 @keyframes pOrbit{from{transform:rotate(0deg) translateX(56px)}to{transform:rotate(360deg) translateX(56px)}}
 [data-style="lite"] .prime-star{animation:none!important}
 [data-style="lite"] .prime-ss-crown{animation:none!important}
-[data-style="lite"] .prime-ss-badge{box-shadow:none!important}</style>
+[data-style="lite"] .prime-ss-badge{box-shadow:none!important}
+/* ══════ CUSTOM ACHIEVEMENT FRAMES ══════ */
+.cach-wrap{display:inline-flex;margin:4px}
+.cach-badge{display:inline-flex;align-items:center;gap:7px;border-radius:14px;padding:8px 15px;font-weight:700;letter-spacing:0.03em;position:relative;overflow:hidden}
+.cach-frame-gold{background:linear-gradient(135deg,rgba(255,215,0,0.14),rgba(255,180,0,0.07));border:2px solid rgba(255,215,0,0.75);color:#ffd700;box-shadow:0 0 16px rgba(255,215,0,0.2),inset 0 1px 0 rgba(255,255,255,0.15)}
+.cach-frame-silver{background:linear-gradient(135deg,rgba(200,200,200,0.14),rgba(160,160,160,0.07));border:2px solid rgba(192,192,192,0.75);color:#c8c8c8;box-shadow:0 0 14px rgba(192,192,192,0.2),inset 0 1px 0 rgba(255,255,255,0.15)}
+.cach-frame-bronze{background:linear-gradient(135deg,rgba(205,127,50,0.16),rgba(180,100,30,0.08));border:2px solid rgba(205,127,50,0.75);color:#cd7f32;box-shadow:0 0 14px rgba(205,127,50,0.2),inset 0 1px 0 rgba(255,255,255,0.15)}
+.cach-frame-gold::after,.cach-frame-silver::after,.cach-frame-bronze::after{content:'';position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,0.18) 50%,transparent 70%);background-size:200% 100%;animation:cachShine 3.5s ease-in-out infinite;pointer-events:none}
+.cach-frame-silver::after{animation-delay:-1.2s}.cach-frame-bronze::after{animation-delay:-2.4s}
+@keyframes cachShine{0%,100%{background-position:200% 0}50%{background-position:-200% 0}}
+.cach-icon{font-size:1.05rem;line-height:1}
+.cach-text{font-family:'Rajdhani',sans-serif;font-size:0.9rem}
+.cach-section{margin-top:14px}
+.cach-list{display:flex;flex-wrap:wrap;gap:6px;padding:2px 0 4px}
+[data-style="lite"] .cach-badge::after{display:none!important}
+[data-style="lite"] .cach-badge{box-shadow:none!important}</style>
 </head>
 <body>
 
@@ -536,6 +551,7 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
         <input class="inp" type="file" id="importFile" accept=".json" onchange="importData(event)" style="font-size:0.82rem">
       </div>
     </div>
+    <div class="card" id="cachAdminCard"><div class="card-title">🎖️ Custom Achievements</div><div id="cachAdminBody"></div></div>
     <div class="card"><div class="card-title" style="color:var(--red)">⚠️ Danger Zone</div><button class="btn btn-danger" onclick="resetAllData()">🗑️ ล้างข้อมูลทั้งหมด</button></div>
   </main>
 </div>
@@ -902,9 +918,9 @@ function switchMatchTab(tab) {
 }
 
 function normalizePlayer(p) {
-  let pt = [];
-  try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: pt };
+  let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
+  let ca = []; try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {}
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: pt, customAch: ca };
 }
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts }; }
@@ -1571,7 +1587,8 @@ async function renderProfile() {
       </div>
       <div class="divider"></div>
       ${renderPrimeSSTitles(p)}
-      <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
+      ${renderCustomAchievements(p)}
+      <div class="divider" style="${((p.primeTitles||[]).length||(p.customAch||[]).length) ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
       ${buildRankingChart(p.id)}`;
     const myMatches = db.matches.filter(m => [...m.teamA,...m.teamB].some(x=>x.id===p.id)).slice(0, 20);
@@ -1594,6 +1611,7 @@ async function renderAdmin() {
       return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">✏️ แก้ไข</button></div>`;
     }).join('') || '<div class="text-muted">ไม่มีผู้เล่น</div>';
     await renderPendingList();
+    renderCachAdmin();
   } catch(e) { console.error(e); }
 }
 
@@ -2398,6 +2416,123 @@ function renderPrimeSSTitles(player) {
   return `<div class="prime-ss-section">
     <div class="prime-ss-label">🏅 Season Titles</div>
     <div class="prime-ss-list">${badges}</div>
+  </div>`;
+}
+
+// ── CUSTOM ACHIEVEMENT SYSTEM ──────────────────────────────────
+const CACH_KEY = 'badminton_cach_catalog';
+function getCachCatalog() { try { return JSON.parse(localStorage.getItem(CACH_KEY)||'[]'); } catch(e) { return []; } }
+function saveCachCatalog(c) { localStorage.setItem(CACH_KEY, JSON.stringify(c)); }
+
+const CACH_FRAME_COLOR = { gold:'#ffd700', silver:'#c8c8c8', bronze:'#cd7f32' };
+const CACH_FRAME_LABEL = { gold:'🥇 ทอง', silver:'🥈 เงิน', bronze:'🥉 ทองแดง' };
+
+function renderCachAdmin() {
+  const body = document.getElementById('cachAdminBody');
+  if (!body) return;
+  const catalog = getCachCatalog();
+  const players = [...db.players].sort((a,b) => b.pts - a.pts);
+  const frameOpts = ['gold','silver','bronze'].map(f =>
+    `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.82rem;padding:5px 10px;border-radius:8px;border:1px solid var(--glass-border);background:var(--btn-glass)">
+      <input type="radio" name="cachFrame" value="${f}" ${f==='gold'?'checked':''}> <span style="color:${CACH_FRAME_COLOR[f]};font-weight:700">${CACH_FRAME_LABEL[f]}</span>
+    </label>`).join('');
+
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:8px">
+      <div class="form-group" style="margin:0"><label style="font-size:0.7rem;color:var(--muted)">Icon</label>
+        <input class="inp" id="cachIconInp" placeholder="🏆" maxlength="6" style="font-size:1.5rem;text-align:center;padding:8px 4px"></div>
+      <div class="form-group" style="margin:0"><label style="font-size:0.7rem;color:var(--muted)">ชื่อ Achievement</label>
+        <input class="inp" id="cachTitleInp" placeholder="ชื่อรางวัล..."></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label style="font-size:0.7rem;color:var(--muted)">คำอธิบาย (ไม่บังคับ)</label>
+      <input class="inp" id="cachDescInp" placeholder="รายละเอียด..."></div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">กรอบ</div>
+      <div style="display:flex;gap:7px;flex-wrap:wrap">${frameOpts}</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="createCachDef()" style="margin-bottom:18px">➕ สร้าง Achievement</button>
+    ${catalog.length ? `
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🎖️ Achievements ที่สร้างไว้</div>
+      ${catalog.map(a => buildCachItemHTML(a, players)).join('')}
+    ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}`;
+}
+
+function buildCachItemHTML(ach, players) {
+  const col = CACH_FRAME_COLOR[ach.frame] || '#ffd700';
+  const awardedIds = new Set(players.filter(p => (p.customAch||[]).some(a=>a.id===ach.id)).map(p=>p.id));
+  const playerChecks = players.map(p => `
+    <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.78rem;padding:5px 9px;border-radius:8px;border:1px solid ${awardedIds.has(p.id)?col:'var(--glass-border)'};background:${awardedIds.has(p.id)?`rgba(${ach.frame==='gold'?'255,215,0':ach.frame==='silver'?'192,192,192':'205,127,50'},0.08)`:'var(--btn-glass)'};transition:all .15s">
+      <input type="checkbox" ${awardedIds.has(p.id)?'checked':''} onchange="toggleCachAward('${ach.id}',${p.id},this.checked)" style="accent-color:${col}">
+      <span>${getAvatar(p.id,p.name).content}</span> ${p.name}
+    </label>`).join('');
+  return `<div style="border:1px solid ${col}30;border-radius:12px;padding:12px;margin-bottom:10px;background:${col}06">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div class="cach-badge cach-frame-${ach.frame}" style="pointer-events:none;flex-shrink:0">
+        <span class="cach-icon">${ach.icon}</span><span class="cach-text">${ach.title}</span>
+      </div>
+      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${ach.desc||'ไม่มีคำอธิบาย'}</div>
+      <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:4px 8px" onclick="deleteCachDef('${ach.id}')">🗑️</button>
+    </div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:7px">มอบให้ผู้เล่น (${awardedIds.size > 0 ? awardedIds.size + ' คนได้รับแล้ว' : 'ยังไม่ได้มอบ'}):</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${playerChecks}</div>
+  </div>`;
+}
+
+function createCachDef() {
+  const icon = (document.getElementById('cachIconInp')?.value.trim()||'🏆');
+  const title = document.getElementById('cachTitleInp')?.value.trim();
+  const desc = document.getElementById('cachDescInp')?.value.trim()||'';
+  const frame = document.querySelector('input[name="cachFrame"]:checked')?.value||'gold';
+  if (!title) { toast('กรุณาใส่ชื่อ Achievement', 'error'); return; }
+  const catalog = getCachCatalog();
+  catalog.push({ id:'cach_'+Date.now(), icon, title, desc, frame });
+  saveCachCatalog(catalog);
+  document.getElementById('cachIconInp').value='';
+  document.getElementById('cachTitleInp').value='';
+  document.getElementById('cachDescInp').value='';
+  renderCachAdmin();
+  toast(`🎖️ สร้าง "${title}" แล้ว!`, 'success');
+}
+
+function deleteCachDef(achId) {
+  saveCachCatalog(getCachCatalog().filter(a=>a.id!==achId));
+  renderCachAdmin();
+  toast('ลบ Achievement แล้ว', 'info');
+}
+
+async function toggleCachAward(achId, playerId, give) {
+  const player = db.players.find(p=>p.id===playerId);
+  if (!player) return;
+  const achDef = getCachCatalog().find(a=>a.id===achId);
+  if (!achDef && give) { toast('ไม่พบ Achievement นี้', 'error'); return; }
+  let cur = [...(player.customAch||[])];
+  if (give) {
+    if (!cur.some(a=>a.id===achId)) cur.push({id:achDef.id,icon:achDef.icon,title:achDef.title,desc:achDef.desc,frame:achDef.frame});
+  } else {
+    cur = cur.filter(a=>a.id!==achId);
+  }
+  try {
+    await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) });
+    player.customAch = cur;
+    toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
+    await loadAll();
+    renderCachAdmin();
+  } catch(e) { toast('บันทึกไม่ได้: '+e.message, 'error'); }
+}
+
+function renderCustomAchievements(player) {
+  const list = player?.customAch;
+  if (!list?.length) return '';
+  const badges = list.map(a=>`
+    <div class="cach-wrap">
+      <div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}">
+        <span class="cach-icon">${a.icon||'🏆'}</span>
+        <span class="cach-text">${a.title}</span>
+      </div>
+    </div>`).join('');
+  return `<div class="cach-section">
+    <div class="prime-ss-label">🎖️ Achievements</div>
+    <div class="cach-list">${badges}</div>
   </div>`;
 }
 
