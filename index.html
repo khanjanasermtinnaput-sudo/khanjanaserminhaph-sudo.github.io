@@ -761,7 +761,7 @@ async function dbAddMatch(match) {
 }
 
 const RANKS = [
-  { id: 'king',     label: '👑 King of Badminton', min: 2000, class: 'rank-king'     },
+  { id: 'king',     label: '👑 King of Badminton', min: 3000, class: 'rank-king'     },
   { id: 'master',   label: '🔥 Master Player',      min: 1501, class: 'rank-master'   },
   { id: 'diamond',  label: '💠 Diamond',             min: 801,  class: 'rank-diamond'  },
   { id: 'platinum', label: '💎 Platinum',            min: 501,  class: 'rank-platinum' },
@@ -771,7 +771,7 @@ const RANKS = [
 ];
 
 function getRank(pts, playerId) {
-  if (pts >= 2000) { const sorted = [...db.players].sort((a,b)=>b.pts-a.pts); if (sorted.length > 0 && sorted[0].id === playerId) return RANKS[0]; }
+  if (pts >= 3000) { const sorted = [...db.players].sort((a,b)=>b.pts-a.pts); if (sorted.length > 0 && sorted[0].id === playerId) return RANKS[0]; }
   for (let i = 1; i < RANKS.length; i++) { if (pts >= RANKS[i].min) return RANKS[i]; }
   return RANKS[RANKS.length - 1];
 }
@@ -783,7 +783,7 @@ function rankProgress(pts) {
     if (!next) return { pct: 100, next: null };
     if (pts >= cur.min && pts < next.min) return { pct: Math.round(((pts - cur.min) / (next.min - cur.min)) * 100), next };
   }
-  if (pts >= 1501) return { pct: Math.min(100, Math.round(((pts - 1501) / (2000 - 1501)) * 100)), next: pts >= 2000 ? null : RANKS[0] };
+  if (pts >= 1501) return { pct: Math.min(100, Math.round(((pts - 1501) / (3000 - 1501)) * 100)), next: pts >= 3000 ? null : RANKS[0] };
   return { pct: 0, next: RANKS[RANKS.length-2] };
 }
 
@@ -2014,12 +2014,12 @@ function buildEloChart(data) {
 // Helper: detect if a player crossed INTO King rank (for broadcasting king anim to everyone watching)
 function didCrossIntoKing(oldPts, newPts, playerId) {
   let wasKing = false;
-  if (oldPts >= 2000) {
+  if (oldPts >= 3000) {
     const sortedOld = [...db.players].sort((a, b) => b.pts - a.pts);
     wasKing = !!(sortedOld[0] && sortedOld[0].id === playerId);
   }
   let willBeKing = false;
-  if (newPts >= 2000) {
+  if (newPts >= 3000) {
     // Project the new state for this player
     const projected = db.players.map(p => p.id === playerId ? {...p, pts: newPts} : p);
     const sortedNew = [...projected].sort((a, b) => b.pts - a.pts);
@@ -2036,12 +2036,12 @@ function queueRankUpForPlayer(playerId, oldPts, newPts, playerName, gainPts) {
   const newRank = getRankByPts(newPts);
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
   let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && oldPts >= 2000) {
+  if (oldRank.id === 'master' && oldPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
   }
   let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && newPts >= 2000) {
+  if (newRank.id === 'master' && newPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
@@ -2801,13 +2801,13 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
   // Resolve effective old rank (getRankByPts skips king, so check manually)
   let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && playerOldPts >= 2000) {
+  if (oldRank.id === 'master' && playerOldPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
   }
   // Resolve effective new rank
   let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && playerNewPts >= 2000) {
+  if (newRank.id === 'master' && playerNewPts >= 3000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
