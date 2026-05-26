@@ -1881,16 +1881,20 @@ function queueRankUpForPlayer(playerId, oldPts, newPts, playerName, gainPts) {
   const key = 'badminton_rankup_queue';
   let queue = [];
   try { queue = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
-  // ตรวจก่อนว่า rank ขึ้นจริง
   const oldRank = getRankByPts(oldPts);
   const newRank = getRankByPts(newPts);
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
-  const oldIdx = rankOrder.indexOf(oldRank.id);
+  let effectiveOldRankId = oldRank.id;
+  if (oldRank.id === 'master' && oldPts >= 2000) {
+    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
+    if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
+  }
   let effectiveNewRankId = newRank.id;
   if (newRank.id === 'master' && newPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
+  const oldIdx = rankOrder.indexOf(effectiveOldRankId);
   const newIdx = rankOrder.indexOf(effectiveNewRankId);
   if (newIdx > oldIdx) {
     queue.push({ playerId, rankId: effectiveNewRankId, playerName, gainPts });
@@ -2623,18 +2627,20 @@ const RANKS_DATA_RU = {
 function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const oldRank = getRankByPts(playerOldPts);
   const newRank = getRankByPts(playerNewPts);
-  // ตรวจสอบว่าแรงค์เปลี่ยนขึ้นจริง
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
-  const oldIdx = rankOrder.indexOf(oldRank.id);
-  // สำหรับ king: ต้องมี >= 2000 pts AND เป็นอันดับ 1
+  // Resolve effective old rank (getRankByPts skips king, so check manually)
+  let effectiveOldRankId = oldRank.id;
+  if (oldRank.id === 'master' && playerOldPts >= 2000) {
+    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
+    if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
+  }
+  // Resolve effective new rank
   let effectiveNewRankId = newRank.id;
   if (newRank.id === 'master' && playerNewPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
-    const topPlayer = sorted[0];
-    if (topPlayer && topPlayer.name === playerName) {
-      effectiveNewRankId = 'king';
-    }
+    if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
+  const oldIdx = rankOrder.indexOf(effectiveOldRankId);
   const newIdx = rankOrder.indexOf(effectiveNewRankId);
   if (newIdx > oldIdx) {
     const rc = RANKS_DATA_RU[effectiveNewRankId];
