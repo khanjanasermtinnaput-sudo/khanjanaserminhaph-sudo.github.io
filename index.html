@@ -143,7 +143,26 @@ body.x2-active .toast-wrap{bottom:120px}
 .ql-q{font-size:0.87rem;color:var(--muted);margin-bottom:18px}
 .ql-btns{display:flex;flex-direction:column;gap:8px}
 .ql-sep{display:flex;align-items:center;gap:10px;margin:14px 0 2px;font-size:0.72rem;color:var(--muted)}
-.ql-sep::before,.ql-sep::after{content:'';flex:1;height:1px;background:var(--glass-border)}</style>
+.ql-sep::before,.ql-sep::after{content:'';flex:1;height:1px;background:var(--glass-border)}
+/* ══════ PRIME SS SEASON TITLE BADGE ══════ */
+.prime-ss-section{margin-top:14px}
+.prime-ss-list{display:flex;flex-wrap:wrap;gap:16px 10px;padding:6px 2px 8px}
+.prime-ss-wrap{position:relative;display:inline-flex;padding:10px}
+.prime-ss-badge{position:relative;display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,rgba(255,215,0,0.14),rgba(255,180,0,0.07));border:2px solid rgba(255,215,0,0.7);border-radius:14px;padding:8px 16px 8px 12px;font-weight:700;color:#ffd700;letter-spacing:0.04em;box-shadow:0 0 18px rgba(255,215,0,0.2),inset 0 1px 0 rgba(255,255,255,0.15);overflow:visible;z-index:1}
+.prime-ss-crown{font-size:1.05rem;line-height:1;filter:drop-shadow(0 0 6px rgba(255,215,0,0.9));animation:primeCrownPulse 2.5s ease-in-out infinite}
+@keyframes primeCrownPulse{0%,100%{filter:drop-shadow(0 0 5px rgba(255,215,0,0.8))}50%{filter:drop-shadow(0 0 14px rgba(255,215,0,1))}}
+.prime-ss-text{font-family:'Rajdhani',sans-serif;font-size:0.95rem;letter-spacing:0.06em}
+.prime-star{position:absolute;top:50%;left:50%;width:5px;height:5px;margin:-2.5px -2.5px;border-radius:50%;background:radial-gradient(circle,#fff 20%,#ffd700 65%,transparent 100%);box-shadow:0 0 5px rgba(255,215,0,0.95);pointer-events:none}
+.prime-star:nth-child(1){animation:pOrbit 4s 0s linear infinite}
+.prime-star:nth-child(2){animation:pOrbit 4s -0.67s linear infinite}
+.prime-star:nth-child(3){animation:pOrbit 4s -1.33s linear infinite}
+.prime-star:nth-child(4){animation:pOrbit 4s -2s linear infinite}
+.prime-star:nth-child(5){animation:pOrbit 4s -2.67s linear infinite}
+.prime-star:nth-child(6){animation:pOrbit 4s -3.33s linear infinite}
+@keyframes pOrbit{from{transform:rotate(0deg) translateX(56px)}to{transform:rotate(360deg) translateX(56px)}}
+[data-style="lite"] .prime-star{animation:none!important}
+[data-style="lite"] .prime-ss-crown{animation:none!important}
+[data-style="lite"] .prime-ss-badge{box-shadow:none!important}</style>
 </head>
 <body>
 
@@ -882,7 +901,11 @@ function switchMatchTab(tab) {
   if (tab === 'doubles') renderDoublesPlayers();
 }
 
-function normalizePlayer(p) { return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0 }; }
+function normalizePlayer(p) {
+  let pt = [];
+  try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: pt };
+}
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts }; }
 
@@ -1547,6 +1570,8 @@ async function renderProfile() {
         <div class="pstat" style="width:48%;text-align:center"><div class="pstat-num" style="font-size:1.1rem;color:${wr>=50?'var(--neon)':'var(--red)'}">${wr}%</div><div class="pstat-label">Win Rate</div></div>
       </div>
       <div class="divider"></div>
+      ${renderPrimeSSTitles(p)}
+      <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
       ${buildRankingChart(p.id)}`;
     const myMatches = db.matches.filter(m => [...m.teamA,...m.teamB].some(x=>x.id===p.id)).slice(0, 20);
@@ -2344,6 +2369,38 @@ function getDaysUntilReset() {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
+// ── PRIME SS SEASON TITLE HELPERS ──────────────────────────────
+function getPrimeSSeasonLabel(year, month) {
+  // May 2026 = SS1 (feature launch month)
+  const diff = (year - 2026) * 12 + (month - 4);
+  return 'SS' + Math.max(1, diff + 1);
+}
+function getAwardedSSLabel() {
+  // At reset time, award label for the season that just ended (= previous month)
+  const now = new Date();
+  const y = now.getMonth() === 0 ? now.getFullYear() - 1 : now.getFullYear();
+  const m = now.getMonth() === 0 ? 11 : now.getMonth() - 1;
+  return getPrimeSSeasonLabel(y, m);
+}
+function renderPrimeSSTitles(player) {
+  const titles = (player && Array.isArray(player.primeTitles)) ? player.primeTitles : [];
+  if (!titles.length) return '';
+  const badges = titles.map(ss => `
+    <div class="prime-ss-wrap">
+      <div class="prime-ss-badge">
+        <div class="prime-star"></div><div class="prime-star"></div>
+        <div class="prime-star"></div><div class="prime-star"></div>
+        <div class="prime-star"></div><div class="prime-star"></div>
+        <span class="prime-ss-crown">👑</span>
+        <span class="prime-ss-text">Prime ${ss}</span>
+      </div>
+    </div>`).join('');
+  return `<div class="prime-ss-section">
+    <div class="prime-ss-label">🏅 Season Titles</div>
+    <div class="prime-ss-list">${badges}</div>
+  </div>`;
+}
+
 function renderSeasonBanner() {
   const days = getDaysUntilReset();
   const banner = document.getElementById('seasonBanner');
@@ -2368,6 +2425,29 @@ function renderSeasonBanner() {
 
 async function performSeasonReset(monthKey) {
   try {
+    // 1. Award Prime SS title to King before reset
+    const ssLabel = getAwardedSSLabel();
+    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
+    const king = sorted[0] && sorted[0].pts >= 3000 ? sorted[0] : null;
+    let kingTitle = '';
+    if (king) {
+      const titles = [...(king.primeTitles || [])];
+      if (!titles.includes(ssLabel)) {
+        titles.push(ssLabel);
+        try {
+          await dbUpdatePlayer(king.id, { prime_titles: JSON.stringify(titles) });
+          king.primeTitles = titles;
+        } catch(e) {
+          // Fallback: localStorage if column doesn't exist in Supabase yet
+          const lsKey = 'badminton_prime_ls_' + king.id;
+          const lsTitles = (() => { try { return JSON.parse(localStorage.getItem(lsKey) || '[]'); } catch(x) { return []; } })();
+          if (!lsTitles.includes(ssLabel)) { lsTitles.push(ssLabel); localStorage.setItem(lsKey, JSON.stringify(lsTitles)); }
+        }
+        kingTitle = ` · 👑 ${king.name} ได้รับ Prime ${ssLabel}!`;
+      }
+    }
+
+    // 2. Reset pts for all ranked players
     let resetCount = 0;
     for (const p of db.players) {
       const rank = getRankByPts(p.pts);
@@ -2377,10 +2457,10 @@ async function performSeasonReset(monthKey) {
         resetCount++;
       }
     }
-    if (resetCount > 0) {
+    if (resetCount > 0 || king) {
       localStorage.setItem('badminton_season_reset', monthKey);
       await loadAll();
-      toast(`🏆 Season Reset! ${resetCount} คนถูกรีคะแนน`, 'success');
+      toast(`🏆 Season Reset!${resetCount > 0 ? ` ${resetCount} คนถูกรีคะแนน` : ''}${kingTitle}`, 'success');
     }
   } catch(e) { console.error('Season reset error:', e); }
 }
