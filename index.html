@@ -1099,17 +1099,32 @@ function switchMatchTab(tab) {
 
 function normalizePlayer(p) {
   const CACH_PFX = '__cach:';
+  const CATALOG_PFX = '__catalog:';
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
-  // Extract custom achievements embedded in prime_titles as __cach: prefix
+  // Extract custom achievements + catalog embedded in prime_titles
   const cachEntry = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
-  const realPt = pt.filter(t => !(typeof t === 'string' && t.startsWith(CACH_PFX)));
+  const catalogEntry = pt.find(t => typeof t === 'string' && t.startsWith(CATALOG_PFX));
+  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX))));
   let ca = [];
   if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
-  // Also try custom_ach column (if it exists)
   if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
-  // Fallback to localStorage
   if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca };
+  let catalogShared = null;
+  if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared };
+}
+
+// Build prime_titles JSON for save, preserving awards + catalog hidden entries
+function buildPlayerPrimeTitles(player, opts) {
+  opts = opts || {};
+  const CACH_PFX = '__cach:';
+  const CATALOG_PFX = '__catalog:';
+  const pt = [...(player.primeTitles || [])];
+  const awards = opts.awards !== undefined ? opts.awards : (player.customAch || []);
+  if (awards && awards.length > 0) pt.push(CACH_PFX + JSON.stringify(awards));
+  const catalog = opts.catalog !== undefined ? opts.catalog : player._catalogShared;
+  if (catalog && catalog.length > 0) pt.push(CATALOG_PFX + JSON.stringify(catalog));
+  return JSON.stringify(pt);
 }
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts }; }
@@ -2650,8 +2665,40 @@ function renderPrimeSSTitles(player) {
 
 // ── CUSTOM ACHIEVEMENT SYSTEM ──────────────────────────────────
 const CACH_KEY = 'badminton_cach_catalog';
-function getCachCatalog() { try { return JSON.parse(localStorage.getItem(CACH_KEY)||'[]'); } catch(e) { return []; } }
-function saveCachCatalog(c) { localStorage.setItem(CACH_KEY, JSON.stringify(c)); }
+function getCachCatalog() {
+  const out = [];
+  const seen = new Set();
+  const add = (item) => { if (item && item.id && !seen.has(item.id)) { out.push(item); seen.add(item.id); } };
+  // 1. Supabase shared catalog (from any player's _catalogShared, prefer lowest-ID)
+  if (typeof db !== 'undefined' && db.players && db.players.length) {
+    const holder = [...db.players].sort((a,b)=>a.id-b.id).find(p => p._catalogShared && Array.isArray(p._catalogShared) && p._catalogShared.length);
+    if (holder) for (const item of holder._catalogShared) add(item);
+  }
+  // 2. localStorage (this device)
+  try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY)||'[]')) add(item); } catch(e) {}
+  // 3. Reconstruct from any awards already given out (backup)
+  if (typeof db !== 'undefined' && db.players) {
+    for (const p of db.players) {
+      for (const a of (p.customAch||[])) {
+        if (a && a.id) add({ id:a.id, icon:a.icon||'🏆', title:a.title||'', desc:a.desc||'', frame:a.frame||'gold' });
+      }
+    }
+  }
+  return out;
+}
+async function saveCachCatalog(c) {
+  localStorage.setItem(CACH_KEY, JSON.stringify(c));
+  // Sync to Supabase via lowest-ID admin (or lowest-ID player) prime_titles
+  if (typeof db === 'undefined' || !db.players || !db.players.length) return;
+  const admins = db.players.filter(p => p.isAdmin === 1);
+  const holder = [...(admins.length ? admins : db.players)].sort((a,b) => a.id - b.id)[0];
+  if (!holder) return;
+  try {
+    holder._catalogShared = c;
+    const ptStr = buildPlayerPrimeTitles(holder, { catalog: c });
+    await dbUpdatePlayer(holder.id, { prime_titles: ptStr });
+  } catch(e) { /* silent */ }
+}
 
 const CACH_FRAME_COLOR = { gold:'#ffd700', silver:'#c8c8c8', bronze:'#cd7f32' };
 const CACH_FRAME_LABEL = { gold:'🥇 ทอง', silver:'🥈 เงิน', bronze:'🥉 ทองแดง' };
@@ -2742,24 +2789,37 @@ const CACH_AWARDS_LS = 'badminton_cach_awards';
 function getCachAwardsLS() { try { return JSON.parse(localStorage.getItem(CACH_AWARDS_LS)||'{}'); } catch(e) { return {}; } }
 function saveCachAwardLS(playerId, cur) { const all = getCachAwardsLS(); all[playerId] = cur; localStorage.setItem(CACH_AWARDS_LS, JSON.stringify(all)); }
 
-// Migrate any localStorage-only awards to Supabase prime_titles (one-time)
+// Migrate localStorage awards + catalog up to Supabase (one-time per session)
 async function migrateCachToSupabase() {
   if (sessionStorage.getItem('cach_migrated')) return;
   sessionStorage.setItem('cach_migrated', '1');
-  const CACH_PFX = '__cach:';
+  // 1. Award migration: push localStorage per-player awards into prime_titles
   const ls = getCachAwardsLS();
   for (const [pid, awards] of Object.entries(ls)) {
-    if (!awards.length) continue;
+    if (!awards || !awards.length) continue;
     const pl = db.players.find(p => p.id === Number(pid));
     if (!pl) continue;
-    if (pl.customAch && pl.customAch.length) continue; // already in Supabase
+    // Skip only if Supabase already has a __cach: entry for this player
+    // (we detect this via _catalogShared NOT mattering — but customAch came from somewhere)
+    // We re-write to be safe and idempotent.
     try {
-      const pt = [...(pl.primeTitles || [])].filter(t => !t.startsWith(CACH_PFX));
-      pt.push(CACH_PFX + JSON.stringify(awards));
-      await dbUpdatePlayer(Number(pid), { prime_titles: JSON.stringify(pt) });
       pl.customAch = awards;
+      const ptStr = buildPlayerPrimeTitles(pl, { awards });
+      await dbUpdatePlayer(Number(pid), { prime_titles: ptStr });
     } catch(e) { /* silent */ }
   }
+  // 2. Catalog migration: merge local + shared + reconstructed; push up if local adds anything new
+  try {
+    const sharedHolder = [...db.players].sort((a,b)=>a.id-b.id).find(p => p._catalogShared && Array.isArray(p._catalogShared) && p._catalogShared.length);
+    const sharedCount = sharedHolder ? sharedHolder._catalogShared.length : 0;
+    const merged = getCachCatalog();
+    if (merged.length > sharedCount) {
+      await saveCachCatalog(merged);
+      // Re-render admin if visible so the catalog list updates
+      const adminVisible = document.getElementById('adminSection') && document.getElementById('adminSection').classList.contains('active');
+      if (adminVisible) renderCachAdmin();
+    }
+  } catch(e) { /* silent */ }
 }
 
 async function toggleCachAward(achId, playerId, give) {
@@ -2776,17 +2836,12 @@ async function toggleCachAward(achId, playerId, give) {
   // Save to localStorage (instant local update)
   saveCachAwardLS(playerId, cur);
   player.customAch = cur;
-  // Save to Supabase via prime_titles column (works on all devices)
+  // Save to Supabase via prime_titles column (preserves catalog if this is holder)
   try {
-    const CACH_PFX = '__cach:';
-    const pt = [...(player.primeTitles || [])].filter(t => !t.startsWith(CACH_PFX));
-    if (cur.length > 0) pt.push(CACH_PFX + JSON.stringify(cur));
-    await dbUpdatePlayer(playerId, { prime_titles: JSON.stringify(pt) });
+    const ptStr = buildPlayerPrimeTitles(player, { awards: cur });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
   } catch(e) {
-    // If prime_titles fails too, try custom_ach column as last resort
-    try {
-      await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) });
-    } catch(e2) { /* silent if column missing */ }
+    try { await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
     toast('⚠️ sync บางส่วนอาจไม่ครบ', 'info');
   }
   toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
