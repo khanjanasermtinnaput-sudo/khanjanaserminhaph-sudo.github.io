@@ -920,6 +920,8 @@ function switchMatchTab(tab) {
 function normalizePlayer(p) {
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
   let ca = []; try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {}
+  // Fallback: merge localStorage awards when custom_ach column doesn't exist yet
+  if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
   return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: pt, customAch: ca };
 }
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
@@ -2454,7 +2456,16 @@ function renderCachAdmin() {
     ${catalog.length ? `
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🎖️ Achievements ที่สร้างไว้</div>
       ${catalog.map(a => buildCachItemHTML(a, players)).join('')}
-    ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}`;
+    ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}
+    <details style="margin-top:14px">
+      <summary style="font-size:0.73rem;color:var(--muted);cursor:pointer;user-select:none">🔧 เปิดใช้ sync ข้ามเครื่อง (Supabase SQL)</summary>
+      <div style="margin-top:8px;background:rgba(0,0,0,0.25);border-radius:10px;padding:10px;font-size:0.7rem;color:var(--muted)">
+        รัน SQL นี้ใน Supabase → SQL Editor แล้ว achievements จะ sync ข้ามเครื่องได้:
+        <pre style="margin:8px 0 6px;padding:8px;background:rgba(0,0,0,0.3);border-radius:7px;font-size:0.68rem;overflow-x:auto;white-space:pre-wrap;color:#a8d8a8">ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';
+ALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';</pre>
+        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:4px 10px" onclick="navigator.clipboard.writeText(\`ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';\`).then(()=>toast('คัดลอกแล้ว!','success'))">📋 คัดลอก SQL</button>
+      </div>
+    </details>`;
 }
 
 function buildCachItemHTML(ach, players) {
@@ -2500,6 +2511,10 @@ function deleteCachDef(achId) {
   toast('ลบ Achievement แล้ว', 'info');
 }
 
+const CACH_AWARDS_LS = 'badminton_cach_awards';
+function getCachAwardsLS() { try { return JSON.parse(localStorage.getItem(CACH_AWARDS_LS)||'{}'); } catch(e) { return {}; } }
+function saveCachAwardLS(playerId, cur) { const all = getCachAwardsLS(); all[playerId] = cur; localStorage.setItem(CACH_AWARDS_LS, JSON.stringify(all)); }
+
 async function toggleCachAward(achId, playerId, give) {
   const player = db.players.find(p=>p.id===playerId);
   if (!player) return;
@@ -2511,13 +2526,22 @@ async function toggleCachAward(achId, playerId, give) {
   } else {
     cur = cur.filter(a=>a.id!==achId);
   }
+  // Always save to localStorage first (works without Supabase column)
+  saveCachAwardLS(playerId, cur);
+  player.customAch = cur;
+  // Try Supabase silently — ignore PGRST204 (column not yet added)
   try {
     await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) });
-    player.customAch = cur;
-    toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
-    await loadAll();
-    renderCachAdmin();
-  } catch(e) { toast('บันทึกไม่ได้: '+e.message, 'error'); }
+  } catch(e) {
+    const colMissing = e.message && (e.message.includes('PGRST204') || e.message.includes('custom_ach'));
+    if (!colMissing) { toast('บันทึกไม่ได้: '+e.message, 'error'); return; }
+    if (!sessionStorage.getItem('cach_sql_hint')) {
+      sessionStorage.setItem('cach_sql_hint', '1');
+      toast('💡 บันทึกในเครื่องแล้ว — รัน SQL ใน Admin เพื่อ sync ข้ามเครื่อง', 'info');
+    }
+  }
+  toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
+  renderCachAdmin();
 }
 
 function renderCustomAchievements(player) {
