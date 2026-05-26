@@ -686,6 +686,12 @@ function calcEloTeam(winners, losers, scoreW, scoreL) {
 const AVATAR_COLORS = [['#00f5a0','#004d32'],['#00d9f5','#003d4d'],['#ffd700','#4d3e00'],['#ff6b35','#4d1f0f'],['#b044f0','#3a0d5c'],['#48d1cc','#0d3d3c'],['#ff4757','#4d0d15'],['#7bed9f','#1a4d2d']];
 function getAvatarColor(id) { return AVATAR_COLORS[(id-1) % AVATAR_COLORS.length] }
 function getInitial(name) { return name ? name.charAt(0).toUpperCase() : '?' }
+function getAvatar(pid, name) {
+  const sv = getCustomAvatar(pid);
+  const cols = getAvatarColor(pid);
+  if (sv.emoji || sv.color) return { bg: sv.color||cols[1], fg: sv.color?'#fff':cols[0], content: sv.emoji||getInitial(name), fs: '1.4rem' };
+  return { bg: cols[1], fg: cols[0], content: getInitial(name), fs: '' };
+}
 
 function toggleDayNight() {
   const html = document.documentElement;
@@ -824,6 +830,7 @@ async function renderLeaderboard() {
       const cls = podClasses[i];
       const isFirst = cls === 'lbr1';
       const colors = getAvatarColor(p.id);
+      const av = getAvatar(p.id, p.name);
       const wr = p.wins + p.losses > 0 ? Math.round(p.wins / (p.wins + p.losses) * 100) : 0;
       const canvasId = `lbpc${i}`;
       return `<div class="lb-pc lb-glass ${cls}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
@@ -831,7 +838,7 @@ async function renderLeaderboard() {
         <div class="lb-pod-shim"></div>
         ${isFirst ? '<div class="lb-crown">👑</div>' : ''}
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
-        <div class="lb-pod-av" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div>
+        <div class="lb-pod-av" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
         <div class="lb-pod-name">${p.name}</div>
         <div class="lb-pod-score" id="lbpscore${p.id}">${p.pts.toLocaleString()}</div>
         <div class="lb-pod-wins">ชนะ ${p.wins} · แพ้ ${p.losses} · ${wr}%</div>
@@ -872,6 +879,7 @@ function lbRenderBoard(data, animate = true) {
     const isMe = currentUser && p.id === currentUser.id;
     const wp = p.wins + p.losses > 0 ? Math.round(p.wins / (p.wins + p.losses) * 100) : 0;
     const colors = getAvatarColor(p.id);
+    const av = getAvatar(p.id, p.name);
     const rank = getRank(p.pts, p.id);
     // rank badge emoji
     const posEmoji = globalPos === 1 ? '🥇' : globalPos === 2 ? '🥈' : globalPos === 3 ? '🥉' : null;
@@ -885,7 +893,7 @@ function lbRenderBoard(data, animate = true) {
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
-        <div class="lb-rav" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div>
+        <div class="lb-rav" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
         <div>
           <div class="lb-rn">${p.name}${isMe ? ' <span style="color:var(--neon);font-size:0.7rem">(ฉัน)</span>' : ''}</div>
           <div class="lb-rh"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${rank.label}</span></div>
@@ -1325,10 +1333,11 @@ async function renderProfile() {
     const p = db.players.find(x=>x.id===currentUser.id) || currentUser;
     currentUser = p;
     const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id), prog = rankProgress(p.pts);
+    const av = getAvatar(p.id, p.name);
     const wr = p.wins + p.losses > 0 ? Math.round(p.wins/(p.wins+p.losses)*100) : 0;
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header">
-        <div class="profile-avatar" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div>
+        <div class="profile-avatar" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
         <div><div class="profile-name">${p.name}</div><div class="mt-8"><span class="rank-badge ${rank.class}">${rank.label}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}</div>
       </div>
       <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">ความคืบหน้า ${prog.next ? '→ '+prog.next.label : '(ระดับสูงสุด)'}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
@@ -2743,29 +2752,23 @@ async function renderLiveTbl() {
 }
 
 // ── 1. Daily Challenge ───────────────────────────
-const DC = [
-  {text:'ชนะ 1 แมตช์วันนี้',goal:1,type:'wins'},
-  {text:'เล่น 2 แมตช์วันนี้',goal:2,type:'plays'},
-  {text:'ชนะ 3 แมตช์วันนี้',goal:3,type:'wins'},
-  {text:'เล่น 5 แมตช์วันนี้',goal:5,type:'plays'},
-  {text:'ชนะ Singles 2 แมตช์',goal:2,type:'singles_wins'},
-  {text:'ชนะ Doubles 2 แมตช์',goal:2,type:'doubles_wins'},
-  {text:'เล่น 3 แมตช์วันนี้',goal:3,type:'plays'},
+const DC_QUESTS = [
+  { id:'q0', text:'🏸 เล่น 1 แมตช์วันนี้',         reward:15, type:'plays',      goal:1 },
+  { id:'q1', text:'🏆 ชนะ 1 แมตช์วันนี้',           reward:20, type:'wins',       goal:1 },
+  { id:'q2', text:'⭐ บันทึกคะแนนครั้งแรกของวัน', reward:20, type:'first_save', goal:1 },
 ];
 
-function getDC() {
-  const d=new Date(); return DC[(d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate())%DC.length];
-}
+function _dcKey() { return 'bmt_dc_'+(currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
+function getDCDone() { try{return JSON.parse(localStorage.getItem(_dcKey())||'{}');}catch(e){return{};} }
+function _dcTodayCountKey() { return 'bmt_dct_'+(currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
+function getDCToday() { try{return JSON.parse(localStorage.getItem(_dcTodayCountKey())||'{"plays":0,"wins":0,"first_save":0}');}catch(e){return{plays:0,wins:0,first_save:0};} }
+function saveDCToday(d) { localStorage.setItem(_dcTodayCountKey(), JSON.stringify(d)); }
 
-function getDCProg(ch) {
-  if (!currentUser) return 0;
-  const today=new Date().toISOString().slice(0,10);
-  const ms=db.matches.filter(m=>new Date(m.date).toISOString().slice(0,10)===today&&[...m.teamA,...m.teamB].some(p=>p.id===currentUser.id));
-  const wins=ms.filter(m=>{const ia=m.teamA.some(p=>p.id===currentUser.id);return(ia&&m.winTeam==='A')||(!ia&&m.winTeam==='B');});
-  if(ch.type==='wins') return wins.length;
-  if(ch.type==='plays') return ms.length;
-  if(ch.type==='singles_wins') return wins.filter(m=>m.type==='singles').length;
-  if(ch.type==='doubles_wins') return wins.filter(m=>m.type==='doubles').length;
+function getDCProg(q) {
+  const t = getDCToday();
+  if (q.type==='plays') return t.plays||0;
+  if (q.type==='wins') return t.wins||0;
+  if (q.type==='first_save') return t.first_save||0;
   return 0;
 }
 
@@ -2773,15 +2776,50 @@ function renderDailyChallenge() {
   const card=document.getElementById('dailyChallengeCard');
   const wrap=document.getElementById('dcContent');
   if(!card||!wrap||!currentUser){if(card)card.style.display='none';return;}
-  const ch=getDC(),prog=getDCProg(ch),done=prog>=ch.goal,pct=Math.min(100,Math.round(prog/ch.goal*100));
+  const done=getDCDone();
+  const allDone=DC_QUESTS.every(q=>done[q.id]);
   card.style.display='';
-  card.className=card.className.replace(' done','')+(done?' done':'');
-  wrap.innerHTML=`<div style="font-size:.88rem;font-weight:600;margin-bottom:5px">${ch.text}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-      <span style="font-size:.75rem;color:var(--muted)">${prog}/${ch.goal} แมตช์</span>
-      ${done?'<span style="font-size:.75rem;color:var(--neon);font-weight:700">✅ สำเร็จแล้ว!</span>':''}
-    </div>
-    <div class="dc-bar-bg"><div class="dc-bar" style="width:${pct}%"></div></div>`;
+  card.className=card.className.replace(' done','')+(allDone?' done':'');
+  wrap.innerHTML=DC_QUESTS.map(q=>{
+    const prog=done[q.id]?q.goal:getDCProg(q);
+    const isDone=done[q.id]||prog>=q.goal;
+    const pct=Math.min(100,Math.round(prog/q.goal*100));
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+        <span style="font-size:.83rem;font-weight:600">${q.text}</span>
+        <span style="font-size:.72rem;font-weight:700;color:${isDone?'var(--neon)':'var(--neon2)'};white-space:nowrap;margin-left:6px">${isDone?'✅ รับแล้ว':'⚡ +'+q.reward+' ELO'}</span>
+      </div>
+      <div class="dc-bar-bg"><div class="dc-bar" style="width:${pct}%;${isDone?'background:var(--neon)':''}"></div></div>
+    </div>`;
+  }).join('');
+}
+
+async function checkDCRewards() {
+  if (!currentUser) return;
+  const done = getDCDone();
+  let granted = false;
+  for (const q of DC_QUESTS) {
+    if (done[q.id]) continue;
+    if (getDCProg(q) >= q.goal) {
+      done[q.id] = true;
+      granted = true;
+      const pl = db.players.find(p=>p.id===currentUser.id);
+      if (pl) {
+        const oldPts = pl.pts;
+        const newPts = pl.pts + q.reward;
+        try {
+          await dbUpdatePlayer(currentUser.id, { pts: newPts });
+          pl.pts = newPts; currentUser.pts = newPts;
+          checkAndShowRankUp(oldPts, newPts, currentUser.name, q.reward);
+          toast('🎯 Daily Quest สำเร็จ! +'+q.reward+' ELO', 'success');
+        } catch(e) { console.error('dc reward error', e); }
+      }
+    }
+  }
+  if (granted) {
+    localStorage.setItem(_dcKey(), JSON.stringify(done));
+    renderDailyChallenge();
+  }
 }
 
 // ── 13. Player of the Day ────────────────────────
@@ -2859,11 +2897,27 @@ function doRematch() {
 
 const _saveMatchBase = saveMatch;
 saveMatch = async function() {
-  if (currentMatch) _lastMatchData = { type:currentMatch.type, teamA:currentMatch.teamA.slice(), teamB:currentMatch.teamB.slice() };
+  // Snapshot before save clears currentMatch
+  let matchSnap = null;
+  if (currentMatch) {
+    _lastMatchData = { type:currentMatch.type, teamA:currentMatch.teamA.slice(), teamB:currentMatch.teamB.slice() };
+    const wt = currentMatch._winTeam || (currentMatch.scoreA > currentMatch.scoreB ? 'A' : 'B');
+    matchSnap = { winTeam: wt, teamA: currentMatch.teamA.slice(), teamB: currentMatch.teamB.slice() };
+  }
   await _saveMatchBase();
   stopMatchTimer();
   const btn = document.getElementById('rematchBtn');
   if (btn) btn.style.display = '';
+  // Update daily challenge counters
+  if (matchSnap && currentUser) {
+    const today = getDCToday();
+    today.plays = (today.plays||0) + 1;
+    const isWin = matchSnap['team'+matchSnap.winTeam].some(p=>p.id===currentUser.id);
+    if (isWin) today.wins = (today.wins||0) + 1;
+    if (!today.first_save) today.first_save = 1;
+    saveDCToday(today);
+    await checkDCRewards();
+  }
 };
 
 // ── 12. Match Mood/Reaction ──────────────────────
