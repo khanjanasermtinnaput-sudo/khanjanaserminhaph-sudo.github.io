@@ -58,10 +58,7 @@ body.x2-active .toast-wrap{bottom:120px}
 .av-swatch:hover,.av-swatch.sel{border-color:var(--text);transform:scale(1.15)}
 .ach-hint{font-size:.67rem;color:var(--neon2);margin-top:3px;opacity:.85}
 /* ══════ KING OF BADMINTON Profile FX ══════ */
-#profileCard.king-profile{position:relative;border:2px solid transparent;background:linear-gradient(var(--card),var(--card)) padding-box,linear-gradient(135deg,#b8860b,#ffd700,#fff4a3,#ffd700,#b8860b,#ffd700) border-box;background-size:100% 100%,300% 300%;box-shadow:0 0 40px rgba(255,215,0,0.35),inset 0 0 30px rgba(255,215,0,0.08);animation:kingBorderShift 6s linear infinite;overflow:hidden}
-@keyframes kingBorderShift{to{background-position:0% 0%,300% 300%}}
-#profileCard.king-profile::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 20% 20%,rgba(255,215,0,0.12) 0%,transparent 35%),radial-gradient(circle at 80% 80%,rgba(255,140,0,0.10) 0%,transparent 35%),radial-gradient(circle at 50% 50%,rgba(255,244,163,0.05) 0%,transparent 60%);pointer-events:none;animation:kingAuraPulse 4s ease-in-out infinite;z-index:0}
-@keyframes kingAuraPulse{0%,100%{opacity:0.7}50%{opacity:1}}
+#profileCard.king-profile{position:relative;overflow:hidden}
 #profileCard.king-profile > *{position:relative;z-index:1}
 .king-banner{text-align:center;font-family:'Rajdhani','Sarabun',sans-serif;font-size:0.88rem;font-weight:800;letter-spacing:0.3em;padding:4px 0 10px;background:linear-gradient(90deg,#b8860b,#ffd700,#fff4a3,#ffd700,#b8860b);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:kingTitleShine 3s linear infinite;margin:-2px 0 4px}
 @keyframes kingTitleShine{to{background-position:200% center}}
@@ -77,8 +74,7 @@ body.x2-active .toast-wrap{bottom:120px}
 #profileCard.king-profile .king-spark:nth-of-type(4){top:75%;right:8%;animation-delay:2.4s}
 #profileCard.king-profile .king-spark:nth-of-type(5){top:38%;right:5%;animation-delay:3.2s}
 @keyframes kingSparkle{0%,100%{opacity:0;transform:scale(0) rotate(0deg)}50%{opacity:1;transform:scale(1) rotate(180deg)}}
-[data-style="lite"] #profileCard.king-profile{animation:none!important;border:2px solid #ffd700!important;background:var(--card)!important;box-shadow:0 0 0 1px #ffd700!important}
-[data-style="lite"] #profileCard.king-profile::before,[data-style="lite"] #profileCard.king-profile .king-spark{display:none!important}
+[data-style="lite"] #profileCard.king-profile .king-spark{display:none!important}
 [data-style="lite"] #profileCard.king-profile .profile-avatar,[data-style="lite"] #profileCard.king-profile .profile-avatar::after,[data-style="lite"] .king-banner,[data-style="lite"] #profileCard.king-profile .profile-name{animation:none!important}
 [data-style="lite"] .king-banner,[data-style="lite"] #profileCard.king-profile .profile-name{-webkit-text-fill-color:#ffd700!important;background:none!important}
 [data-style="lite"] #profileCard.king-profile .profile-avatar{box-shadow:0 0 0 2px #ffd700!important}
