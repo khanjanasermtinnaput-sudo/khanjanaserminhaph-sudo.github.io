@@ -1971,7 +1971,7 @@ function openPlayerProfile(playerId) {
         </div>
         <div class="pp2-hero-text">
           <div class="pp2-name">${p.name}</div>
-          <div style="margin-top:4px"><span class="rank-badge ${rank.class}">${rank.label}</span></div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px"><span class="rank-badge ${rank.class}">${rank.label}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted);font-family:'Sarabun'">คะแนน</span></div>
         </div>
         <button class="pp2-close" onclick="closePlayerProfile()">✕</button>
