@@ -2431,31 +2431,29 @@ function _processAchQueue() {
   const ruVisible  = ru  && ru.classList.contains('ru-show');
   const kruVisible = kru && kru.classList.contains('kru-show');
   if (ruVisible || kruVisible) { setTimeout(_processAchQueue, 1000); return; }
-  // Reset flag in case it was stuck true from a stale state
   if (!ruVisible && !kruVisible) _ruShowing = false;
   _achShowing = true;
   const ach = _achQueue.shift();
+
+  // Clone entire overlay to reset ALL CSS animations (sweep, bg-glow, center)
   const overlay = document.getElementById('achOverlay');
+  const fresh = overlay.cloneNode(true);
+  fresh.querySelector('#achParticles').innerHTML = '';
+  overlay.parentNode.replaceChild(fresh, overlay);
 
-  // Set CSS color var
-  overlay.style.setProperty('--ach-color', ach.color);
-
-  // Background glow
-  const bgGlow = document.getElementById('achBgGlow');
+  // Set CSS color var + background glow
+  fresh.style.setProperty('--ach-color', ach.color);
+  const bgGlow = fresh.querySelector('#achBgGlow');
   if (bgGlow) bgGlow.style.background = `radial-gradient(ellipse 60% 60% at 50% 50%, ${ach.glow || 'rgba(255,215,0,0.25)'} 0%, transparent 70%)`;
 
-  // Clone center to reset animations
-  const center = overlay.querySelector('.ach-center');
-  const newCenter = center.cloneNode(true);
-  center.parentNode.replaceChild(newCenter, center);
+  // Set content
+  fresh.querySelector('#achIcon').textContent = ach.icon;
+  fresh.querySelector('#achTitle').textContent = ach.title;
+  const descEl = fresh.querySelector('#achDesc');
+  if (descEl) descEl.textContent = ach.desc;
 
-  newCenter.querySelector('#achIcon').textContent = ach.icon;
-  newCenter.querySelector('#achTitle').textContent = ach.title;
-  newCenter.querySelector('#achDesc').textContent = ach.desc;
-
-  // Spawn particles (full-screen like rank-up)
-  const pCont = document.getElementById('achParticles');
-  pCont.innerHTML = '';
+  // Spawn particles
+  const pCont = fresh.querySelector('#achParticles');
   const cx = window.innerWidth / 2, cy = window.innerHeight / 2;
   for (let i = 0; i < 45; i++) {
     const p = document.createElement('div');
@@ -2471,7 +2469,7 @@ function _processAchQueue() {
     pCont.appendChild(p);
   }
 
-  overlay.classList.add('ach-show');
+  fresh.classList.add('ach-show');
   document.body.dataset.achLock = '1';
   document.body.style.overflow = 'hidden';
 }
@@ -2770,20 +2768,18 @@ function _showStandardRankUp({ rc, playerName, gainPts }) {
 
 function _showKingRankUp({ playerName, gainPts }) {
   const overlay = document.getElementById('kingRankUpOverlay');
-  // Clone wrap + center to reset all CSS animations
-  const wrap = overlay.querySelector('.kru-wrap');
-  const center = overlay.querySelector('.kru-center');
-  const wrapNew = wrap.cloneNode(true);
-  const centerNew = center.cloneNode(true);
-  wrap.parentNode.replaceChild(wrapNew, wrap);
-  center.parentNode.replaceChild(centerNew, center);
+  // Clone entire overlay to reset ALL CSS animations (mirrors demo approach)
+  const fresh = overlay.cloneNode(true);
+  fresh.querySelector('#kruBeams').innerHTML = '';
+  fresh.querySelector('#kruEmbers').innerHTML = '';
+  overlay.parentNode.replaceChild(fresh, overlay);
   // Set dynamic content
-  overlay.querySelector('#kruPlayerName').textContent = playerName;
-  overlay.querySelector('#kruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
-  // Spawn beams + embers
-  kruSpawnBeams();
-  kruSpawnEmbers();
-  overlay.classList.add('kru-show');
+  fresh.querySelector('#kruPlayerName').textContent = playerName;
+  fresh.querySelector('#kruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
+  // Spawn beams + embers into the fresh clone
+  kruSpawnBeams(fresh.querySelector('#kruBeams'));
+  kruSpawnEmbers(fresh.querySelector('#kruEmbers'));
+  fresh.classList.add('kru-show');
   document.body.dataset.ruLock = '1';
   document.body.style.overflow = 'hidden';
 }
@@ -2823,8 +2819,8 @@ function closeKingRankUp() {
   }, 400);
 }
 
-function kruSpawnBeams() {
-  const container = document.getElementById('kruBeams');
+function kruSpawnBeams(container) {
+  container = container || document.getElementById('kruBeams');
   if (!container) return;
   container.innerHTML = '';
   const count = 6;
@@ -2840,8 +2836,8 @@ function kruSpawnBeams() {
   }
 }
 
-function kruSpawnEmbers() {
-  const container = document.getElementById('kruEmbers');
+function kruSpawnEmbers(container) {
+  container = container || document.getElementById('kruEmbers');
   if (!container) return;
   container.innerHTML = '';
   const count = 40;
