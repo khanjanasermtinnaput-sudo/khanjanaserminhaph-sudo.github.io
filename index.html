@@ -550,7 +550,7 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
     <div class="rank-tier-row"><div class="rank-tier-icon">🥇</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-gold)">Gold</div><div class="rank-tier-pts">301 – 500 คะแนน</div><div class="rank-condition">ELO เริ่ม stable มากขึ้น</div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">💎</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-platinum)">Platinum</div><div class="rank-tier-pts">501 – 800 คะแนน</div><div class="rank-condition">ชนะคนต่ำกว่า → ได้น้อย, แพ้ → เสียเยอะ</div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">💠</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-diamond)">Diamond</div><div class="rank-tier-pts">801 – 1,500 คะแนน</div><div class="rank-condition">K=24 · คะแนน stable มาก</div></div></div>
-    <div class="rank-tier-row"><div class="rank-tier-icon">🔥</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-master)">Master Player</div><div class="rank-tier-pts">1,501 – 2,999 คะแนน</div><div class="rank-condition">Elite · ชนะ Bronze ได้น้อยมาก</div></div></div>
+    <div class="rank-tier-row"><div class="rank-tier-icon">🔥</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-master)">Master Player</div><div class="rank-tier-pts">1,500+ คะแนน</div><div class="rank-condition">Elite · ชนะ Bronze ได้น้อยมาก</div></div></div>
     <div class="rank-tier-row" style="border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.05)"><div class="rank-tier-icon"><span class="crown-anim">👑</span></div><div style="flex:1"><div class="rank-tier-name" style="color:var(--gold)">King of Badminton</div><div class="rank-tier-pts">3,000+ คะแนน</div><div class="rank-condition">✅ ต้องมี 3,000+ คะแนน<br>✅ ต้องเป็นอันดับ #1 บน Leaderboard<br>✅ มีได้แค่ 1 คนเท่านั้นในระบบ</div></div></div>
     <div class="divider"></div>
     <div style="font-size:0.76rem;color:var(--muted);line-height:1.7"><strong style="color:var(--text)">📌 สูตร True ELO</strong><br>• E = 1 / (1 + 10^((คู่แข่ง - ผู้เล่น) / 400))<br>• Gain = K × (1 - E) × ScoreMult<br>• Loss = K × E × ScoreMult<br>• King: ต้องมี ≥ 3,000 คะแนน AND เป็นอันดับ #1<br>• คะแนนขั้นต่ำ 0 · ได้/เสียขั้นต่ำ 4 ต่อแมตช์</div>
@@ -781,7 +781,7 @@ async function dbAddMatch(match) {
 
 const RANKS = [
   { id: 'king',     label: '👑 King of Badminton', min: 3000, class: 'rank-king'     },
-  { id: 'master',   label: '🔥 Master Player',      min: 1501, class: 'rank-master'   },
+  { id: 'master',   label: '🔥 Master Player',      min: 1500, class: 'rank-master'   },
   { id: 'diamond',  label: '💠 Diamond',             min: 801,  class: 'rank-diamond'  },
   { id: 'platinum', label: '💎 Platinum',            min: 501,  class: 'rank-platinum' },
   { id: 'gold',     label: '🥇 Gold',                min: 301,  class: 'rank-gold'     },
@@ -802,7 +802,7 @@ function rankProgress(pts) {
     if (!next) return { pct: 100, next: null };
     if (pts >= cur.min && pts < next.min) return { pct: Math.round(((pts - cur.min) / (next.min - cur.min)) * 100), next };
   }
-  if (pts >= 1501) return { pct: Math.min(100, Math.round(((pts - 1501) / (3000 - 1501)) * 100)), next: pts >= 3000 ? null : RANKS[0] };
+  if (pts >= 1500) return { pct: Math.min(100, Math.round(((pts - 1500) / (3000 - 1500)) * 100)), next: pts >= 3000 ? null : RANKS[0] };
   return { pct: 0, next: RANKS[RANKS.length-2] };
 }
 
