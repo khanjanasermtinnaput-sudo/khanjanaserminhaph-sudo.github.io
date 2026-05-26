@@ -482,14 +482,52 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
   <div class="patch-modal" id="patchModalBox">
     <div class="patch-header">
       <div>
-        <div class="patch-ver-tag">⚡ VERSION 3.1 — Lite Mode & Code Cleanup</div>
-        <div class="patch-title">Performance Update — Lite Mode + รหัสสะอาด</div>
-        <div class="patch-date">📅 พฤษภาคม 2568</div>
+        <div class="patch-ver-tag">🚀 VERSION 4.0 — 14 Final Features</div>
+        <div class="patch-title">The Big Update — Daily Quests, Avatar Builder, ELO x2 & more</div>
+        <div class="patch-date">📅 พฤษภาคม 2569</div>
       </div>
       <button class="patch-close" onclick="closePatchNotes()">✕</button>
     </div>
     <div class="patch-divider"></div>
     <div class="patch-body">
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🎯 Daily & Engagement (v4.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎯 <strong>Daily Challenge</strong> — 3 เควสต่อวัน รับ ELO ฟรี!<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">🏸 เล่น 1 แมตช์ → +15 ELO · 🏆 ชนะ 1 แมตช์ → +20 ELO · ⭐ บันทึกครั้งแรกของวัน → +20 ELO</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌟 <strong>Player of the Day</strong> — ผู้เล่นที่ได้ ELO สูงสุดของวัน แสดงบนหัวลีดเดอร์บอร์ด</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📋 <strong>Today's History</strong> — ดูแมตช์ทั้งหมดของวันนี้แบบสรุปบนลีดเดอร์บอร์ด</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📺 <strong>Live Match Table</strong> — เห็นแมตช์ที่กำลังรอ Admin อนุมัติแบบ real-time พร้อม live dot animation</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">⚡ Match Experience (v4.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⏱️ <strong>Match Timer</strong> — นาฬิกาจับเวลาขณะเล่น แสดงบนหน้ากรรมการ ตั้งแต่เลือกโหมดจนจบแมตช์</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🔁 <strong>Rematch Button</strong> — กดล้างแก้ทันทีหลังจบแมตช์ ทีมเดิม สู้ใหม่ภายในคลิกเดียว</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>😄 <strong>Match Mood</strong> — เลือกอีโมจิอารมณ์หลังจบแมตช์ 8 แบบ (😄🔥💪😤😅🥳😢🤩)</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚡ <strong>ELO x2 Mode</strong> — Admin เปิดโหมดคูณ ELO ×2 สำหรับ event พิเศษ + แบนเนอร์ scrolling สีไฟร้อน</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">📊 Stats & Personal (v4.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📊 <strong>Monthly Stats Chart</strong> — กราฟแท่งสถิติชนะ/แพ้ ย้อนหลัง 6 เดือนในโปรไฟล์</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🏆 <strong>Personal Records</strong> — Win Streak ยาวสุด · ชนะขาดสุด · ELO/แมตช์สูงสุด · ชนะมากสุด/วัน</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🔔 <strong>Achievement Hints</strong> — locked achievement บอกเงื่อนไขที่ขาด เช่น "เล่น 3/5 แมตช์สัปดาห์นี้"</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎬 <strong>Rank Up Animation v2</strong> — particles อลังการขึ้น (King 90 · Master 70 · Others 50)</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎨 <strong>Avatar Builder</strong> — เลือก emoji 20 แบบ + สีพื้นหลัง 10 สี เปลี่ยน avatar ให้ unique<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">เห็นทันทีในโปรไฟล์ · ลีดเดอร์บอร์ดทั้ง podium และตาราง</span></div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-fix">🐛 แก้บั๊ก v4.0</div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🎨 <strong>Avatar Builder บันทึกแล้วไม่อัปเดต</strong> — เพิ่ม helper <code style="font-family:monospace;font-size:0.8em">getAvatar()</code> ที่อ่าน custom avatar ใน 3 จุด: profile, podium, leaderboard list</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🎯 <strong>Daily Challenge ปรับโครงสร้างใหม่</strong> — จาก 1 quest สุ่ม → 3 quest ประจำวัน พร้อมรางวัล ELO จริง</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>✅ <strong>ELO reward อัตโนมัติ</strong> — แจก ELO + popup rank up เมื่อจบเควส โดยไม่ต้อง refresh</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-change">📈 Technical (v4.0)</div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>✅ <strong>37/37 tests passed</strong> — ทดสอบ Playwright ครบทุก feature 0 console errors</div></div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>📦 <strong>+472 บรรทัด</strong> โค้ดใหม่ใน single-file HTML</div></div>
+      </div>
 
       <div class="patch-section">
         <div class="patch-sec-title t-new">⚡ ใหม่ใน v3.1</div>
@@ -546,7 +584,7 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
 
     </div>
     <div class="patch-footer">
-      🏸 Badminton Club — v3.1
+      🏸 Badminton Club — v4.0
       <button class="patch-read-btn" onclick="markPatchRead()">✅ รับทราบแล้ว</button>
     </div>
   </div>
@@ -1553,7 +1591,7 @@ document.addEventListener('mousemove', e => {
   liqCg.style.top = e.clientY + 'px';
 });
 
-const CURRENT_VERSION = '3.1';
+const CURRENT_VERSION = '4.0';
 
 function showPatchNotes() {
   const bg = document.getElementById('patchModal');
