@@ -80,6 +80,7 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] #profileCard.king-profile .profile-avatar{box-shadow:0 0 0 2px #ffd700!important}
 [data-style="lite"] .elo-x2-banner{animation:none!important}.
 [data-style="lite"] .live-dot{animation:none!important}
+.lb-rn-king{background:linear-gradient(135deg,#ffd700,#fff4a3,#ffd700);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:kingTitleShine 3s linear infinite;font-weight:700}[data-style="lite"] .lb-rn-king{-webkit-text-fill-color:#ffd700!important;animation:none!important;background:none!important}.kc-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:12px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.08);color:var(--gold);font-family:inherit;font-size:0.83rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;transition:all 0.2s}.kc-btn:hover{background:rgba(255,215,0,0.18);transform:translateY(-1px)}.kc-btn.kc-active{border-color:rgba(255,100,0,0.5);background:rgba(255,100,0,0.1);color:#ff9f43}.hof-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);z-index:700;display:flex;align-items:center;justify-content:center;padding:16px}.hof-modal{background:var(--bg2);border:1px solid var(--glass-border);border-radius:24px;width:100%;max-width:400px;max-height:80vh;overflow-y:auto;padding:0}[data-style="glass"] .hof-modal{background:rgba(8,12,28,0.93);border:1px solid rgba(255,255,255,0.13);box-shadow:0 -12px 60px rgba(0,0,0,0.5)}.hof-header{padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.hof-title{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#ffd700,#fff4a3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}.hof-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all 0.2s}.hof-close:hover{background:rgba(255,71,87,0.15);border-color:rgba(255,71,87,0.4);color:var(--red)}.hof-body{padding:4px 20px 20px}.hof-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid var(--glass-border);background:var(--card);margin-bottom:8px;transition:transform 0.2s;cursor:default}.hof-item.hof-def{border-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.04)}.hof-season{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:var(--gold);min-width:52px}.hof-name{flex:1;font-weight:600;font-size:0.88rem}.hof-shield{font-size:0.68rem;padding:2px 7px;border-radius:20px;background:rgba(0,245,160,0.1);border:1px solid rgba(0,245,160,0.3);color:var(--neon);white-space:nowrap}.hof-pts{font-size:0.72rem;color:var(--muted);white-space:nowrap}
 /* ══════ KING RANK UP OVERLAY (Valorant Radiant + Crown) ══════ */
 #kingRankUpOverlay{position:fixed;inset:0;z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0a;cursor:pointer;overflow:hidden}
 #kingRankUpOverlay.kru-show{display:flex}
@@ -372,8 +373,22 @@ body.x2-active .toast-wrap{bottom:120px}
         <div></div>
       </div>
       <div class="lb-bl" id="lbBoardList"></div>
+      <div style="text-align:center;margin-top:18px;padding-bottom:4px">
+        <button onclick="openHoF()" style="display:inline-flex;align-items:center;gap:8px;padding:10px 22px;border-radius:50px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.07);color:var(--gold);font-family:inherit;font-size:0.82rem;font-weight:700;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='rgba(255,215,0,0.16)'" onmouseout="this.style.background='rgba(255,215,0,0.07)'">🏛️ Hall of Fame · Kings of Badminton</button>
+      </div>
     </div>
 
+  </div>
+</div>
+
+<!-- HOF MODAL -->
+<div id="hofModalBg" class="hof-modal-bg" style="display:none" onclick="if(event.target===this)closeHoF()">
+  <div class="hof-modal">
+    <div class="hof-header">
+      <div class="hof-title">🏛️ Hall of Fame</div>
+      <button class="hof-close" onclick="closeHoF()">✕</button>
+    </div>
+    <div class="hof-body" id="hofBody"></div>
   </div>
 </div>
 
@@ -1100,32 +1115,113 @@ function switchMatchTab(tab) {
 function normalizePlayer(p) {
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
+  const HOF_PFX = '__hof:';
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
-  // Extract custom achievements + catalog embedded in prime_titles
   const cachEntry = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
   const catalogEntry = pt.find(t => typeof t === 'string' && t.startsWith(CATALOG_PFX));
-  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX))));
+  const hofEntry = pt.find(t => typeof t === 'string' && t.startsWith(HOF_PFX));
+  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX))));
   let ca = [];
   if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
   if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
   if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
   let catalogShared = null;
   if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared };
+  let hofShared = null;
+  if (hofEntry) { try { hofShared = JSON.parse(hofEntry.slice(HOF_PFX.length)); } catch(e) {} }
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared };
 }
 
-// Build prime_titles JSON for save, preserving awards + catalog hidden entries
+// Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
 function buildPlayerPrimeTitles(player, opts) {
   opts = opts || {};
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
+  const HOF_PFX = '__hof:';
   const pt = [...(player.primeTitles || [])];
   const awards = opts.awards !== undefined ? opts.awards : (player.customAch || []);
   if (awards && awards.length > 0) pt.push(CACH_PFX + JSON.stringify(awards));
   const catalog = opts.catalog !== undefined ? opts.catalog : player._catalogShared;
   if (catalog && catalog.length > 0) pt.push(CATALOG_PFX + JSON.stringify(catalog));
+  const hof = opts.hof !== undefined ? opts.hof : player._hofShared;
+  if (hof && hof.length > 0) pt.push(HOF_PFX + JSON.stringify(hof));
   return JSON.stringify(pt);
 }
+// ── HALL OF FAME ─────────────────────────────────────────────
+function getHoF() {
+  const out = [], seen = new Set();
+  const add = item => {
+    const key = (item.season||'') + '|' + (item.id||item.name||'');
+    if (item && item.season && !seen.has(key)) { out.push(item); seen.add(key); }
+  };
+  if (typeof db !== 'undefined' && db.players && db.players.length) {
+    const holder = [...db.players].sort((a,b)=>a.id-b.id).find(p => p._hofShared && p._hofShared.length);
+    if (holder) for (const e of holder._hofShared) add(e);
+  }
+  try { for (const e of JSON.parse(localStorage.getItem('badminton_hof')||'[]')) add(e); } catch(x) {}
+  return out.sort((a,b) => (b.season||'').localeCompare(a.season||''));
+}
+async function saveHoF(entries) {
+  localStorage.setItem('badminton_hof', JSON.stringify(entries));
+  if (!db.players || !db.players.length) return;
+  const admins = db.players.filter(p => p.isAdmin === 1);
+  const holder = [...(admins.length ? admins : db.players)].sort((a,b)=>a.id-b.id)[0];
+  if (!holder) return;
+  holder._hofShared = entries;
+  try { await dbUpdatePlayer(holder.id, { prime_titles: buildPlayerPrimeTitles(holder, { hof: entries }) }); } catch(e) {}
+}
+function openHoF() {
+  const hof = getHoF();
+  const bg = document.getElementById('hofModalBg');
+  const body = document.getElementById('hofBody');
+  if (!bg || !body) return;
+  body.innerHTML = hof.length ? hof.map(e => `
+    <div class="hof-item${e.defended?' hof-def':''}">
+      <div style="font-size:1.4rem">👑</div>
+      <div class="hof-season">Prime ${e.season||'?'}</div>
+      <div class="hof-name">${e.name||'?'}</div>
+      ${e.defended ? '<div class="hof-shield">🛡️ Defended</div>' : ''}
+      <div class="hof-pts">${(e.pts||0).toLocaleString()} pts</div>
+    </div>`).join('') : `<div style="text-align:center;color:var(--muted);padding:20px">ยังไม่มีข้อมูล Season ที่ผ่านมา</div>`;
+  bg.style.display = 'flex';
+}
+function closeHoF() { const bg = document.getElementById('hofModalBg'); if (bg) bg.style.display = 'none'; }
+
+// ── KING TRACKER / DETHRONED NOTIFICATION ────────────────────
+function checkKingChange() {
+  if (!db.players || !db.players.length) return;
+  const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
+  const king = sorted[0] && sorted[0].pts >= 3000 ? sorted[0] : null;
+  const stored = (() => { try { return JSON.parse(localStorage.getItem('badminton_king_tracker')||'null'); } catch(e) { return null; } })();
+  if (king) {
+    if (stored && stored.id !== king.id) {
+      const seenKey = `badminton_dethroned_seen_${king.id}_${stored.id}`;
+      if (!sessionStorage.getItem(seenKey)) {
+        sessionStorage.setItem(seenKey, '1');
+        setTimeout(() => toast(`👑 ${king.name} ปลดบัลลังก์ ${stored.name}! เจ้าแห่งสนามคนใหม่!`, 'success', 6000), 800);
+      }
+    }
+    localStorage.setItem('badminton_king_tracker', JSON.stringify({ id: king.id, name: king.name }));
+  } else {
+    localStorage.removeItem('badminton_king_tracker');
+  }
+}
+
+// ── KING'S CHALLENGE ─────────────────────────────────────────
+function getKingChallenge() { try { return JSON.parse(localStorage.getItem('badminton_kc')||'null'); } catch(e) { return null; } }
+function declareKingChallenge(challengerId, challengerName) {
+  const existing = getKingChallenge();
+  if (existing && existing.id === challengerId) {
+    localStorage.removeItem('badminton_kc');
+    toast('ยกเลิกการท้าชิงแล้ว', 'info');
+  } else {
+    localStorage.setItem('badminton_kc', JSON.stringify({ id: challengerId, name: challengerName, ts: Date.now() }));
+    toast(`🤺 ${challengerName} ประกาศท้าชิง King แล้ว! ชนะ King ครั้งถัดไปได้ +50 ELO โบนัส`, 'success', 4000);
+  }
+  closePlayerProfile();
+  renderLeaderboard();
+}
+
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts }; }
 
@@ -1231,6 +1327,7 @@ async function renderLeaderboard() {
   try {
     await loadAll();
     checkSelfRankUpFromDB();
+    checkKingChange();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
 
@@ -1328,7 +1425,7 @@ function lbRenderBoard(data, animate = true) {
       <div class="lb-rplyr">
         <div class="lb-rav" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
         <div>
-          <div class="lb-rn">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${rank.label}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
         </div>
       </div>
@@ -1440,8 +1537,17 @@ function showMatchPlaying() {
   document.getElementById('modePicker').classList.remove('hidden');
   document.getElementById('classicMode').classList.add('hidden');
   // ตั้งชื่อล่วงหน้าสำหรับทั้ง 2 mode
-  const nameA = currentMatch.teamA.map(p=>p.name).join(' & ');
-  const nameB = currentMatch.teamB.map(p=>p.name).join(' & ');
+  const _kingSorted = db.players && db.players.length ? [...db.players].sort((a,b)=>b.pts-a.pts) : [];
+  const _kingMatchName = _kingSorted[0] && _kingSorted[0].pts >= 3000 ? _kingSorted[0].name : null;
+  const _kc = getKingChallenge();
+  const _addBadge = n => {
+    let s = n;
+    if (_kingMatchName && n === _kingMatchName) s = '👑 ' + s;
+    if (_kc && n === _kc.name) s = '🤺 ' + s;
+    return s;
+  };
+  const nameA = currentMatch.teamA.map(p=>_addBadge(p.name)).join(' & ');
+  const nameB = currentMatch.teamB.map(p=>_addBadge(p.name)).join(' & ');
   document.getElementById('teamAName').textContent = nameA;
   document.getElementById('teamBName').textContent = nameB;
   document.getElementById('refHalfNameA').textContent = nameA;
@@ -1655,11 +1761,33 @@ async function saveMatch() {
     ({ perWinner: gain, perLoser: loss } = calcEloTeam(winners, losers, scoreW, scoreL));
   }
 
+  // King's Challenge detection
+  const _kcData = getKingChallenge();
+  let _kcActive = false, _kcChallengerId = null;
+  if (_kcData && Date.now() - _kcData.ts < 86400000) {
+    const _kingSorted2 = [...db.players].sort((a,b)=>b.pts-a.pts);
+    const _kingMatch = _kingSorted2[0] && _kingSorted2[0].pts >= 3000 ? _kingSorted2[0] : null;
+    if (_kingMatch) {
+      const kingInLosers = losers.some(p => p.id === _kingMatch.id);
+      const challengerInWinners = winners.some(p => p.id === _kcData.id);
+      const kingInWinners = winners.some(p => p.id === _kingMatch.id);
+      const challengerInLosers = losers.some(p => p.id === _kcData.id);
+      if (kingInLosers && challengerInWinners) {
+        _kcActive = true; _kcChallengerId = _kcData.id;
+        localStorage.removeItem('badminton_kc');
+        setTimeout(() => toast(`🤺 ${_kcData.name} ท้าชิง King สำเร็จ! +50 ELO โบนัส!`, 'success', 5000), 1200);
+      } else if (kingInWinners && challengerInLosers) {
+        localStorage.removeItem('badminton_kc');
+        setTimeout(() => toast(`👑 ${_kingMatch.name} ปกป้องบัลลังก์! ${_kcData.name} ท้าชิงไม่สำเร็จ`, 'info', 4000), 1200);
+      }
+    }
+  }
+
   toast('กำลังบันทึก...', 'info');
   try {
     if (isAdminUser()) {
       // Admin → บันทึกคะแนนทันที
-      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const boostedGain = applyAchBoost(gain, pl); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain); } }
+      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const boostedGain = applyAchBoost(gain, pl); const kcBonus = (_kcActive && pl.id === _kcChallengerId) ? 50 : 0; const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain + kcBonus); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain + kcBonus); } }
       for (const p of losers)  {
         const pl = db.players.find(x=>x.id===p.id);
         const loserRank = getRankByPts(pl.pts);
@@ -2223,6 +2351,17 @@ function openPlayerProfile(playerId) {
 
         <div class="pp2-sec">${t('recent_hist')}</div>
         ${histHTML}
+        ${(() => {
+          const sorted2 = db.players && db.players.length ? [...db.players].sort((a,b)=>b.pts-a.pts) : [];
+          const kingPlayer = sorted2[0] && sorted2[0].pts >= 3000 ? sorted2[0] : null;
+          const kc = getKingChallenge();
+          const isPendingChallenger = kc && kc.id === p.id;
+          if (!kingPlayer || kingPlayer.id === p.id) return '';
+          const label = isPendingChallenger ? '🤺 ยกเลิกการท้าชิง King' : `🤺 ท้าชิง King (${kingPlayer.name})`;
+          return `<button class="kc-btn${isPendingChallenger?' kc-active':''}" onclick="declareKingChallenge(${p.id},'${p.name.replace(/'/g,"\\'")}')">
+            ${label}<small style="display:block;font-size:0.65rem;font-weight:400;margin-top:3px;opacity:0.75">${isPendingChallenger?'ยกเลิกการท้าชิงที่รอดำเนินการ':'ชนะ King ครั้งถัดไป = +50 ELO โบนัส'}</small>
+          </button>`;
+        })()}
       </div>
     </div>
   </div>`;
@@ -2895,18 +3034,30 @@ async function performSeasonReset(monthKey) {
     let kingTitle = '';
     if (king) {
       const titles = [...(king.primeTitles || [])];
+      // Check if king defended (had previous season's title)
+      const prevDate = new Date(); prevDate.setMonth(prevDate.getMonth() - 2);
+      const prevSS = getPrimeSSeasonLabel(prevDate.getMonth() < 0 ? prevDate.getFullYear()-1 : prevDate.getFullYear(), ((prevDate.getMonth()+12)%12)+1);
+      const defended = titles.some(t => t === prevSS);
       if (!titles.includes(ssLabel)) {
         titles.push(ssLabel);
+        if (defended && !titles.includes('🛡️ Season Defender')) { titles.push('🛡️ Season Defender'); kingTitle += ' 🛡️ Defended!'; }
         try {
-          await dbUpdatePlayer(king.id, { prime_titles: JSON.stringify(titles) });
+          await dbUpdatePlayer(king.id, { prime_titles: buildPlayerPrimeTitles({...king, primeTitles: titles}) });
           king.primeTitles = titles;
         } catch(e) {
-          // Fallback: localStorage if column doesn't exist in Supabase yet
           const lsKey = 'badminton_prime_ls_' + king.id;
           const lsTitles = (() => { try { return JSON.parse(localStorage.getItem(lsKey) || '[]'); } catch(x) { return []; } })();
           if (!lsTitles.includes(ssLabel)) { lsTitles.push(ssLabel); localStorage.setItem(lsKey, JSON.stringify(lsTitles)); }
         }
-        kingTitle = ` · 👑 ${king.name} ได้รับ Prime ${ssLabel}!`;
+        kingTitle = ` · 👑 ${king.name} ได้รับ Prime ${ssLabel}!` + kingTitle;
+        // Record to Hall of Fame
+        try {
+          const hof = getHoF();
+          if (!hof.find(e => e.season === ssLabel)) {
+            hof.unshift({ id: king.id, name: king.name, season: ssLabel, pts: king.pts, defended });
+            await saveHoF(hof);
+          }
+        } catch(e) {}
       }
     }
 
