@@ -857,6 +857,24 @@ function calcEloTeam(winners, losers, scoreW, scoreL) {
   return { perWinner: gain, perLoser: loss };
 }
 
+function getAchBoostMult(player) {
+  let boost = 0;
+  for (const a of (player?.customAch || [])) {
+    if (a.frame === 'gold') boost += 0.15;
+    else if (a.frame === 'silver') boost += 0.10;
+    else if (a.frame === 'bronze') boost += 0.05;
+  }
+  return 1 + boost;
+}
+function applyAchBoost(baseGain, player) {
+  return Math.max(baseGain, Math.round(baseGain * getAchBoostMult(player)));
+}
+function achBoostLabel(player) {
+  const mult = getAchBoostMult(player);
+  if (mult <= 1) return '';
+  return ` 🚀+${Math.round((mult-1)*100)}%`;
+}
+
 const AVATAR_COLORS = [['#00f5a0','#004d32'],['#00d9f5','#003d4d'],['#ffd700','#4d3e00'],['#ff6b35','#4d1f0f'],['#b044f0','#3a0d5c'],['#48d1cc','#0d3d3c'],['#ff4757','#4d0d15'],['#7bed9f','#1a4d2d']];
 function getAvatarColor(id) { return AVATAR_COLORS[(id-1) % AVATAR_COLORS.length] }
 function getInitial(name) { return name ? name.charAt(0).toUpperCase() : '?' }
@@ -1363,14 +1381,14 @@ function confirmFinish() {
   if (currentMatch.type === 'singles') {
     const w = winners[0], l = losers[0];
     const { gain, loss } = calcElo(w.pts, l.pts, w.wins+w.losses, l.wins+l.losses, scoreW, scoreL);
-    eloResults.push({ player: w, delta: +gain, isWin: true });
+    eloResults.push({ player: w, delta: +applyAchBoost(gain, w), baseGain: gain, isWin: true });
     eloResults.push({ player: l, delta: -loss, isWin: false });
     currentMatch._eloGain = gain;
     currentMatch._eloLoss = loss;
   } else {
     const { perWinner, perLoser } = calcEloTeam(winners, losers, scoreW, scoreL);
-    winners.forEach(w => eloResults.push({ player: w, delta: +perWinner, isWin: true }));
-    losers.forEach(l  => eloResults.push({ player: l, delta: -perLoser,  isWin: false }));
+    winners.forEach(w => eloResults.push({ player: w, delta: +applyAchBoost(perWinner, w), baseGain: perWinner, isWin: true }));
+    losers.forEach(l  => eloResults.push({ player: l, delta: -perLoser, isWin: false }));
     currentMatch._eloGain = perWinner;
     currentMatch._eloLoss = perLoser;
   }
@@ -1396,6 +1414,7 @@ function confirmFinish() {
         <span style="font-size:0.88rem;font-weight:600">${r.player.name}</span>
         ${r.isWin?'<span style="font-size:0.7rem;color:var(--neon)">🏆 ชนะ</span>':'<span style="font-size:0.7rem;color:var(--red)">❌ แพ้</span>'}
         ${isProtected ? '<span style="font-size:0.65rem;background:rgba(255,200,0,0.15);border:1px solid rgba(255,200,0,0.3);color:#ffcc00;border-radius:20px;padding:1px 6px">🛡️ Protected</span>' : ''}
+        ${r.isWin && r.baseGain && r.delta > r.baseGain ? `<span style="font-size:0.65rem;background:rgba(255,100,0,0.15);border:1px solid rgba(255,100,0,0.3);color:#ff8c42;border-radius:20px;padding:1px 6px">${achBoostLabel(r.player)}</span>` : ''}
       </div>
       <div style="text-align:right">
         <div style="font-family:Rajdhani;font-weight:700;font-size:1.1rem;color:${isProtected?'var(--muted)':color}">${isProtected?'±0':(sign+r.delta)}</div>
@@ -1456,7 +1475,7 @@ async function saveMatch() {
   try {
     if (isAdminUser()) {
       // Admin → บันทึกคะแนนทันที
-      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, gain); } }
+      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const boostedGain = applyAchBoost(gain, pl); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain); } }
       for (const p of losers)  {
         const pl = db.players.find(x=>x.id===p.id);
         const loserRank = getRankByPts(pl.pts);
@@ -1644,7 +1663,7 @@ async function renderPendingList() {
       const winPts  = winners.map(p => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.pts : 0; });
       const losePts = losers.map(p  => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.pts : 0; });
       const eloRows = [
-        ...winners.map((p,i) => `<span style="color:var(--neon)">+${r.pts_gain}</span> ${p.name} (${winPts[i]} → ${winPts[i]+r.pts_gain})`),
+        ...winners.map((p,i) => { const pl = db.players.find(x=>x.id===p.id); const bg = pl ? applyAchBoost(r.pts_gain, pl) : r.pts_gain; const lbl = pl ? achBoostLabel(pl) : ''; return `<span style="color:var(--neon)">+${bg}${lbl}</span> ${p.name} (${winPts[i]} → ${winPts[i]+bg})`; }),
         ...losers.map((p,i)  => `<span style="color:var(--red)">-${r.pts_loss}</span> ${p.name} (${losePts[i]} → ${Math.max(0,losePts[i]-r.pts_loss)})`)
       ].join(' · ');
       return `<div class="pending-item">
@@ -1673,7 +1692,7 @@ async function approvePending(pendingId) {
     toast('กำลังยืนยัน...', 'info');
     const winners = r.win_team === 'A' ? r.team_a : r.team_b;
     const losers  = r.win_team === 'A' ? r.team_b : r.team_a;
-    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + r.pts_gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, r.pts_gain); } } }
+    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const boostedGain = applyAchBoost(r.pts_gain, pl); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + boostedGain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, boostedGain); } } }
     for (const p of losers)  {
       const pl = db.players.find(x=>x.id===p.id);
       if(pl) {
