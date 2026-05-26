@@ -758,6 +758,41 @@ const I18N = {
     rank_progress:'ความคืบหน้า', rank_max:'(ระดับสูงสุด)',
     elo_x2:'⚡ ELO x2 MODE เปิดใช้งาน — คะแนนทุกแมตช์คูณ 2!',
     matches_with:'แมตช์ด้วยกัน', won:'ชนะ',
+    // leaderboard
+    rank_p1:'อันดับ 1', rank_p2:'อันดับ 2', rank_p3:'อันดับ 3',
+    me:'(ฉัน)', pts_col:'คะแนน', wl_col:'ชนะ/แพ้',
+    // match setup
+    select_ph:'-- เลือก --', no_players:'ยังไม่มีผู้เล่น',
+    max_2:'เลือกได้แค่ทีมละ 2 คน',
+    team_a:'🔵 ทีม A', team_b:'🔴 ทีม B',
+    start_match:'▶ เริ่มแมตช์',
+    // history
+    loading:'กำลังโหลด...', all_players:'👥 ทุกคน',
+    no_history:'ยังไม่มีประวัติ', total_all:'📋 ทั้งหมด', load_fail:'❌ โหลดไม่ได้',
+    win_badge:'✅ ชนะ', lose_badge:'❌ แพ้',
+    // profile
+    rank_pos:'อันดับ #', total_m:'แมตช์ทั้งหมด',
+    // admin
+    players_stat:'ผู้เล่น', matches_stat:'แมตช์', total_wins:'ชนะรวม', top_score:'คะแนนสูงสุด',
+    edit_btn:'✏️ แก้ไข', no_players_list:'ไม่มีผู้เล่น',
+    // pending
+    no_pending:'ไม่มีรายการรอยืนยัน', unknown:'ไม่ทราบ', submitted_by:'ส่งโดย',
+    hrs:'ช.ม.', mins:'น.', expire_in:'หมดอายุใน',
+    approve:'✅ ยืนยัน', reject:'❌ ปฏิเสธ',
+    win_team:'🏆 ชนะ',
+    // season banner
+    days_left:'วัน', no_reset:'ไม่โดนรี', prime_awarded:'🏅 คว้า Prime',
+    // potd
+    potd_title:'Players of the Day', people_unit:'คน',
+    // today hist
+    today_label:'วันนี้', matches_unit:'แมตช์',
+    // monthly
+    wins_bar:'ชนะ', losses_bar:'แพ้',
+    // personal records
+    streak_label:'Win Streak ยาวสุด', biggest_win:'ชนะขาดสุด (แต้ม)',
+    peak_elo_m:'ELO สูงสุด/แมตช์', wins_day:'ชนะมากสุด/วัน',
+    // profile rank stats
+    cur_rank_pos:'อันดับปัจจุบัน', peak_rank_pos:'อันดับสูงสุด', days_played:'วันที่เล่น',
   },
   en: {
     nav_lb:'Ranking', nav_match:'Match', nav_hist:'History', nav_profile:'Profile',
@@ -772,7 +807,7 @@ const I18N = {
     reg_name_label:'Full Name', reg_pin_label:'Set 4-digit PIN',
     reg_name_ph:'Display name',
     ql_hi:'👋 Welcome back!', ql_q:'Is this your account?',
-    ql_yes:'✅ Yes, sign me in!', ql_no:"Not my account", ql_sep:'Or sign in with PIN',
+    ql_yes:'✅ Yes, sign me in!', ql_no:'Not my account', ql_sep:'Or sign in with PIN',
     cur_rank:'Current Rank', peak_rank:'Peak Rank',
     form_10:'🎯 Last 10 Games',
     ranking_hist:'📈 Ranking History', elo_timeline:'📈 ELO Timeline',
@@ -783,6 +818,41 @@ const I18N = {
     rank_progress:'Progress', rank_max:'(Max Level)',
     elo_x2:'⚡ ELO x2 MODE Active — All match points ×2!',
     matches_with:'matches together', won:'won',
+    // leaderboard
+    rank_p1:'Rank 1', rank_p2:'Rank 2', rank_p3:'Rank 3',
+    me:'(me)', pts_col:'Points', wl_col:'W/L',
+    // match setup
+    select_ph:'-- Select --', no_players:'No players yet',
+    max_2:'Max 2 players per team',
+    team_a:'🔵 Team A', team_b:'🔴 Team B',
+    start_match:'▶ Start Match',
+    // history
+    loading:'Loading...', all_players:'👥 Everyone',
+    no_history:'No history yet', total_all:'📋 Total', load_fail:'❌ Failed to load',
+    win_badge:'✅ Win', lose_badge:'❌ Loss',
+    // profile
+    rank_pos:'Rank #', total_m:'Total Matches',
+    // admin
+    players_stat:'Players', matches_stat:'Matches', total_wins:'Total Wins', top_score:'Top Score',
+    edit_btn:'✏️ Edit', no_players_list:'No players',
+    // pending
+    no_pending:'No pending matches', unknown:'Unknown', submitted_by:'By',
+    hrs:'hr', mins:'min', expire_in:'Expires in',
+    approve:'✅ Approve', reject:'❌ Reject',
+    win_team:'🏆 Won',
+    // season banner
+    days_left:'days', no_reset:'Protected', prime_awarded:'🏅 Prime awarded',
+    // potd
+    potd_title:'Players of the Day', people_unit:'',
+    // today hist
+    today_label:'Today', matches_unit:'Matches',
+    // monthly
+    wins_bar:'Wins', losses_bar:'Losses',
+    // personal records
+    streak_label:'Longest Win Streak', biggest_win:'Biggest Win (pts)',
+    peak_elo_m:'Peak ELO/Match', wins_day:'Most Wins/Day',
+    // profile rank stats
+    cur_rank_pos:'Current Rank', peak_rank_pos:'Highest Rank', days_played:'Days Played',
   }
 };
 let _lang = localStorage.getItem('badminton_lang') || 'th';
@@ -1236,12 +1306,12 @@ function lbRenderBoard(data, animate = true) {
       <div class="lb-rplyr">
         <div class="lb-rav" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
         <div>
-          <div class="lb-rn">${p.name}${isMe ? ' <span style="color:var(--neon);font-size:0.7rem">(ฉัน)</span>' : ''}</div>
+          <div class="lb-rn">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${rank.label}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
         </div>
       </div>
-      <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>คะแนน</small></div>
-      <div class="lb-rst">${p.wins}/${p.losses}<small>ชนะ/แพ้</small></div>
+      <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>${t('pts_col')}</small></div>
+      <div class="lb-rst">${p.wins}/${p.losses}<small>${t('wl_col')}</small></div>
       <div class="lb-rst">${wp}%<small>Win rate</small></div>
       <div class="lb-rbadge"><div class="lb-bdg">${trendBdg}</div></div>
     `;
@@ -1304,11 +1374,11 @@ function lbParticles(id, r, g, b) {
 
 function renderMatchSetup() {
   const opts = db.players.map(p => `<option value="${p.id}">${p.name} (${p.pts}pts)</option>`).join('');
-  document.getElementById('singleA').innerHTML = '<option value="">-- เลือก --</option>' + opts;
-  document.getElementById('singleB').innerHTML = '<option value="">-- เลือก --</option>' + opts;
+  document.getElementById('singleA').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
+  document.getElementById('singleB').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
 }
 function renderDoublesPlayers() {
-  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name">${p.name} <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || '<div class="text-muted">ยังไม่มีผู้เล่น</div>';
+  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name">${p.name} <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || `<div class="text-muted">${t('no_players')}</div>`;
   document.getElementById('doublesPlayerList').innerHTML = html;
   window._doublesSelected = { A: [], B: [] };
 }
@@ -1318,7 +1388,7 @@ function toggleDoubles(id) {
   else if (sel.B.includes(id)) sel.B = sel.B.filter(x=>x!==id);
   else if (sel.A.length < 2) sel.A.push(id);
   else if (sel.B.length < 2) sel.B.push(id);
-  else { toast('เลือกได้แค่ทีมละ 2 คน', 'error'); return; }
+  else { toast(t('max_2'), 'error'); return; }
   window._doublesSelected = sel;
   db.players.forEach(p => {
     const chk = document.getElementById('chk_' + p.id), dteam = document.getElementById('dteam_' + p.id);
@@ -1326,7 +1396,7 @@ function toggleDoubles(id) {
     const inA = sel.A.includes(p.id), inB = sel.B.includes(p.id);
     chk.classList.toggle('checked', inA || inB);
     chk.textContent = inA ? 'A' : inB ? 'B' : '';
-    dteam.textContent = inA ? '🔵 ทีม A' : inB ? '🔴 ทีม B' : '';
+    dteam.textContent = inA ? t('team_a') : inB ? t('team_b') : '';
     dteam.style.color = inA ? 'var(--neon)' : inB ? 'var(--red)' : 'var(--muted)';
   });
 }
@@ -1615,7 +1685,7 @@ async function saveMatch() {
 }
 
 async function renderHistory() {
-  document.getElementById('histList').innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">⏳ กำลังโหลด...</div>';
+  document.getElementById('histList').innerHTML = `<div class="text-muted" style="text-align:center;padding:20px">⏳ ${t('loading')}</div>`;
   try {
     // Fetch full history (up to 500) independently from the global 50-match cache
     await loadPlayers();
@@ -1627,7 +1697,7 @@ async function renderHistory() {
     if (filterEl) {
       const currentVal = filterEl.value;
       const options = db.players.map(p => `<option value="${p.id}" ${currentVal == p.id ? 'selected' : ''}>${p.name}</option>`).join('');
-      filterEl.innerHTML = '<option value="">👥 ทุกคน</option>' + options;
+      filterEl.innerHTML = `<option value="">${t('all_players')}</option>` + options;
     }
 
     const filterPlayerId = filterEl ? parseInt(filterEl.value) : null;
@@ -1652,7 +1722,7 @@ async function renderHistory() {
       if (filterPlayerId) {
         const inA = m.teamA.some(x => x.id === filterPlayerId);
         const isWin = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-        resultHint = `<span style="font-size:0.72rem;font-weight:700;color:${isWin?'var(--neon)':'var(--red)'};margin-left:6px">${isWin?'✅ ชนะ':'❌ แพ้'}</span>`;
+        resultHint = `<span style="font-size:0.72rem;font-weight:700;color:${isWin?'var(--neon)':'var(--red)'};margin-left:6px">${isWin?t('win_badge'):t('lose_badge')}</span>`;
       }
       return `<div class="hist-item">
         <div class="hist-header">
@@ -1666,11 +1736,11 @@ async function renderHistory() {
         </div>
         <div class="hist-detail">+${m.pts.gain} / -${m.pts.loss} pts</div>
       </div>`;
-    }).join('') || '<div class="text-muted" style="text-align:center;padding:20px">ยังไม่มีประวัติ</div>';
+    }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_history')}</div>`;
     const total = filterPlayerId || filterType ? matches.length : allMatches.length;
     document.getElementById('histList').innerHTML =
-      `<div style="font-size:.72rem;color:var(--muted);text-align:right;margin-bottom:8px;padding-right:4px">📋 ทั้งหมด ${total} แมตช์</div>` + html;
-  } catch(e) { document.getElementById('histList').innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">❌ โหลดไม่ได้</div>'; }
+      `<div style="font-size:.72rem;color:var(--muted);text-align:right;margin-bottom:8px;padding-right:4px">${t('total_all')} ${total} ${t('matches_unit')}</div>` + html;
+  } catch(e) { document.getElementById('histList').innerHTML = `<div class="text-muted" style="text-align:center;padding:20px">${t('load_fail')}</div>`; }
 }
 
 async function renderProfile() {
@@ -1683,22 +1753,34 @@ async function renderProfile() {
     const av = getAvatar(p.id, p.name);
     const wr = p.wins + p.losses > 0 ? Math.round(p.wins/(p.wins+p.losses)*100) : 0;
     const rankPos = [...db.players].sort((a,b)=>b.pts-a.pts).findIndex(x=>x.id===p.id) + 1;
+    // Track peak rank position
+    const peakPosKey = 'badminton_peak_pos_' + p.id;
+    let peakRankPos = parseInt(localStorage.getItem(peakPosKey) || rankPos);
+    if (!localStorage.getItem(peakPosKey) || rankPos < peakRankPos) { peakRankPos = rankPos; localStorage.setItem(peakPosKey, rankPos); }
+    // Total days played
+    const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
     const achHtml = (p.customAch||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${(p.customAch||[]).map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header">
         <div class="profile-avatar" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
-        <div><div class="profile-name">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="rank-badge ${rank.class}">${rank.label}</span><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">อันดับ #${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
+        <div><div class="profile-name">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="rank-badge ${rank.class}">${rank.label}</span><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
-      <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">ความคืบหน้า ${prog.next ? '→ '+prog.next.label : '(ระดับสูงสุด)'}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
+      <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">${t('rank_progress')} ${prog.next ? '→ '+prog.next.label : t('rank_max')}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
       <div class="profile-stats">
-        <div class="pstat"><div class="pstat-num">${p.pts}</div><div class="pstat-label">คะแนน</div></div>
-        <div class="pstat"><div class="pstat-num" style="color:var(--neon)">${p.wins}</div><div class="pstat-label">ชนะ</div></div>
-        <div class="pstat"><div class="pstat-num" style="color:var(--red)">${p.losses}</div><div class="pstat-label">แพ้</div></div>
+        <div class="pstat"><div class="pstat-num">${p.pts}</div><div class="pstat-label">${t('pts')}</div></div>
+        <div class="pstat"><div class="pstat-num" style="color:var(--neon)">${p.wins}</div><div class="pstat-label">${t('wins')}</div></div>
+        <div class="pstat"><div class="pstat-num" style="color:var(--red)">${p.losses}</div><div class="pstat-label">${t('losses')}</div></div>
       </div>
       <div class="divider"></div>
       <div class="flex-between">
-        <div class="pstat" style="width:48%;text-align:center"><div class="pstat-num" style="font-size:1.1rem;color:var(--gold)">${p.wins+p.losses}</div><div class="pstat-label">แมตช์ทั้งหมด</div></div>
-        <div class="pstat" style="width:48%;text-align:center"><div class="pstat-num" style="font-size:1.1rem;color:${wr>=50?'var(--neon)':'var(--red)'}">${wr}%</div><div class="pstat-label">Win Rate</div></div>
+        <div class="pstat" style="width:48%;text-align:center"><div class="pstat-num" style="font-size:1.1rem;color:var(--gold)">${p.wins+p.losses}</div><div class="pstat-label">${t('total_m')}</div></div>
+        <div class="pstat" style="width:48%;text-align:center"><div class="pstat-num" style="font-size:1.1rem;color:${wr>=50?'var(--neon)':'var(--red)'}">${wr}%</div><div class="pstat-label">${t('win_rate')}</div></div>
+      </div>
+      <div class="divider"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+        <div class="pstat"><div class="pstat-num" style="font-size:1.1rem;color:var(--neon)">#${rankPos}</div><div class="pstat-label">${t('cur_rank_pos')}</div></div>
+        <div class="pstat"><div class="pstat-num" style="font-size:1.1rem;color:var(--gold)">#${peakRankPos}</div><div class="pstat-label">${t('peak_rank_pos')}</div></div>
+        <div class="pstat"><div class="pstat-num" style="font-size:1.1rem;color:var(--neon2)">${totalDays}</div><div class="pstat-label">${t('days_played')}</div></div>
       </div>
       <div class="divider"></div>
       ${renderPrimeSSTitles(p)}
@@ -1709,8 +1791,8 @@ async function renderProfile() {
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
       const opp = inA ? m.teamB : m.teamA, date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
-      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?'🏆 ชนะ':'💔 แพ้'}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${opp.map(x=>x.name).join(' & ')} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts</div></div>`;
-    }).join('') || '<div class="text-muted" style="text-align:center;padding:20px">ยังไม่มีแมตช์</div>';
+      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${opp.map(x=>x.name).join(' & ')} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts</div></div>`;
+    }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_match')}</div>`;
   } catch(e) { console.error(e); }
 }
 
@@ -1718,12 +1800,12 @@ async function renderAdmin() {
   if (!isAdminUser()) return;
   try {
     await loadAll();
-    document.getElementById('adminStats').innerHTML = `<div class="stat-card"><div class="stat-num">${db.players.length}</div><div class="stat-label">ผู้เล่น</div></div><div class="stat-card"><div class="stat-num">${db.matches.length}</div><div class="stat-label">แมตช์</div></div><div class="stat-card"><div class="stat-num">${db.players.reduce((s,p)=>s+p.wins,0)}</div><div class="stat-label">ชนะรวม</div></div><div class="stat-card"><div class="stat-num">${db.players.length>0?Math.max(...db.players.map(p=>p.pts)):0}</div><div class="stat-label">คะแนนสูงสุด</div></div>`;
+    document.getElementById('adminStats').innerHTML = `<div class="stat-card"><div class="stat-num">${db.players.length}</div><div class="stat-label">${t('players_stat')}</div></div><div class="stat-card"><div class="stat-num">${db.matches.length}</div><div class="stat-label">${t('matches_stat')}</div></div><div class="stat-card"><div class="stat-num">${db.players.reduce((s,p)=>s+p.wins,0)}</div><div class="stat-label">${t('total_wins')}</div></div><div class="stat-card"><div class="stat-num">${db.players.length>0?Math.max(...db.players.map(p=>p.pts)):0}</div><div class="stat-label">${t('top_score')}</div></div>`;
     const sorted = [...db.players].sort((a,b)=>b.pts-a.pts);
     document.getElementById('adminPlayerList').innerHTML = sorted.map(p => {
       const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id);
-      return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">✏️ แก้ไข</button></div>`;
-    }).join('') || '<div class="text-muted">ไม่มีผู้เล่น</div>';
+      return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
+    }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
     renderCachAdmin();
   } catch(e) { console.error(e); }
@@ -1736,7 +1818,7 @@ async function renderPendingList() {
     const list  = document.getElementById('pendingList');
     if (!rows || rows.length === 0) {
       badge.classList.add('hidden');
-      list.innerHTML = '<div class="text-muted" style="text-align:center;padding:16px;font-size:0.83rem">ไม่มีรายการรอยืนยัน</div>';
+      list.innerHTML = `<div class="text-muted" style="text-align:center;padding:16px;font-size:0.83rem">${t('no_pending')}</div>`;
       return;
     }
     badge.textContent = rows.length;
@@ -1747,7 +1829,7 @@ async function renderPendingList() {
       const nameB = teamB.map(p=>p.name).join(' & ');
       const winLabel = r.win_team === 'A' ? nameA : nameB;
       const submitter = db.players.find(p=>p.id===r.submitted_by);
-      const submitterName = submitter ? submitter.name : 'ไม่ทราบ';
+      const submitterName = submitter ? submitter.name : t('unknown');
       const scoreA = r.score_a, scoreB = r.score_b;
       // preview ELO
       const winners = r.win_team === 'A' ? teamA : teamB;
@@ -1761,19 +1843,19 @@ async function renderPendingList() {
       return `<div class="pending-item">
         <div class="pending-item-top">
           <div class="pending-item-teams">
-            <div class="pending-item-name">🏆 ${winLabel} ชนะ</div>
-            <div class="pending-item-sub">${nameA} vs ${nameB} · ส่งโดย ${submitterName} · ⏱ หมดอายุใน ${(() => { const ms = new Date(r.created_at).getTime() + 12*60*60*1000 - Date.now(); const h = Math.floor(ms/3600000); const m = Math.floor((ms%3600000)/60000); return h > 0 ? h+'ช.ม. '+m+'น.' : m+'น.'; })()}</div>
+            <div class="pending-item-name">${t('win_team')} ${winLabel}</div>
+            <div class="pending-item-sub">${nameA} vs ${nameB} · ${t('submitted_by')} ${submitterName} · ⏱ ${t('expire_in')} ${(() => { const ms = new Date(r.created_at).getTime() + 12*60*60*1000 - Date.now(); const h = Math.floor(ms/3600000); const m = Math.floor((ms%3600000)/60000); return h > 0 ? h+t('hrs')+' '+m+t('mins') : m+t('mins'); })()}</div>
           </div>
           <div class="pending-item-score">${scoreA}-${scoreB}</div>
         </div>
         <div class="pending-item-elo">📊 ELO: ${eloRows}</div>
         <div class="pending-item-actions">
-          <button class="btn btn-primary btn-sm" style="flex:1" onclick="approvePending(${r.id})">✅ ยืนยัน</button>
-          <button class="btn btn-danger btn-sm" style="flex:1" onclick="rejectPending(${r.id})">❌ ปฏิเสธ</button>
+          <button class="btn btn-primary btn-sm" style="flex:1" onclick="approvePending(${r.id})">${t('approve')}</button>
+          <button class="btn btn-danger btn-sm" style="flex:1" onclick="rejectPending(${r.id})">${t('reject')}</button>
         </div>
       </div>`;
     }).join('');
-  } catch(e) { document.getElementById('pendingList').innerHTML = '<div class="text-muted" style="text-align:center;padding:12px;font-size:0.82rem">❌ โหลดรายการไม่ได้</div>'; }
+  } catch(e) { document.getElementById('pendingList').innerHTML = `<div class="text-muted" style="text-align:center;padding:12px;font-size:0.82rem">${t('load_fail')}</div>`; }
 }
 
 async function approvePending(pendingId) {
@@ -2695,9 +2777,9 @@ function renderSeasonBanner() {
   const nextEl = document.getElementById('seasonNextReset');
   if (!banner) return;
   banner.style.display = 'flex';
-  daysEl.textContent = days <= 3 ? `${days} วัน!` : `${days} วัน`;
+  daysEl.textContent = days <= 3 ? `${days} ${t('days_left')}!` : `${days} ${t('days_left')}`;
   daysEl.style.background = days <= 3 ? 'linear-gradient(135deg,#ff4757,#ff0000)' : 'linear-gradient(135deg,#ffd700,#ff8c00)';
-  nextEl.textContent = `King→1000 · Master→800 · Diamond→500 · Platinum→300 · Gold→200 · Silver/Bronze ไม่โดนรี`;
+  nextEl.textContent = `King→1000 · Master→800 · Diamond→500 · Platinum→300 · Gold→200 · Silver/Bronze ${t('no_reset')}`;
 
   // Check if today is 1st (season reset day)
   const today = new Date();
@@ -3530,14 +3612,14 @@ function renderPotd() {
   card.style.display='';
   const isTie=topPlayers.length>1;
   const titleEl=document.getElementById('potdCard').querySelector('.card-title');
-  if(titleEl) titleEl.textContent=isTie?`🏅 Players of the Day (${topPlayers.length} คน)`:'🏅 Player of the Day';
+  if(titleEl) titleEl.textContent=isTie?`🏅 ${t('potd_title')} (${topPlayers.length}${t('people_unit') ? ' '+t('people_unit') : ''})`:'🏅 Player of the Day';
   wrap.innerHTML=topPlayers.map(pl=>{
     const cols=getAvatarColor(pl.id);
     const av=getAvatar(pl.id,pl.name);
     const wins=td.filter(m=>(m.winTeam==='A'?m.teamA:m.teamB).some(p=>p.id===pl.id)).length;
     return `<div style="display:flex;align-items:center;gap:12px${isTie?';padding:8px 0;border-bottom:1px solid var(--glass-border)':''}">
       <div style="width:46px;height:46px;border-radius:50%;background:${av.bg};color:${av.fg};display:flex;align-items:center;justify-content:center;font-size:${av.fs||'1.1rem'};font-weight:700;border:2px solid rgba(255,215,0,.4);flex-shrink:0">${av.content}</div>
-      <div style="flex:1"><div style="font-weight:700">${pl.name}</div><div style="font-size:.73rem;color:var(--muted)">ชนะ ${wins} แมตช์ · +${gains[pl.id]||0} ELO วันนี้</div></div>
+      <div style="flex:1"><div style="font-weight:700">${pl.name}</div><div style="font-size:.73rem;color:var(--muted)">${t('wins_bar')} ${wins} ${t('matches_unit')} · +${gains[pl.id]||0} ELO ${t('today_label')}</div></div>
       <div style="font-family:'Rajdhani';font-size:1.6rem;font-weight:700;color:var(--gold)">+${gains[pl.id]||0}</div>
     </div>`;
   }).join('');
@@ -3557,9 +3639,9 @@ function renderTodayHist() {
     const t=new Date(m.date).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--glass-border);font-size:.78rem">
       <span style="color:var(--muted);font-size:.65rem;flex-shrink:0">${t}</span>
-      <span style="flex:1"><b>${w}</b> ชนะ ${m.scoreA}-${m.scoreB}</span>
+      <span style="flex:1"><b>${w}</b> ${t('win_team').replace('🏆 ','')} ${m.scoreA}-${m.scoreB}</span>
       <span>${m.type==='doubles'?'👥':'👤'}</span></div>`;
-  }).join('')+(ms.length>6?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:5px">+${ms.length-6} แมตช์</div>`:'');
+  }).join('')+(ms.length>6?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:5px">+${ms.length-6} ${t('matches_unit')}</div>`:'');
 }
 
 // Hook into lbRenderBoard to trigger new leaderboard features
@@ -3660,8 +3742,8 @@ function renderMonthlyStats(pid) {
     <div style="width:11px;background:var(--red);border-radius:2px 2px 0 0;min-height:${s.l?'2px':'0'};height:${s.l?Math.max(3,Math.round(s.l/mx*52)):0}px"></div></div>
     <div style="font-size:.6rem;color:var(--muted)">${s.lbl}</div></div>`).join('')}</div>
   <div style="display:flex;gap:12px;margin-top:7px;font-size:.7rem">
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;background:var(--neon);border-radius:2px;display:inline-block"></span>ชนะ</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;background:var(--red);border-radius:2px;display:inline-block"></span>แพ้</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;background:var(--neon);border-radius:2px;display:inline-block"></span>${t('wins_bar')}</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:9px;height:9px;background:var(--red);border-radius:2px;display:inline-block"></span>${t('losses_bar')}</span>
   </div>`;
 }
 
@@ -3677,7 +3759,7 @@ function renderPersonalRecords(pid) {
   const bG=myW.reduce((b,m)=>Math.max(b,m.pts?.gain||0),0);
   const byD={};myW.forEach(m=>{const d=new Date(m.date).toISOString().slice(0,10);byD[d]=(byD[d]||0)+1;});
   const bD=Object.values(byD).length?Math.max(...Object.values(byD)):0;
-  el.innerHTML=`<div class="records-row">${[['🔥 Win Streak ยาวสุด',mx],['⚡ ชนะขาดสุด (แต้ม)',bM],['📈 ELO สูงสุด/แมตช์','+'+bG],['🏆 ชนะมากสุด/วัน',bD]].map(([lbl,val])=>`
+  el.innerHTML=`<div class="records-row">${[['🔥 '+t('streak_label'),mx],['⚡ '+t('biggest_win'),bM],['📈 '+t('peak_elo_m'),'+'+bG],['🏆 '+t('wins_day'),bD]].map(([lbl,val])=>`
     <div class="rec-item"><div class="rec-val">${val}</div><div class="rec-lbl">${lbl}</div></div>`).join('')}</div>`;
 }
 
