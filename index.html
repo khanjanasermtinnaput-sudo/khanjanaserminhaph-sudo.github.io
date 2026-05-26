@@ -1315,7 +1315,10 @@ async function saveMatch() {
 async function renderHistory() {
   document.getElementById('histList').innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">⏳ กำลังโหลด...</div>';
   try {
-    await loadMatches();
+    // Fetch full history (up to 500) independently from the global 50-match cache
+    await loadPlayers();
+    const rows = await supaFetch('matches?order=played_at.desc&limit=500');
+    const allMatches = rows.map(normalizeMatch);
 
     // Populate player filter
     const filterEl = document.getElementById('histFilterPlayer');
@@ -1328,14 +1331,14 @@ async function renderHistory() {
     const filterPlayerId = filterEl ? parseInt(filterEl.value) : null;
     const filterType = document.getElementById('histFilterType') ? document.getElementById('histFilterType').value : '';
 
-    let matches = db.matches.slice(0, 100);
+    let matches = allMatches;
     if (filterPlayerId) {
       matches = matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === filterPlayerId));
     }
     if (filterType) {
       matches = matches.filter(m => m.type === filterType);
     }
-    matches = matches.slice(0, 50);
+    matches = matches.slice(0, 200);
 
     const html = matches.map(m => {
       const nameA = m.teamA.map(p=>p.name).join(' & '), nameB = m.teamB.map(p=>p.name).join(' & ');
@@ -1362,7 +1365,9 @@ async function renderHistory() {
         <div class="hist-detail">+${m.pts.gain} / -${m.pts.loss} pts</div>
       </div>`;
     }).join('') || '<div class="text-muted" style="text-align:center;padding:20px">ยังไม่มีประวัติ</div>';
-    document.getElementById('histList').innerHTML = html;
+    const total = filterPlayerId || filterType ? matches.length : allMatches.length;
+    document.getElementById('histList').innerHTML =
+      `<div style="font-size:.72rem;color:var(--muted);text-align:right;margin-bottom:8px;padding-right:4px">📋 ทั้งหมด ${total} แมตช์</div>` + html;
   } catch(e) { document.getElementById('histList').innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">❌ โหลดไม่ได้</div>'; }
 }
 
