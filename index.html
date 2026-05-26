@@ -27,6 +27,8 @@
 /* ── v4.0 Features ── */
 .elo-x2-banner{position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#ff4757,#ff6b35,#ffd700,#ff6b35,#ff4757);background-size:200% auto;color:#000;font-weight:800;font-size:0.78rem;text-align:center;padding:6px 20px;display:none;letter-spacing:0.05em;animation:x2Scroll 3s linear infinite}
 .elo-x2-banner.active{display:block}
+body.x2-active nav{top:34px}
+body.x2-active .toast-wrap{bottom:120px}
 @keyframes x2Scroll{to{background-position:200% center}}
 .match-timer-display{font-family:'Rajdhani',sans-serif;font-size:0.9rem;color:var(--neon);font-weight:700;background:rgba(0,245,160,0.12);border:1px solid rgba(0,245,160,0.3);border-radius:20px;padding:3px 12px;margin-left:8px}
 .dc-card{border:1px solid rgba(0,217,245,0.35)!important;background:rgba(0,217,245,0.04)!important;margin-bottom:14px}
@@ -2703,13 +2705,17 @@ showRankUp = function(rc, playerName, gainPts) {
 
 // ── 1. ELO x2 Mode ──────────────────────────────
 let eloX2Active = localStorage.getItem('badminton_elo_x2') === '1';
-(function(){ const b=document.getElementById('eloX2Banner'); if(b&&eloX2Active) b.classList.add('active'); })();
+(function(){
+  const b=document.getElementById('eloX2Banner');
+  if(b&&eloX2Active){ b.classList.add('active'); document.body.classList.add('x2-active'); }
+})();
 
 function toggleEloX2(on) {
   eloX2Active = on;
   localStorage.setItem('badminton_elo_x2', on ? '1' : '0');
   const b = document.getElementById('eloX2Banner');
   if (b) b.classList.toggle('active', on);
+  document.body.classList.toggle('x2-active', on);
   const btn = document.getElementById('eloX2Toggle');
   if (btn) { btn.textContent = on ? '⚡ เปิดอยู่' : 'ปิดอยู่'; btn.className = 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-ghost'); }
   toast(on ? '⚡ ELO x2 เปิดแล้ว! คะแนนคูณ 2 ทุกแมตช์' : 'ELO x2 ปิดแล้ว', 'info');
