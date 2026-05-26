@@ -897,8 +897,8 @@ function afterLogin() {
   document.getElementById('navName').textContent = currentUser.name;
   document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdminUser());
   showSection('leaderboard');
-  // แสดง rank-up ที่ค้างอยู่ (กรณี Admin อนุมัติตอนที่ผู้เล่นออฟไลน์)
-  setTimeout(checkPendingRankUps, 1800);
+  // แสดง rank-up ของผู้เล่นตัวเอง (กรณี Admin อนุมัติแมตช์ตอนที่ผู้เล่นออฟไลน์)
+  setTimeout(() => { checkPendingRankUps(); checkSelfRankUpFromDB(); }, 1800);
 }
 function logout() {
   currentUser = null; currentMatch = null; db = { players: [], matches: [] };
@@ -912,6 +912,7 @@ function logout() {
 async function renderLeaderboard() {
   try {
     await loadAll();
+    checkSelfRankUpFromDB();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
 
@@ -1339,7 +1340,7 @@ async function saveMatch() {
   try {
     if (isAdminUser()) {
       // Admin → บันทึกคะแนนทันที
-      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, gain); } else { if (didCrossIntoKing(oldPts, newPts, pl.id)) showRankUp(RANKS_DATA_RU.king, pl.name, gain); queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, gain); } }
+      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, gain); } }
       for (const p of losers)  {
         const pl = db.players.find(x=>x.id===p.id);
         const loserRank = getRankByPts(pl.pts);
@@ -1551,7 +1552,7 @@ async function approvePending(pendingId) {
     toast('กำลังยืนยัน...', 'info');
     const winners = r.win_team === 'A' ? r.team_a : r.team_b;
     const losers  = r.win_team === 'A' ? r.team_b : r.team_a;
-    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + r.pts_gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, r.pts_gain); } else { if (didCrossIntoKing(oldPts, newPts, pl.id)) showRankUp(RANKS_DATA_RU.king, pl.name, r.pts_gain); queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, r.pts_gain); } } }
+    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + r.pts_gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, r.pts_gain); } } }
     for (const p of losers)  {
       const pl = db.players.find(x=>x.id===p.id);
       if(pl) {
@@ -1986,6 +1987,22 @@ function checkPendingRankUps() {
       if (rc) showRankUp(rc, item.playerName, item.gainPts);
     });
   }
+}
+
+// Cross-device rank-up detection: compares stored pts baseline vs current DB pts.
+// Triggers when admin records a match for the player on a different device.
+function checkSelfRankUpFromDB() {
+  if (!currentUser) return;
+  const me = db.players.find(p => p.id === currentUser.id);
+  if (!me) return;
+  const key = `badminton_lastpts_${currentUser.id}`;
+  const stored = localStorage.getItem(key);
+  const lastPts = stored !== null ? parseInt(stored, 10) : null;
+  // Always refresh baseline
+  localStorage.setItem(key, String(me.pts));
+  if (lastPts === null || !Number.isFinite(lastPts)) return;
+  if (me.pts <= lastPts) return;
+  checkAndShowRankUp(lastPts, me.pts, me.name, me.pts - lastPts);
 }
 
 // ============================================================
@@ -2719,6 +2736,10 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   if (newIdx > oldIdx) {
     const rc = RANKS_DATA_RU[effectiveNewRankId];
     if (rc) showRankUp(rc, playerName, gainPts);
+  }
+  // Refresh baseline so cross-device check on next loadAll doesn't re-trigger
+  if (currentUser && currentUser.name === playerName) {
+    localStorage.setItem(`badminton_lastpts_${currentUser.id}`, String(playerNewPts));
   }
 }
 
