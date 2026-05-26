@@ -3235,17 +3235,25 @@ function renderPotd() {
   if(!td.length){card.style.display='none';return;}
   const gains={};
   td.forEach(m=>(m.winTeam==='A'?m.teamA:m.teamB).forEach(p=>{gains[p.id]=(gains[p.id]||0)+(m.pts?.gain||0);}));
-  const topId=parseInt(Object.keys(gains).sort((a,b)=>gains[b]-gains[a])[0]);
-  const pl=db.players.find(p=>p.id===topId);
-  if(!pl){card.style.display='none';return;}
-  const cols=getAvatarColor(pl.id);
-  const wins=td.filter(m=>(m.winTeam==='A'?m.teamA:m.teamB).some(p=>p.id===topId)).length;
+  if(!Object.keys(gains).length){card.style.display='none';return;}
+  const maxGain=Math.max(...Object.values(gains));
+  const topIds=Object.keys(gains).filter(id=>gains[id]===maxGain).map(Number);
+  const topPlayers=topIds.map(id=>db.players.find(p=>p.id===id)).filter(Boolean);
+  if(!topPlayers.length){card.style.display='none';return;}
   card.style.display='';
-  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:12px">
-    <div style="width:46px;height:46px;border-radius:50%;background:${cols[1]};color:${cols[0]};display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;border:2px solid rgba(255,215,0,.4)">${getInitial(pl.name)}</div>
-    <div style="flex:1"><div style="font-weight:700">${pl.name}</div><div style="font-size:.73rem;color:var(--muted)">ชนะ ${wins} แมตช์ · +${gains[topId]||0} ELO วันนี้</div></div>
-    <div style="font-family:'Rajdhani';font-size:1.6rem;font-weight:700;color:var(--gold)">+${gains[topId]||0}</div>
-  </div>`;
+  const isTie=topPlayers.length>1;
+  const titleEl=document.getElementById('potdCard').querySelector('.card-title');
+  if(titleEl) titleEl.textContent=isTie?`🏅 Players of the Day (${topPlayers.length} คน)`:'🏅 Player of the Day';
+  wrap.innerHTML=topPlayers.map(pl=>{
+    const cols=getAvatarColor(pl.id);
+    const av=getAvatar(pl.id,pl.name);
+    const wins=td.filter(m=>(m.winTeam==='A'?m.teamA:m.teamB).some(p=>p.id===pl.id)).length;
+    return `<div style="display:flex;align-items:center;gap:12px${isTie?';padding:8px 0;border-bottom:1px solid var(--glass-border)':''}">
+      <div style="width:46px;height:46px;border-radius:50%;background:${av.bg};color:${av.fg};display:flex;align-items:center;justify-content:center;font-size:${av.fs||'1.1rem'};font-weight:700;border:2px solid rgba(255,215,0,.4);flex-shrink:0">${av.content}</div>
+      <div style="flex:1"><div style="font-weight:700">${pl.name}</div><div style="font-size:.73rem;color:var(--muted)">ชนะ ${wins} แมตช์ · +${gains[pl.id]||0} ELO วันนี้</div></div>
+      <div style="font-family:'Rajdhani';font-size:1.6rem;font-weight:700;color:var(--gold)">+${gains[pl.id]||0}</div>
+    </div>`;
+  }).join('');
 }
 
 // ── 10. Today's History ──────────────────────────
