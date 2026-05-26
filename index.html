@@ -132,7 +132,18 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .kru-wrap{animation:none!important;opacity:1!important;transform:none!important}
 [data-style="lite"] .kru-label,[data-style="lite"] .kru-title,[data-style="lite"] .kru-player,[data-style="lite"] .kru-pts{animation:none!important;opacity:1!important;transform:none!important;clip-path:none!important}
 [data-style="lite"] .kru-divider{animation:none!important;width:200px!important}
-[data-style="lite"] .kru-tap{transform:translateX(-50%)!important}</style>
+[data-style="lite"] .kru-tap{transform:translateX(-50%)!important}
+/* ══════ QUICK LOGIN CARD ══════ */
+.ql-card{text-align:center;padding:4px 0 6px}
+.ql-av-wrap{display:flex;justify-content:center;margin-bottom:14px}
+.ql-av{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.9rem;font-weight:700;border:3px solid rgba(0,245,160,0.5);box-shadow:0 0 0 7px rgba(0,245,160,0.07),0 4px 20px rgba(0,0,0,0.3);animation:qlPop .5s cubic-bezier(.34,1.56,.64,1) forwards}
+@keyframes qlPop{from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1}}
+.ql-hi{font-size:0.8rem;color:var(--muted);margin-bottom:3px}
+.ql-name{font-family:'Rajdhani',sans-serif;font-size:1.75rem;font-weight:700;color:var(--text);margin-bottom:3px;letter-spacing:-0.5px}
+.ql-q{font-size:0.87rem;color:var(--muted);margin-bottom:18px}
+.ql-btns{display:flex;flex-direction:column;gap:8px}
+.ql-sep{display:flex;align-items:center;gap:10px;margin:14px 0 2px;font-size:0.72rem;color:var(--muted)}
+.ql-sep::before,.ql-sep::after{content:'';flex:1;height:1px;background:var(--glass-border)}</style>
 </head>
 <body>
 
@@ -191,6 +202,20 @@ body.x2-active .toast-wrap{bottom:120px}
       <div class="login-logo">🏸</div>
       <div class="login-title">Badminton Club</div>
       <div class="login-sub">ระบบจัดการแบดมินตันเพื่อน</div>
+
+      <!-- QUICK LOGIN CARD -->
+      <div id="quickLoginCard" class="ql-card hidden">
+        <div class="ql-av-wrap"><div class="ql-av" id="qlAv"></div></div>
+        <div class="ql-hi">👋 สวัสดีกลับมา!</div>
+        <div class="ql-name" id="qlName"></div>
+        <div class="ql-q">แอคเคาท์นี้ใช้ของคุณไหม?</div>
+        <div class="ql-btns">
+          <button class="btn btn-primary" id="qlYesBtn" onclick="quickLogin()">✅ ใช่, เข้าเลย!</button>
+          <button class="btn btn-ghost" style="font-size:0.82rem" onclick="rejectQuickLogin()">ไม่ใช่บัญชีฉัน</button>
+        </div>
+        <div class="ql-sep">หรือเข้าด้วยรหัส</div>
+      </div>
+
       <div class="tab-row">
         <button class="tab active" onclick="switchLoginTab('login')">เข้าสู่ระบบ</button>
         <button class="tab" onclick="switchLoginTab('register')">สมัครสมาชิก</button>
@@ -871,6 +896,7 @@ async function login() {
     const player = db.players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.pin === pin);
     if (!player) return toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error');
     currentUser = player;
+    saveDeviceUser(player);
     await loadMatches();
     afterLogin();
   } catch(e) { toast('เชื่อมต่อไม่ได้: ' + e.message, 'error'); }
@@ -888,10 +914,59 @@ async function register() {
     const row = await dbAddPlayer({ name, pin, pts: 50, wins: 0, losses: 0, isAdmin: isFirst ? 1 : 0 });
     await loadPlayers(); await loadMatches();
     currentUser = db.players.find(p => p.id === row.id) || normalizePlayer(row);
+    saveDeviceUser(currentUser);
     toast('สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ 🏸', 'success');
     afterLogin();
   } catch(e) { toast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
 }
+// ── QUICK LOGIN (Trusted Device) ──
+function saveDeviceUser(player) {
+  localStorage.setItem('badminton_saved_user', JSON.stringify({ id: player.id, name: player.name, pin: player.pin }));
+}
+function initQuickLogin() {
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem('badminton_saved_user') || 'null'); } catch(e) { return; }
+  if (!saved || !saved.name || !saved.pin) return;
+  const avEl = document.getElementById('qlAv');
+  const avData = getAvatar(saved.id, saved.name);
+  avEl.style.cssText = `background:${avData.bg};color:${avData.fg};${avData.fs?'font-size:'+avData.fs:''}`;
+  avEl.textContent = avData.content;
+  document.getElementById('qlName').textContent = saved.name;
+  document.getElementById('quickLoginCard').classList.remove('hidden');
+  document.querySelector('#loginSection .tab-row').classList.add('hidden');
+  document.getElementById('loginForm').classList.add('hidden');
+}
+async function quickLogin() {
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem('badminton_saved_user') || 'null'); } catch(e) {}
+  if (!saved) { rejectQuickLogin(); return; }
+  const btn = document.getElementById('qlYesBtn');
+  btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
+  try {
+    await loadPlayers();
+    const player = db.players.find(p => p.id === saved.id && p.pin === saved.pin);
+    if (!player) {
+      toast('ไม่พบบัญชีนี้ในระบบ กรุณาเข้าสู่ระบบใหม่', 'error');
+      localStorage.removeItem('badminton_saved_user');
+      btn.disabled = false; btn.textContent = '✅ ใช่, เข้าเลย!';
+      rejectQuickLogin(); return;
+    }
+    currentUser = player;
+    saveDeviceUser(player);
+    await loadMatches();
+    afterLogin();
+  } catch(e) {
+    toast('เชื่อมต่อไม่ได้: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = '✅ ใช่, เข้าเลย!';
+  }
+}
+function rejectQuickLogin() {
+  localStorage.removeItem('badminton_saved_user');
+  document.getElementById('quickLoginCard').classList.add('hidden');
+  document.querySelector('#loginSection .tab-row').classList.remove('hidden');
+  document.getElementById('loginForm').classList.remove('hidden');
+}
+
 function afterLogin() {
   document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('navName').textContent = currentUser.name;
@@ -1655,7 +1730,11 @@ function toast(msg, type = 'info') {
   wrap.appendChild(el); setTimeout(() => el.remove(), 3000);
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && !document.getElementById('loginForm').classList.contains('hidden')) login(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  if (!document.getElementById('quickLoginCard').classList.contains('hidden')) { quickLogin(); return; }
+  if (!document.getElementById('loginForm').classList.contains('hidden')) login();
+});
 
 // ── SPLASH SCREEN ──
 window.addEventListener('DOMContentLoaded', () => {
@@ -1664,6 +1743,7 @@ window.addEventListener('DOMContentLoaded', () => {
     splash.classList.add('splash-hide');
     setTimeout(() => splash.remove(), 500);
   }, 1400);
+  initQuickLogin();
 });
 
 // ── CURSOR GLOW (Liquid UI 2.0) ──
