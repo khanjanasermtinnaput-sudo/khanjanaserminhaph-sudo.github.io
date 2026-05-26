@@ -1339,7 +1339,7 @@ async function saveMatch() {
   try {
     if (isAdminUser()) {
       // Admin → บันทึกคะแนนทันที
-      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, gain); } else { queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, gain); } }
+      for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, gain); } else { if (didCrossIntoKing(oldPts, newPts, pl.id)) showRankUp(RANKS_DATA_RU.king, pl.name, gain); queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, gain); } }
       for (const p of losers)  {
         const pl = db.players.find(x=>x.id===p.id);
         const loserRank = getRankByPts(pl.pts);
@@ -1551,7 +1551,7 @@ async function approvePending(pendingId) {
     toast('กำลังยืนยัน...', 'info');
     const winners = r.win_team === 'A' ? r.team_a : r.team_b;
     const losers  = r.win_team === 'A' ? r.team_b : r.team_a;
-    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + r.pts_gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, r.pts_gain); } else { queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, r.pts_gain); } } }
+    for (const p of winners) { const pl = db.players.find(x=>x.id===p.id); if(pl) { const oldPts = pl.pts; const newPts = Math.max(0, pl.pts + r.pts_gain); await dbUpdatePlayer(p.id, { pts: newPts, wins: pl.wins + 1 }); if (currentUser && pl.id === currentUser.id) { checkAndShowRankUp(oldPts, newPts, pl.name, r.pts_gain); } else { if (didCrossIntoKing(oldPts, newPts, pl.id)) showRankUp(RANKS_DATA_RU.king, pl.name, r.pts_gain); queueRankUpForPlayer(pl.id, oldPts, newPts, pl.name, r.pts_gain); } } }
     for (const p of losers)  {
       const pl = db.players.find(x=>x.id===p.id);
       if(pl) {
@@ -1930,6 +1930,23 @@ function buildEloChart(data) {
 }
 
 // ===== PENDING RANK-UP NOTIFICATIONS (สำหรับผู้เล่นที่ Admin อนุมัติตอนออฟไลน์) =====
+// Helper: detect if a player crossed INTO King rank (for broadcasting king anim to everyone watching)
+function didCrossIntoKing(oldPts, newPts, playerId) {
+  let wasKing = false;
+  if (oldPts >= 2000) {
+    const sortedOld = [...db.players].sort((a, b) => b.pts - a.pts);
+    wasKing = !!(sortedOld[0] && sortedOld[0].id === playerId);
+  }
+  let willBeKing = false;
+  if (newPts >= 2000) {
+    // Project the new state for this player
+    const projected = db.players.map(p => p.id === playerId ? {...p, pts: newPts} : p);
+    const sortedNew = [...projected].sort((a, b) => b.pts - a.pts);
+    willBeKing = !!(sortedNew[0] && sortedNew[0].id === playerId);
+  }
+  return !wasKing && willBeKing;
+}
+
 function queueRankUpForPlayer(playerId, oldPts, newPts, playerName, gainPts) {
   const key = 'badminton_rankup_queue';
   let queue = [];
@@ -2408,8 +2425,14 @@ function checkNewAchievements(playerId) {
 
 function _processAchQueue() {
   if (_achQueue.length === 0) { _achShowing = false; return; }
-  // Don't show achievement while rank-up is showing
-  if (_ruShowing) { setTimeout(_processAchQueue, 1000); return; }
+  // Don't show achievement while a rank-up overlay is actually visible (self-healing — check DOM, not just flag)
+  const ru = document.getElementById('rankUpOverlay');
+  const kru = document.getElementById('kingRankUpOverlay');
+  const ruVisible  = ru  && ru.classList.contains('ru-show');
+  const kruVisible = kru && kru.classList.contains('kru-show');
+  if (ruVisible || kruVisible) { setTimeout(_processAchQueue, 1000); return; }
+  // Reset flag in case it was stuck true from a stale state
+  if (!ruVisible && !kruVisible) _ruShowing = false;
   _achShowing = true;
   const ach = _achQueue.shift();
   const overlay = document.getElementById('achOverlay');
@@ -2708,6 +2731,13 @@ let _ruShowing = false;
 function showRankUp(rc, playerName, gainPts) {
   const rankId = Object.keys(RANKS_DATA_RU).find(k => RANKS_DATA_RU[k] === rc) || '';
   _ruQueue.push({ rc, playerName, gainPts, rankId });
+  // Self-heal: if _ruShowing is stuck true but no overlay actually visible, reset
+  if (_ruShowing) {
+    const ru = document.getElementById('rankUpOverlay');
+    const kru = document.getElementById('kingRankUpOverlay');
+    const visible = (ru && ru.classList.contains('ru-show')) || (kru && kru.classList.contains('kru-show'));
+    if (!visible) _ruShowing = false;
+  }
   if (!_ruShowing) _processRuQueue();
 }
 
