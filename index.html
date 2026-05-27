@@ -935,6 +935,14 @@ END $$;</pre>
         <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>📦 <strong>+742 บรรทัด</strong> โค้ดใหม่ใน single-file HTML</div></div>
       </div>
 
+      <div class="patch-section">
+        <div class="patch-sec-title t-fix">🔄 อัปเดต v6.1</div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🪙 <strong>Daily Quest รางวัลเป็นเหรียญ</strong> — ทำเควสแต่ละข้อเสร็จได้ +4 🪙 (จากเดิมได้ ELO)</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>💨 <strong>Gacha 70% → ไม่ได้ของ</strong> — โอกาส 70% จะไม่ได้รางวัล (จากเดิมได้ ELO 5-15)</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>📦 <strong>Gacha Inventory ถาวร</strong> — ทุก item สะสมใน DB ไม่หาย สลับ equip ได้ใน Avatar Builder</div></div>
+      </div>
+      </div>
+
       <div style="border-top:1px solid var(--glass-border);margin:18px 0 6px"></div>
 
       <div class="patch-section">
@@ -4251,9 +4259,9 @@ async function renderLiveTbl() {
 
 // ── 1. Daily Challenge ───────────────────────────
 const DC_QUESTS = [
-  { id:'q0', text:'🏸 เล่น 1 แมตช์วันนี้',         reward:15, type:'plays',      goal:1 },
-  { id:'q1', text:'🏆 ชนะ 1 แมตช์วันนี้',           reward:20, type:'wins',       goal:1 },
-  { id:'q2', text:'⭐ บันทึกคะแนนครั้งแรกของวัน', reward:20, type:'first_save', goal:1 },
+  { id:'q0', text:'🏸 เล่น 1 แมตช์วันนี้',         coins:4, type:'plays',      goal:1 },
+  { id:'q1', text:'🏆 ชนะ 1 แมตช์วันนี้',           coins:4, type:'wins',       goal:1 },
+  { id:'q2', text:'⭐ บันทึกคะแนนครั้งแรกของวัน', coins:4, type:'first_save', goal:1 },
 ];
 
 function _dcKey() { return 'bmt_dc_'+(currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
@@ -4285,7 +4293,7 @@ function renderDailyChallenge() {
     return `<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
         <span style="font-size:.83rem;font-weight:600">${q.text}</span>
-        <span style="font-size:.72rem;font-weight:700;color:${isDone?'var(--neon)':'var(--neon2)'};white-space:nowrap;margin-left:6px">${isDone?'✅ รับแล้ว':'⚡ +'+q.reward+' ELO'}</span>
+        <span style="font-size:.72rem;font-weight:700;color:${isDone?'var(--neon)':'var(--neon2)'};white-space:nowrap;margin-left:6px">${isDone?'✅ รับแล้ว':'🪙 +'+q.coins+' เหรียญ'}</span>
       </div>
       <div class="dc-bar-bg"><div class="dc-bar" style="width:${pct}%;${isDone?'background:var(--neon)':''}"></div></div>
     </div>`;
@@ -4303,14 +4311,18 @@ async function checkDCRewards() {
       granted = true;
       const pl = db.players.find(p=>p.id===currentUser.id);
       if (pl) {
-        const oldPts = pl.pts;
-        const newPts = pl.pts + q.reward;
         try {
-          await dbUpdatePlayer(currentUser.id, { pts: newPts });
-          pl.pts = newPts; currentUser.pts = newPts;
-          checkAndShowRankUp(oldPts, newPts, currentUser.name, q.reward);
-          toast('🎯 Daily Quest สำเร็จ! +'+q.reward+' ELO', 'success');
-        } catch(e) { console.error('dc reward error', e); }
+          await dbAddCoins(currentUser.id, q.coins);
+          _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + q.coins);
+          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
+          // อัพเดท coin balance ใน profile ด้วย
+          const pcEl = document.getElementById('profileCoinBalance');
+          if (pcEl) pcEl.textContent = getEffectiveCoins(currentUser.id);
+        } catch(e) {
+          // fallback localStorage
+          _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + q.coins);
+          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
+        }
       }
     }
   }
@@ -4958,21 +4970,15 @@ async function doGachaPull() {
     result = { type: 'emoji', text: `${emoji} Emoji Avatar ได้แล้ว!`, emoji };
 
   } else {
-    // ── ELO BOOST 70% ──
-    const boost = 5 + Math.floor(Math.random() * 11);
-    try {
-      const basePts = plUpdated ? plUpdated.pts : pl.pts;
-      await dbUpdatePlayer(currentUser.id, { pts: basePts + boost });
-      await loadPlayers();
-    } catch(e) {}
-    result = { type: 'elo', text: `📈 ELO Boost! +${boost} คะแนน`, boost };
+    // ── ไม่ได้ของ 70% ──
+    result = { type: 'empty', text: '💨 ไม่ได้ของ...' };
   }
 
   // แสดงผลลัพธ์ (ยกเว้น ultra rare ที่แสดงแล้ว)
   if (result && result.type !== 'ultra') {
     const resultEl = document.getElementById('gachaPullResult');
     if (resultEl) {
-      const icons = { frame: result.frame==='rainbow'?'🌈':'⚙️', emoji: result.emoji||'😎', elo: '📈' };
+      const icons = { frame: result.frame==='rainbow'?'🌈':'⚙️', emoji: result.emoji||'😎', empty: '💨' };
       resultEl.innerHTML = `<div class="gacha-pull-result">${icons[result.type]}</div>
         <div class="gacha-pull-value" style="color:var(--neon)">${result.text}</div>`;
     }
