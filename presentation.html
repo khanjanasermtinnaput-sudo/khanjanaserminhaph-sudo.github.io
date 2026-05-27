@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏸 Badminton Club Presentation</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --neon: #00f5a0;
+    --neon2: #00d9f5;
+    --gold: #ffd700;
+    --red: #ff4757;
+    --bg: #060810;
+    --bg2: #0a0d18;
+    --card: rgba(255,255,255,0.06);
+    --border: rgba(255,255,255,0.12);
+    --text: #f0f2f8;
+    --muted: #7a8aaa;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    user-select: none;
+  }
+
+  /* ─── Animated background ─── */
+  .bg-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.15;
+    pointer-events: none;
+    animation: drift 12s ease-in-out infinite alternate;
+  }
+  .bg-orb-1 { width: 500px; height: 500px; background: var(--neon); top: -100px; left: -100px; animation-delay: 0s; }
+  .bg-orb-2 { width: 400px; height: 400px; background: var(--neon2); bottom: -80px; right: -80px; animation-delay: -6s; }
+  .bg-orb-3 { width: 300px; height: 300px; background: var(--gold); top: 40%; left: 45%; animation-delay: -3s; }
+  @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.1); } }
+
+  /* ─── Slide container ─── */
+  .slides-wrapper {
+    width: 100vw;
+    height: 100vh;
+    position: relative;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 80px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    transform: translateX(60px);
+  }
+  .slide.active {
+    opacity: 1;
+    pointer-events: all;
+    transform: translateX(0);
+  }
+  .slide.prev {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+
+  /* ─── Slide layouts ─── */
+  .slide-title {
+    text-align: center;
+    gap: 24px;
+  }
+  .slide-content {
+    width: 100%;
+    max-width: 1100px;
+    gap: 32px;
+  }
+  .slide-two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 32px;
+    width: 100%;
+    max-width: 1100px;
+  }
+
+  /* ─── Typography ─── */
+  .slide-emoji { font-size: clamp(48px, 8vw, 80px); margin-bottom: 8px; }
+  h1.main-title {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+  }
+  .subtitle {
+    font-size: clamp(16px, 2vw, 22px);
+    color: var(--muted);
+    font-weight: 300;
+  }
+  h2.slide-heading {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(28px, 4vw, 48px);
+    font-weight: 700;
+    color: var(--neon);
+    border-bottom: 2px solid rgba(0,245,160,0.25);
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  h3 {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 600;
+    color: var(--neon2);
+    margin-bottom: 10px;
+  }
+
+  /* ─── Cards ─── */
+  .glass-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 32px;
+    backdrop-filter: blur(12px);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .glass-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0,245,160,0.3);
+  }
+
+  /* ─── Lists ─── */
+  ul.fancy-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  ul.fancy-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: clamp(14px, 1.6vw, 18px);
+    color: #c8d2e8;
+    line-height: 1.5;
+  }
+  ul.fancy-list li::before {
+    content: '▸';
+    color: var(--neon);
+    font-size: 1em;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ─── Rank badges ─── */
+  .rank-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+  .rank-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .rank-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .rank-card.bronze::before { background: #cd7f32; }
+  .rank-card.silver::before { background: #a8b8c8; }
+  .rank-card.gold::before { background: var(--gold); }
+  .rank-card.platinum::before { background: #48d1cc; }
+  .rank-card.diamond::before { background: #b044f0; }
+  .rank-card.king::before { background: linear-gradient(90deg, var(--gold), #ff6b35); }
+  .rank-icon { font-size: 32px; margin-bottom: 8px; }
+  .rank-name { font-weight: 700; font-size: 15px; }
+  .rank-pts { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ─── Stats ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    width: 100%;
+    max-width: 1100px;
+  }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    backdrop-filter: blur(12px);
+  }
+  .stat-number {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--neon), var(--neon2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-label { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+  /* ─── Timeline ─── */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+  }
+  .timeline-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 24px;
+  }
+  .timeline-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--neon);
+    flex-shrink: 0;
+    box-shadow: 0 0 8px var(--neon);
+  }
+  .timeline-time {
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--neon2);
+    min-width: 90px;
+  }
+  .timeline-desc { font-size: 15px; color: #c8d2e8; }
+
+  /* ─── Progress bar ─── */
+  .progress-bar-wrap {
+    margin-bottom: 12px;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .progress-bar {
+    height: 8px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    transition: width 1s ease;
+  }
+
+  /* ─── Navigation ─── */
+  .nav {
+    position: fixed;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 100;
+    background: rgba(6,8,16,0.8);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 10px 24px;
+    backdrop-filter: blur(16px);
+  }
+  .nav-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 20px;
+    border-radius: 99px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    transition: all 0.2s;
+  }
+  .nav-btn:hover { background: rgba(255,255,255,0.08); border-color: var(--neon); color: var(--neon); }
+  .nav-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .nav-counter { font-size: 14px; color: var(--muted); min-width: 60px; text-align: center; }
+
+  /* ─── Slide dots ─── */
+  .slide-dots {
+    position: fixed;
+    right: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 100;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .dot.active { background: var(--neon); transform: scale(1.4); box-shadow: 0 0 6px var(--neon); }
+
+  /* ─── Progress indicator ─── */
+  .slide-progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--neon), var(--neon2));
+    transition: width 0.4s ease;
+    z-index: 200;
+  }
+
+  /* ─── Slide number ─── */
+  .slide-num {
+    position: fixed;
+    top: 20px;
+    right: 50px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    color: var(--muted);
+    z-index: 100;
+  }
+
+  /* ─── Highlight pill ─── */
+  .pill {
+    display: inline-block;
+    background: rgba(0,245,160,0.12);
+    border: 1px solid rgba(0,245,160,0.3);
+    color: var(--neon);
+    border-radius: 99px;
+    padding: 4px 14px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* ─── CTA Button ─── */
+  .cta-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--neon), var(--neon2));
+    color: #060810;
+    font-weight: 700;
+    font-size: 18px;
+    padding: 14px 36px;
+    border-radius: 99px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    margin-top: 16px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 24px rgba(0,245,160,0.3);
+  }
+  .cta-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,245,160,0.4); }
+
+  /* ─── Icon feature row ─── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    width: 100%;
+  }
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 22px;
+  }
+  .feature-icon { font-size: 28px; flex-shrink: 0; }
+  .feature-text h4 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .feature-text p { font-size: 13px; color: var(--muted); }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 768px) {
+    .slide { padding: 40px 24px; }
+    .slide-two-col { grid-template-columns: 1fr; }
+    .rank-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-row { grid-template-columns: repeat(2, 1fr); }
+    .feature-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Animated bg orbs -->
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+<div class="bg-orb bg-orb-3"></div>
+
+<!-- Progress bar -->
+<div class="slide-progress" id="slideProgress"></div>
+<div class="slide-num" id="slideNum">1 / 8</div>
+
+<!-- ═══ SLIDES ═══ -->
+<div class="slides-wrapper" id="slidesWrapper">
+
+  <!-- Slide 1: Title -->
+  <div class="slide slide-title active" data-slide="1">
+    <div class="slide-emoji">🏸</div>
+    <h1 class="main-title">Badminton Club</h1>
+    <p class="subtitle" style="font-size:clamp(18px,2.5vw,26px); margin-top:8px;">สโมสรแบดมินตัน ยินดีต้อนรับสมาชิกทุกท่าน</p>
+    <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;justify-content:center;">
+      <span class="pill">🏆 ระบบแรงก์</span>
+      <span class="pill">📊 สถิติผู้เล่น</span>
+      <span class="pill">⚔️ แมตช์การแข่งขัน</span>
+    </div>
+    <p style="color:var(--muted);font-size:14px;margin-top:36px;">กด → หรือคลิกปุ่มด้านล่างเพื่อเริ่มต้น</p>
+  </div>
+
+  <!-- Slide 2: About -->
+  <div class="slide slide-content" style="align-items:flex-start;" data-slide="2">
+    <h2 class="slide-heading">📌 เกี่ยวกับสโมสร</h2>
+    <div class="glass-card" style="width:100%;">
+      <p style="font-size:clamp(15px,1.8vw,20px);line-height:1.8;color:#c8d2e8;">
+        สโมสรแบดมินตันของเรา เปิดให้สมาชิกทุกระดับทักษะได้เล่น แข่งขัน และพัฒนาฝีมือร่วมกัน
+        มีระบบ <strong style="color:var(--neon);">แรงก์อัตโนมัติ</strong> ที่คำนวณจากผลการแข่งขัน
+        พร้อมบันทึกสถิติและประวัติการเล่นของสมาชิกทุกคน
+      </p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-item">
+        <div class="feature-icon">🏟️</div>
+        <div class="feature-text">
+          <h4>สนามแบดมินตัน</h4>
+          <p>สนามมาตรฐาน พร้อมอุปกรณ์ครบครัน</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📅</div>
+        <div class="feature-text">
+          <h4>ตารางเล่นประจำสัปดาห์</h4>
+          <p>เปิดทุกวัน ตั้งแต่เช้าถึงค่ำ</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">🤝</div>
+        <div class="feature-text">
+          <h4>ชุมชนเป็นมิตร</h4>
+          <p>สมาชิกมากกว่า 50 คน ทุกระดับทักษะ</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon">📱</div>
+        <div class="feature-text">
+          <h4>ระบบออนไลน์</h4>
+          <p>ลงทะเบียนแมตช์ ดูสถิติผ่านเว็บ</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Stats -->
+  <div class="slide" style="flex-direction:column;gap:32px;" data-slide="3">
+    <h2 class="slide-heading" style="max-width:1100px;width:100%;">📊 สถิติสโมสร</h2>
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-number">50+</div>
+        <div class="stat-label">สมาชิกทั้งหมด</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">300+</div>
+        <div class="stat-label">แมตช์ที่แข่งไปแล้ว</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-number">6</div>
+        <div class="stat-label">ระดับแรงก์</div>
+      </div>
+    </div>
+    <div style="width:100%;max-width:1100px;">
+      <div class="glass-card">
+        <h3 style="margin-bottom:20px;">การกระจายตัวของสมาชิกตามแรงก์</h3>
+        <div class="progress-bar-wrap">
+          <div class="progress-label"><span>🥉 บรอนซ์</span><span>45%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:45%;background:linear-gradient(90deg,#cd7f32,#e8a04a);"></div></div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-label"><span>🥈 ซิลเวอร์</span><span>30%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:30%;background:linear-gradient(90deg,#a8b8c8,#d0dde8);"></div></div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-label"><span>🥇 โกลด์</span><span>15%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:15%;background:linear-gradient(90deg,var(--gold),#ffec80);"></div></div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-label"><span>💠 แพลตินัม+</span><span>10%</span></div>
+          <div class="progress-bar"><div class="progress-fill" style="width:10%;background:linear-gradient(90deg,#48d1cc,#b044f0);"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Rank System -->
+  <div class="slide" style="flex-direction:column;gap:24px;" data-slide="4">
+    <h2 class="slide-heading" style="max-width:1100px;width:100%;">🏆 ระบบแรงก์</h2>
+    <div class="rank-grid" style="max-width:1100px;width:100%;">
+      <div class="rank-card bronze">
+        <div class="rank-icon">🥉</div>
+        <div class="rank-name" style="color:#cd7f32;">บรอนซ์</div>
+        <div class="rank-pts">0 – 999 แต้ม</div>
+      </div>
+      <div class="rank-card silver">
+        <div class="rank-icon">🥈</div>
+        <div class="rank-name" style="color:#a8b8c8;">ซิลเวอร์</div>
+        <div class="rank-pts">1,000 – 1,999 แต้ม</div>
+      </div>
+      <div class="rank-card gold">
+        <div class="rank-icon">🥇</div>
+        <div class="rank-name" style="color:var(--gold);">โกลด์</div>
+        <div class="rank-pts">2,000 – 2,999 แต้ม</div>
+      </div>
+      <div class="rank-card platinum">
+        <div class="rank-icon">💠</div>
+        <div class="rank-name" style="color:#48d1cc;">แพลตินัม</div>
+        <div class="rank-pts">3,000 – 3,999 แต้ม</div>
+      </div>
+      <div class="rank-card diamond">
+        <div class="rank-icon">💎</div>
+        <div class="rank-name" style="color:#b044f0;">ไดมอนด์</div>
+        <div class="rank-pts">4,000 – 4,999 แต้ม</div>
+      </div>
+      <div class="rank-card king">
+        <div class="rank-icon">👑</div>
+        <div class="rank-name" style="color:var(--gold);">คิง</div>
+        <div class="rank-pts">5,000+ แต้ม</div>
+      </div>
+    </div>
+    <div class="glass-card" style="max-width:1100px;width:100%;">
+      <ul class="fancy-list">
+        <li>ชนะ → ได้แต้มตามความต่างแรงก์ของคู่ต่อสู้</li>
+        <li>แพ้ → เสียแต้มน้อยลงถ้าคู่ต่อสู้แรงก์สูงกว่า</li>
+        <li>แต้มจะคำนวณอัตโนมัติทันทีหลังบันทึกผล</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 5: Rules -->
+  <div class="slide slide-two-col" data-slide="5">
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <h2 class="slide-heading" style="border:none;">📋 กฎและกติกา</h2>
+      <div class="glass-card">
+        <h3>กฎการแข่งขัน</h3>
+        <ul class="fancy-list">
+          <li>เล่น 2 ใน 3 เกม (21 แต้ม)</li>
+          <li>Deuce ที่ 20-20 ต้องนำ 2 แต้ม</li>
+          <li>สูงสุดไม่เกิน 30 แต้ม</li>
+          <li>เสิร์ฟจากด้านขวาเมื่อแต้มเป็นเลขคู่</li>
+        </ul>
+      </div>
+      <div class="glass-card">
+        <h3>มารยาทในสนาม</h3>
+        <ul class="fancy-list">
+          <li>ตรงต่อเวลา มาก่อนเวลาอย่างน้อย 5 นาที</li>
+          <li>แต่งกายสุภาพเหมาะสมกับกีฬา</li>
+          <li>ยอมรับผลการตัดสินด้วยน้ำใจนักกีฬา</li>
+        </ul>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:20px;">
+      <div class="glass-card" style="margin-top:70px;">
+        <h3>การลงทะเบียนแมตช์</h3>
+        <ul class="fancy-list">
+          <li>ลงทะเบียนผ่านเว็บไซต์ได้เลย</li>
+          <li>ต้องยืนยันทั้ง 2 ฝ่ายก่อนบันทึกผล</li>
+          <li>บันทึกผลภายใน 24 ชม. หลังแข่ง</li>
+          <li>ผล dispute แจ้ง admin ภายใน 48 ชม.</li>
+        </ul>
+      </div>
+      <div class="glass-card">
+        <h3>ข้อห้าม</h3>
+        <ul class="fancy-list">
+          <li>ห้ามนำอาหารและเครื่องดื่มเข้าสนาม</li>
+          <li>ห้ามใช้ไม้แบดที่ไม่ผ่านมาตรฐาน BWF</li>
+          <li>ห้ามบันทึกผลปลอม มีโทษแบน</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 6: Schedule -->
+  <div class="slide" style="flex-direction:column;gap:24px;" data-slide="6">
+    <h2 class="slide-heading" style="max-width:1100px;width:100%;">🗓️ ตารางกิจกรรม</h2>
+    <div class="timeline" style="max-width:1100px;width:100%;">
+      <div class="timeline-item">
+        <div class="timeline-dot"></div>
+        <div class="timeline-time">จ-ศ</div>
+        <div class="timeline-desc">
+          <strong>ซ้อมประจำสัปดาห์</strong> — 18:00–21:00 น. | เปิดสนามทั่วไป ทุกระดับ
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:var(--neon2);box-shadow:0 0 8px var(--neon2);"></div>
+        <div class="timeline-time" style="color:var(--neon2);">เสาร์</div>
+        <div class="timeline-desc">
+          <strong>แมตช์แรงก์</strong> — 09:00–12:00 น. | ลงทะเบียนล่วงหน้าผ่านเว็บ
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:var(--gold);box-shadow:0 0 8px var(--gold);"></div>
+        <div class="timeline-time" style="color:var(--gold);">อาทิตย์</div>
+        <div class="timeline-desc">
+          <strong>ทัวร์นาเมนต์รายเดือน</strong> — 08:00–17:00 น. | สมาชิกระดับซิลเวอร์ขึ้นไป
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot" style="background:#b044f0;box-shadow:0 0 8px #b044f0;"></div>
+        <div class="timeline-time" style="color:#b044f0;">พิเศษ</div>
+        <div class="timeline-desc">
+          <strong>คลินิกเทคนิค</strong> — ทุกเดือนที่ 1 | โค้ชมืออาชีพ ฟรีสำหรับสมาชิก
+        </div>
+      </div>
+    </div>
+    <div class="glass-card" style="max-width:1100px;width:100%;">
+      <p style="color:var(--muted);font-size:14px;text-align:center;">
+        📍 สถานที่: สนามแบดมินตัน อาคารกีฬา | ดูตารางเต็มได้ที่เว็บไซต์สโมสร
+      </p>
+    </div>
+  </div>
+
+  <!-- Slide 7: How to Join -->
+  <div class="slide" style="flex-direction:column;gap:24px;" data-slide="7">
+    <h2 class="slide-heading" style="max-width:1100px;width:100%;">🚀 วิธีสมัครสมาชิก</h2>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;max-width:1100px;width:100%;">
+      <div class="glass-card" style="text-align:center;padding:24px 16px;">
+        <div style="font-size:36px;margin-bottom:12px;">1️⃣</div>
+        <h4 style="color:var(--neon);margin-bottom:8px;">เข้าเว็บไซต์</h4>
+        <p style="font-size:13px;color:var(--muted);">เปิดเว็บสโมสรแบดมินตัน</p>
+      </div>
+      <div class="glass-card" style="text-align:center;padding:24px 16px;">
+        <div style="font-size:36px;margin-bottom:12px;">2️⃣</div>
+        <h4 style="color:var(--neon);margin-bottom:8px;">กรอกข้อมูล</h4>
+        <p style="font-size:13px;color:var(--muted);">ชื่อ-นามสกุล และข้อมูลส่วนตัว</p>
+      </div>
+      <div class="glass-card" style="text-align:center;padding:24px 16px;">
+        <div style="font-size:36px;margin-bottom:12px;">3️⃣</div>
+        <h4 style="color:var(--neon);margin-bottom:8px;">รอการยืนยัน</h4>
+        <p style="font-size:13px;color:var(--muted);">Admin อนุมัติภายใน 24 ชั่วโมง</p>
+      </div>
+      <div class="glass-card" style="text-align:center;padding:24px 16px;">
+        <div style="font-size:36px;margin-bottom:12px;">4️⃣</div>
+        <h4 style="color:var(--neon);margin-bottom:8px;">เริ่มเล่นได้เลย!</h4>
+        <p style="font-size:13px;color:var(--muted);">ลงทะเบียนแมตช์และเก็บแต้มแรงก์</p>
+      </div>
+    </div>
+    <div class="glass-card" style="max-width:1100px;width:100%;">
+      <ul class="fancy-list" style="flex-direction:row;flex-wrap:wrap;gap:16px 40px;">
+        <li>ค่าสมัครสมาชิก: <strong style="color:var(--neon);">ฟรี!</strong></li>
+        <li>อายุขั้นต่ำ: <strong style="color:var(--neon);">10 ปีขึ้นไป</strong></li>
+        <li>ระดับที่รับ: <strong style="color:var(--neon);">ทุกระดับทักษะ</strong></li>
+        <li>จำนวนสมาชิกสูงสุด: <strong style="color:var(--neon);">100 คน</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 8: CTA / End -->
+  <div class="slide slide-title" data-slide="8">
+    <div class="slide-emoji">🏆</div>
+    <h1 class="main-title">มาร่วมเล่นกันเลย!</h1>
+    <p class="subtitle" style="margin-top:12px;font-size:clamp(15px,2vw,22px);">
+      พัฒนาฝีมือ · สร้างมิตรภาพ · ลุ้นแรงก์ขึ้น
+    </p>
+    <div style="display:flex;gap:16px;margin-top:32px;flex-wrap:wrap;justify-content:center;">
+      <a href="index.html" class="cta-btn">🌐 เข้าเว็บสโมสร</a>
+    </div>
+    <p style="color:var(--muted);font-size:13px;margin-top:40px;">
+      🏸 Badminton Club © 2025 — All rights reserved
+    </p>
+  </div>
+
+</div><!-- /slides-wrapper -->
+
+<!-- Slide dots -->
+<div class="slide-dots" id="slideDots"></div>
+
+<!-- Navigation -->
+<div class="nav">
+  <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">← ก่อนหน้า</button>
+  <span class="nav-counter" id="navCounter">1 / 8</span>
+  <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">ถัดไป →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  let current = 0;
+
+  // Build dots
+  const dotsContainer = document.getElementById('slideDots');
+  slides.forEach((_, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dotsContainer.appendChild(d);
+  });
+
+  function goTo(idx) {
+    slides[current].classList.remove('active');
+    slides[current].classList.add('prev');
+    setTimeout(() => slides[current < idx ? current : idx].classList.remove('prev'), 600);
+
+    const oldCurrent = current;
+    current = idx;
+    slides[current].classList.add('active');
+
+    // Update dots
+    document.querySelectorAll('.dot').forEach((d, i) => d.classList.toggle('active', i === current));
+
+    // Update progress bar
+    document.getElementById('slideProgress').style.width = ((current + 1) / totalSlides * 100) + '%';
+
+    // Update counter
+    const counter = `${current + 1} / ${totalSlides}`;
+    document.getElementById('navCounter').textContent = counter;
+    document.getElementById('slideNum').textContent = counter;
+
+    // Update buttons
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === totalSlides - 1;
+
+    setTimeout(() => slides[oldCurrent].classList.remove('prev'), 600);
+  }
+
+  function changeSlide(dir) {
+    const next = current + dir;
+    if (next >= 0 && next < totalSlides) goTo(next);
+  }
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault();
+      changeSlide(1);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      changeSlide(-1);
+    }
+  });
+
+  // Touch/swipe
+  let touchX = 0;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+  document.addEventListener('touchend', e => {
+    const dx = touchX - e.changedTouches[0].clientX;
+    if (Math.abs(dx) > 50) changeSlide(dx > 0 ? 1 : -1);
+  });
+
+  // Init
+  goTo(0);
+</script>
+</body>
+</html>
