@@ -707,6 +707,10 @@ body.x2-active .toast-wrap{bottom:120px}
       <div class="card-title">🏅 Achievements</div>
       <div id="achListContainer"><div class="text-muted" style="text-align:center;padding:16px;font-size:0.83rem">⏳ กำลังโหลด...</div></div>
     </div>
+    <div class="card" id="profileMailboxCard" style="display:none;border-color:rgba(0,217,245,0.3);background:rgba(0,217,245,0.04)">
+      <div class="card-title" style="color:var(--neon2)">📬 กล่องจดหมาย</div>
+      <div id="profileMailboxList"><div class="text-muted" style="text-align:center;padding:12px;font-size:.82rem">⏳ กำลังโหลด...</div></div>
+    </div>
     <div class="card"><div class="card-title">📋 ประวัติของฉัน</div><div id="myHistList"></div></div>
   </main>
 </div>
@@ -4489,19 +4493,60 @@ function openAvatarBuilder(){
   const sv=getCustomAvatar(currentUser.id);
   _avE=sv.emoji||null; _avC=sv.color||null;
   const baseCols=getAvatarColor(currentUser.id);
+  // หา gacha items ของผู้เล่น
+  const plMe = db.players.find(x=>x.id===currentUser.id) || {};
+  const lsGacha = JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}');
+  const myFrame = plMe.gachaFrame || lsGacha.gacha_frame || null;
+  const myNameFx = plMe.gachaName || lsGacha.gacha_name || null;
+  const myGachaEmoji = plMe.gachaEmoji || lsGacha.gacha_emoji || null;
+  // รวม emoji list — gacha emoji ขึ้นก่อน
+  const allEmojis = myGachaEmoji && !AV_EM.includes(myGachaEmoji)
+    ? [myGachaEmoji, ...AV_EM] : AV_EM;
+  // Frame labels
+  const frameLabels = {void:'🌑 Dark Frame',halo:'✨ Light Frame',blaze:'🔥 Blaze',ice:'❄️ Ice',rainbow:'🌈 Rainbow',robot:'⚙️ Robot'};
+  const frameSection = myFrame ? `
+    <div style="font-size:.78rem;color:#c084fc;margin-bottom:7px;font-weight:700">🎰 Gacha Frame ของฉัน</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="av-opt sel" style="border-color:#c084fc;background:rgba(192,132,252,.15);font-size:0.72rem;padding:5px 10px;height:auto">${frameLabels[myFrame]||myFrame}</div>
+      <div class="av-opt" style="font-size:0.72rem;padding:5px 10px;height:auto;color:var(--muted)" onclick="removeGachaFrame()">✕ ถอดกรอบ</div>
+    </div>` : '';
+  const nameFxSection = myNameFx ? `
+    <div style="font-size:.78rem;color:#c084fc;margin-bottom:7px;font-weight:700">🎰 Name Effect ของฉัน</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div class="av-opt sel" style="border-color:#c084fc;background:rgba(192,132,252,.15);font-size:0.72rem;padding:5px 10px;height:auto">${frameLabels[myNameFx]||myNameFx} Name</div>
+      <div class="av-opt" style="font-size:0.72rem;padding:5px 10px;height:auto;color:var(--muted)" onclick="removeGachaName()">✕ ถอดเอฟเฟกต์</div>
+    </div>` : '';
   document.getElementById('avBuilderContent').innerHTML=`
     <div style="display:flex;justify-content:center;margin:0 0 12px">
       <div id="avPreview" style="width:68px;height:68px;border-radius:50%;background:${_avC||baseCols[1]};display:flex;align-items:center;justify-content:center;font-size:${_avE?'1.8rem':'1.2rem'};font-weight:700;border:3px solid var(--glass-border)">${_avE||getInitial(currentUser.name)}</div>
     </div>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:7px">เลือก Emoji</div>
-    <div class="av-builder-grid">${AV_EM.map(e=>`<div class="av-opt${_avE===e?' sel':''}" onclick="pickAvE('${e}',this)">${e}</div>`).join('')}</div>
+    ${frameSection}${nameFxSection}
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:7px">${myGachaEmoji?'🎰 Emoji (Gacha ขึ้นก่อน)':'เลือก Emoji'}</div>
+    <div class="av-builder-grid">${allEmojis.map(e=>`<div class="av-opt${_avE===e?' sel':''}"${myGachaEmoji===e?' style="border-color:#c084fc"':''} onclick="pickAvE('${e}',this)">${e}</div>`).join('')}</div>
     <div style="font-size:.78rem;color:var(--muted);margin-bottom:7px">สีพื้นหลัง</div>
     <div class="av-color-row">${AV_CO.map(c=>`<div class="av-swatch${_avC===c?' sel':''}" style="background:${c}" onclick="pickAvC('${c}',this)"></div>`).join('')}</div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('avatarBuilderModal')">ยกเลิก</button>
-      <button class="btn btn-primary btn-sm" onclick="saveAvatar()">💾 บันทึก Avatar</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAvatar()">💾 บันทึก</button>
     </div>`;
   modal.classList.remove('hidden');
+}
+
+async function removeGachaFrame() {
+  if (!currentUser) return;
+  try { await dbUpdatePlayer(currentUser.id, { gacha_frame: null }); await loadPlayers(); } catch(e) {}
+  const lsKey = 'bmt_gacha_' + currentUser.id;
+  const d = JSON.parse(localStorage.getItem(lsKey)||'{}'); delete d.gacha_frame;
+  localStorage.setItem(lsKey, JSON.stringify(d));
+  toast('ถอดกรอบแล้ว', 'info'); openAvatarBuilder();
+}
+async function removeGachaName() {
+  if (!currentUser) return;
+  try { await dbUpdatePlayer(currentUser.id, { gacha_name: null }); await loadPlayers(); } catch(e) {}
+  const lsKey = 'bmt_gacha_' + currentUser.id;
+  const d = JSON.parse(localStorage.getItem(lsKey)||'{}'); delete d.gacha_name;
+  localStorage.setItem(lsKey, JSON.stringify(d));
+  toast('ถอดเอฟเฟกต์ชื่อแล้ว', 'info'); openAvatarBuilder();
 }
 
 function pickAvE(e,el){
@@ -4564,7 +4609,37 @@ renderProfile = async function() {
   // Hide gacha card if not logged in
   const gcCard = document.getElementById('gachaProfileCard');
   if (gcCard) gcCard.style.display = currentUser ? '' : 'none';
+  // Load mailbox in profile
+  await renderProfileMailbox();
 };
+
+async function renderProfileMailbox() {
+  const card = document.getElementById('profileMailboxCard');
+  const list = document.getElementById('profileMailboxList');
+  if (!card || !list || !currentUser) return;
+  try {
+    const items = await dbGetMailbox(currentUser.id);
+    if (!items || items.length === 0) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    const typeLabel = { coins:'🪙 เหรียญ', elo:'📈 ELO', gacha_frame:'🖼️ Gacha Frame', gacha_emoji:'😎 Emoji' };
+    list.innerHTML = items.map(item => `
+      <div class="mailbox-item">
+        <div class="mailbox-item-icon">${typeLabel[item.item_type]?.split(' ')[0] || '🎁'}</div>
+        <div class="mailbox-item-body">
+          <div class="mailbox-item-title">${typeLabel[item.item_type] || item.item_type}: <strong>${item.item_value}</strong></div>
+          ${item.message ? `<div class="mailbox-item-msg">${item.message}</div>` : ''}
+        </div>
+        <button class="mailbox-item-claim" onclick="claimMailItemProfile(${item.id}, this)">รับ</button>
+      </div>`).join('');
+  } catch(e) { card.style.display = 'none'; }
+}
+
+async function claimMailItemProfile(mailId, btn) {
+  if (btn) btn.disabled = true;
+  await claimMailItem(mailId);
+  await renderProfileMailbox();
+  await renderProfile();
+}
 
 // ═══════════════════════════════════════════════════════════
 // ── FEATURE PACK v4: Divisions, Coins, Gacha, Mailbox,   ──
@@ -4632,50 +4707,97 @@ function closeGachaPull(e) {
   document.getElementById('gachaPullOverlay').classList.remove('show');
 }
 
+// ── Coin localStorage fallback (ใช้เมื่อ DB column ยังไม่มี) ──
+function _lsCoins(pid) { return parseInt(localStorage.getItem('bmt_coins_'+pid)||'0'); }
+function _setLsCoins(pid,v){ localStorage.setItem('bmt_coins_'+pid, Math.max(0,v)); }
+function getEffectiveCoins(pid) {
+  const pl = db.players.find(x=>x.id===pid);
+  const dbC = pl ? (pl.coins||0) : 0;
+  return dbC > 0 ? dbC : _lsCoins(pid);
+}
+
 async function doGachaPull() {
   if (!currentUser) return;
   const pl = db.players.find(x => x.id === currentUser.id);
-  if (!pl || (pl.coins || 0) < 2) { toast('เหรียญไม่พอ (ต้องการ 2🪙)', 'error'); return; }
+  const totalCoins = getEffectiveCoins(currentUser.id);
+  if (!pl || totalCoins < 2) { toast('เหรียญไม่พอ (ต้องการ 2🪙)', 'error'); return; }
   const btn = document.getElementById('gachaPullBtn');
   if (btn) btn.disabled = true;
-  await dbAddCoins(currentUser.id, -2);
+
+  // หัก 2 coins (DB + localStorage fallback)
+  try {
+    await dbAddCoins(currentUser.id, -2);
+  } catch(e) {
+    _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 2);
+  }
   await loadPlayers();
   const plUpdated = db.players.find(x => x.id === currentUser.id);
+
   const roll = Math.random() * 100;
   let result = null;
+
   if (roll < 3) {
+    // ── ULTRA RARE 3% ──
     const ultraRolls = ['void_frame','halo_frame','blaze_name','ice_name'];
     const pick = ultraRolls[Math.floor(Math.random() * 4)];
-    const parts = pick.split('_');
-    const val = parts[0], col = parts[1];
-    const updateData = {};
-    if (col === 'frame') updateData.gacha_frame = val;
-    else updateData.gacha_name = val;
+    const [val, col] = pick.split('_');
+    const updateData = col === 'frame' ? { gacha_frame: val } : { gacha_name: val };
+    let saved = false;
     try {
       await dbUpdatePlayer(currentUser.id, updateData);
       await loadPlayers();
-      closeGachaPull();
-      showGachaReveal(currentUser.name, col === 'frame' ? val : null, col === 'name' ? val : null);
-    } catch(e) { toast('บันทึก Gacha ไม่ได้: ' + e.message, 'error'); }
-    result = { type: 'ultra', text: `✨ ULTRA RARE! ${col === 'frame' ? val + ' Frame' : val + ' Name Effect'}` };
+      saved = true;
+    } catch(e) {
+      // fallback: บันทึกลง localStorage
+      const lsKey = 'bmt_gacha_' + currentUser.id;
+      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
+      if (col === 'frame') lsData.gacha_frame = val; else lsData.gacha_name = val;
+      localStorage.setItem(lsKey, JSON.stringify(lsData));
+      toast('⚠️ บันทึก DB ไม่ได้ บันทึก local ชั่วคราวแทน (รัน SQL ใน Admin)', 'info');
+    }
+    result = { type: 'ultra', val, col, text: `✨ ULTRA RARE! ${col==='frame'?val+' Frame':val+' Name Effect'}` };
+    // แสดงผลลัพธ์ใน pull card ก่อน แล้วค่อย reveal
+    const resultEl = document.getElementById('gachaPullResult');
+    if (resultEl) resultEl.innerHTML = `<div style="font-size:2rem">⭐</div><div class="gacha-pull-value" style="color:#c084fc;font-size:1.1rem">✨ ULTRA RARE!</div><div style="font-size:0.8rem;color:var(--muted);margin-top:4px">${result.text.replace('✨ ULTRA RARE! ','')}</div>`;
+    setTimeout(() => {
+      document.getElementById('gachaPullOverlay').classList.remove('show');
+      showGachaReveal(currentUser.name, col==='frame'?val:null, col==='name'?val:null);
+    }, 1200);
+
   } else if (roll < 10) {
+    // ── REGULAR FRAME 7% ──
     const frame = Math.random() < 0.5 ? 'rainbow' : 'robot';
     try {
       await dbUpdatePlayer(currentUser.id, { gacha_frame: frame });
       await loadPlayers();
-    } catch(e) {}
-    result = { type: 'frame', text: `🎨 Regular Frame: ${frame === 'rainbow' ? '🌈 Rainbow' : '⚙️ Robot'}!`, frame };
+    } catch(e) {
+      const lsKey = 'bmt_gacha_' + currentUser.id;
+      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
+      lsData.gacha_frame = frame;
+      localStorage.setItem(lsKey, JSON.stringify(lsData));
+    }
+    result = { type: 'frame', text: `${frame==='rainbow'?'🌈 Rainbow':'⚙️ Robot'} Frame ได้แล้ว!`, frame };
+
   } else if (roll < 30) {
+    // ── EMOJI 20% ──
     const emoji = GACHA_EMOJIS[Math.floor(Math.random() * GACHA_EMOJIS.length)];
     try {
       await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji });
       await loadPlayers();
-      const sv = getCustomAvatar(currentUser.id);
-      sv.emoji = emoji;
-      localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
-    } catch(e) {}
+    } catch(e) {
+      const lsKey = 'bmt_gacha_' + currentUser.id;
+      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
+      lsData.gacha_emoji = emoji;
+      localStorage.setItem(lsKey, JSON.stringify(lsData));
+    }
+    // บันทึก emoji ลง avatar ด้วย
+    const sv = getCustomAvatar(currentUser.id);
+    sv.emoji = emoji;
+    localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
     result = { type: 'emoji', text: `${emoji} Emoji Avatar ได้แล้ว!`, emoji };
+
   } else {
+    // ── ELO BOOST 70% ──
     const boost = 5 + Math.floor(Math.random() * 11);
     try {
       const basePts = plUpdated ? plUpdated.pts : pl.pts;
@@ -4684,16 +4806,23 @@ async function doGachaPull() {
     } catch(e) {}
     result = { type: 'elo', text: `📈 ELO Boost! +${boost} คะแนน`, boost };
   }
-  const resultEl = document.getElementById('gachaPullResult');
-  if (resultEl && result) {
-    const icons = { ultra: '⭐', frame: '🖼️', emoji: result.emoji || '😎', elo: '📈' };
-    resultEl.innerHTML = `<div class="gacha-pull-result">${icons[result.type]}</div>
-      <div class="gacha-pull-value" style="color:var(--neon)">${result.text}</div>`;
+
+  // แสดงผลลัพธ์ (ยกเว้น ultra rare ที่แสดงแล้ว)
+  if (result && result.type !== 'ultra') {
+    const resultEl = document.getElementById('gachaPullResult');
+    if (resultEl) {
+      const icons = { frame: result.frame==='rainbow'?'🌈':'⚙️', emoji: result.emoji||'😎', elo: '📈' };
+      resultEl.innerHTML = `<div class="gacha-pull-result">${icons[result.type]}</div>
+        <div class="gacha-pull-value" style="color:var(--neon)">${result.text}</div>`;
+    }
   }
-  const plFinal = db.players.find(x => x.id === currentUser.id);
-  const newCoins = plFinal ? (plFinal.coins || 0) : 0;
-  document.getElementById('gachaPullBalance').textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
-  if (btn) btn.disabled = newCoins < 2;
+  const newCoins = getEffectiveCoins(currentUser.id);
+  const balEl = document.getElementById('gachaPullBalance');
+  if (balEl) balEl.textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
+  if (btn && result && result.type !== 'ultra') btn.disabled = newCoins < 2;
+  // อัพเดท profile coin balance
+  const pcEl = document.getElementById('profileCoinBalance');
+  if (pcEl) pcEl.textContent = newCoins;
 }
 
 // ── 4. MAILBOX SYSTEM ─────────────────────────────────────
