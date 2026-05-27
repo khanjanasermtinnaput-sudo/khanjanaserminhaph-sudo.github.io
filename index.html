@@ -703,7 +703,7 @@ body.x2-active .toast-wrap{bottom:120px}
         <div class="text-muted" style="font-size:0.78rem;text-align:center;padding:4px">⏳ กำลังโหลดคลัง...</div>
       </div>
       <div style="margin-top:10px;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:10px;font-size:0.72rem;color:var(--muted);line-height:1.8">
-        <span style="color:#ffd700">70%</span> ELO 5-15 &nbsp;·&nbsp;
+        <span style="color:#ffd700">70%</span> ไม่ได้ของ &nbsp;·&nbsp;
         <span style="color:#60a5fa">20%</span> Emoji โปรไฟล์ &nbsp;·&nbsp;
         <span style="color:#34d399">7%</span> กรอบ Rainbow/Robot &nbsp;·&nbsp;
         <span style="color:#c084fc">3%</span> ✨ Ultra Rare
@@ -894,7 +894,7 @@ END $$;</pre>
       <div class="patch-section">
         <div class="patch-sec-title t-new">🪙 Coin & Gacha Economy (v6.0)</div>
         <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🪙 <strong>Coin System</strong> — ทุกคนที่เล่นได้ 2 เหรียญต่อแมตช์ · Admin เสกเหรียญให้ผู้เล่นได้<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">ดูยอดเหรียญได้ในโปรไฟล์ของตัวเอง</span></div></div>
-        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎰 <strong>Gacha Pull</strong> — ใช้ 2 เหรียญ สุ่ม 1 กล่อง โอกาสรับ:<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">70% ELO 5-15 · 20% Emoji โปรไฟล์ · 7% กรอบ Rainbow/Robot · 3% Ultra Rare (Dark frame / Light frame / Dark name / Light name)</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎰 <strong>Gacha Pull</strong> — ใช้ 2 เหรียญ สุ่ม 1 กล่อง โอกาสรับ:<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">70% ไม่ได้ของ · 20% Emoji โปรไฟล์ · 7% กรอบ Rainbow/Robot · 3% Ultra Rare (Dark frame / Light frame / Dark name / Light name)</span></div></div>
         <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌈 <strong>กรอบ Rainbow</strong> — วงแหวน conic gradient หมุนไม่หยุด</div></div>
         <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚙️ <strong>กรอบ Robot</strong> — โครเมียมเมทัลลิก + เฟืองหมุน ⚙️</div></div>
       </div>
@@ -4570,35 +4570,47 @@ function openAvatarBuilder(){
   const sv=getCustomAvatar(currentUser.id);
   _avE=sv.emoji||null; _avC=sv.color||null;
   const baseCols=getAvatarColor(currentUser.id);
-  // หา gacha items ของผู้เล่น
+  // ดึงข้อมูล gacha ทั้งหมด
   const plMe = db.players.find(x=>x.id===currentUser.id) || {};
   const lsGacha = JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}');
-  const myFrame = plMe.gachaFrame || lsGacha.gacha_frame || null;
-  const myNameFx = plMe.gachaName || lsGacha.gacha_name || null;
+  const myFrame  = plMe.gachaFrame || lsGacha.gacha_frame || null;
+  const myNameFx = plMe.gachaName  || lsGacha.gacha_name  || null;
   const myGachaEmoji = plMe.gachaEmoji || lsGacha.gacha_emoji || null;
-  // รวม emoji list — gacha emoji ขึ้นก่อน
-  const allEmojis = myGachaEmoji && !AV_EM.includes(myGachaEmoji)
-    ? [myGachaEmoji, ...AV_EM] : AV_EM;
-  // Frame labels
-  const frameLabels = {void:'🌑 Dark Frame',halo:'✨ Light Frame',blaze:'🔥 Blaze',ice:'❄️ Ice',rainbow:'🌈 Rainbow',robot:'⚙️ Robot'};
-  const frameSection = myFrame ? `
-    <div style="font-size:.78rem;color:#c084fc;margin-bottom:7px;font-weight:700">🎰 Gacha Frame ของฉัน</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <div class="av-opt sel" style="border-color:#c084fc;background:rgba(192,132,252,.15);font-size:0.72rem;padding:5px 10px;height:auto">${frameLabels[myFrame]||myFrame}</div>
-      <div class="av-opt" style="font-size:0.72rem;padding:5px 10px;height:auto;color:var(--muted)" onclick="removeGachaFrame()">✕ ถอดกรอบ</div>
+  // ดึง inventory ทั้งหมด (สะสม)
+  const inv = getGachaInventory(currentUser.id);
+  const allFrames = [...new Set([...(inv.frames||[]), ...(myFrame?[myFrame]:[])])];
+  const allNames  = [...new Set([...(inv.names||[]),  ...(myNameFx?[myNameFx]:[])])];
+  const allInvEmojis = [...new Set([...(inv.emojis||[]), ...(myGachaEmoji?[myGachaEmoji]:[])])];
+  const frameLabels = {void:'🌑 Dark',halo:'✨ Light',blaze:'🔥 Blaze',ice:'❄️ Ice',rainbow:'🌈 Rainbow',robot:'⚙️ Robot'};
+  // Section กรอบ — แสดงทุก item ที่สะสมไว้
+  const frameSection = allFrames.length ? `
+    <div style="font-size:.75rem;color:#c084fc;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px">🖼️ กรอบสะสม <span style="font-size:.65rem;color:var(--muted)">(${allFrames.length})</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${allFrames.map(f=>{
+        const active=myFrame===f;
+        return `<div onclick="equipGachaFrame('${f}')" style="padding:5px 11px;border-radius:20px;cursor:pointer;font-size:0.72rem;font-family:inherit;border:1px solid ${active?'rgba(168,85,247,0.8)':'rgba(168,85,247,0.3)'};background:${active?'rgba(168,85,247,0.2)':'rgba(168,85,247,0.07)'};color:${active?'#c084fc':'var(--muted)'};transition:all .2s">${frameLabels[f]||f}${active?' ✓':''}</div>`;
+      }).join('')}
+      ${myFrame?`<div onclick="removeGachaFrame()" style="padding:5px 10px;border-radius:20px;cursor:pointer;font-size:0.7rem;font-family:inherit;border:1px solid rgba(255,71,87,0.3);background:rgba(255,71,87,0.07);color:var(--muted);transition:all .2s">✕ ถอด</div>`:''}
     </div>` : '';
-  const nameFxSection = myNameFx ? `
-    <div style="font-size:.78rem;color:#c084fc;margin-bottom:7px;font-weight:700">🎰 Name Effect ของฉัน</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <div class="av-opt sel" style="border-color:#c084fc;background:rgba(192,132,252,.15);font-size:0.72rem;padding:5px 10px;height:auto">${frameLabels[myNameFx]||myNameFx} Name</div>
-      <div class="av-opt" style="font-size:0.72rem;padding:5px 10px;height:auto;color:var(--muted)" onclick="removeGachaName()">✕ ถอดเอฟเฟกต์</div>
+  // Section name effect
+  const nameSection = allNames.length ? `
+    <div style="font-size:.75rem;color:#c084fc;font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px">✨ Name Effect สะสม <span style="font-size:.65rem;color:var(--muted)">(${allNames.length})</span></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${allNames.map(n=>{
+        const active=myNameFx===n;
+        return `<div onclick="equipGachaName('${n}')" style="padding:5px 11px;border-radius:20px;cursor:pointer;font-size:0.72rem;font-family:inherit;border:1px solid ${active?'rgba(168,85,247,0.8)':'rgba(168,85,247,0.3)'};background:${active?'rgba(168,85,247,0.2)':'rgba(168,85,247,0.07)'};color:${active?'#c084fc':'var(--muted)'};transition:all .2s">${frameLabels[n]||n} Name${active?' ✓':''}</div>`;
+      }).join('')}
+      ${myNameFx?`<div onclick="removeGachaName()" style="padding:5px 10px;border-radius:20px;cursor:pointer;font-size:0.7rem;font-family:inherit;border:1px solid rgba(255,71,87,0.3);background:rgba(255,71,87,0.07);color:var(--muted);transition:all .2s">✕ ถอด</div>`:''}
     </div>` : '';
+  // รวม emoji — gacha emojis ขึ้นก่อน
+  const baseOnlyEmojis = AV_EM.filter(e=>!allInvEmojis.includes(e));
+  const allEmojis = [...allInvEmojis, ...baseOnlyEmojis];
   document.getElementById('avBuilderContent').innerHTML=`
     <div id="avPreviewWrap" style="display:flex;flex-direction:column;align-items:center;margin:0 0 16px;gap:0"></div>
-    ${frameSection}${nameFxSection}
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:7px">${myGachaEmoji?'🎰 Emoji (Gacha ขึ้นก่อน)':'เลือก Emoji'}</div>
-    <div class="av-builder-grid">${allEmojis.map(e=>`<div class="av-opt${_avE===e?' sel':''}"${myGachaEmoji===e?' style="border-color:#c084fc"':''} onclick="pickAvE('${e}',this)">${e}</div>`).join('')}</div>
-    <div style="font-size:.78rem;color:var(--muted);margin-bottom:7px">สีพื้นหลัง</div>
+    ${frameSection}${nameSection}
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px">${allInvEmojis.length?`😎 Emoji สะสม (${allInvEmojis.length}) + ค่าเริ่มต้น`:'เลือก Emoji'}</div>
+    <div class="av-builder-grid">${allEmojis.map(e=>`<div class="av-opt${_avE===e?' sel':''}${allInvEmojis.includes(e)?' style="border-color:rgba(168,85,247,0.5)"':''}" onclick="pickAvE('${e}',this)">${e}</div>`).join('')}</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:6px">สีพื้นหลัง</div>
     <div class="av-color-row">${AV_CO.map(c=>`<div class="av-swatch${_avC===c?' sel':''}" style="background:${c}" onclick="pickAvC('${c}',this)"></div>`).join('')}</div>
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('avatarBuilderModal')">ยกเลิก</button>
