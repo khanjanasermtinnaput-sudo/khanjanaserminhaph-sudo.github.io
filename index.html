@@ -244,6 +244,18 @@ body.x2-active .toast-wrap{bottom:120px}
 @keyframes gNameIceShimmer{0%{background-position:-250% center}100%{background-position:250% center}}
 @keyframes gNameIceGlow{0%,100%{filter:drop-shadow(0 0 4px rgba(0,200,255,.8)) drop-shadow(0 0 10px rgba(0,150,220,.4))}50%{filter:drop-shadow(0 0 10px rgba(100,240,255,1)) drop-shadow(0 0 22px rgba(0,180,255,.7)) drop-shadow(0 0 38px rgba(0,120,200,.4))}}
 .gn-ice{background:linear-gradient(90deg,#0088cc 0%,#00ccff 20%,#aaeeff 40%,#ffffff 50%,#aaeeff 60%,#00ccff 80%,#0088cc 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameIceShimmer 3.5s linear infinite,gNameIceGlow 2s ease-in-out infinite}
+/* ══════ SUPER 1000 CHAMPION PROFILE FRAME ══════ */
+/* [NEW] Champion animated gold border frame */
+@keyframes champSpin{to{transform:rotate(360deg)}}
+@keyframes champPulse{0%,100%{opacity:.65;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes champBadgePulse{0%,100%{box-shadow:0 0 8px rgba(255,215,0,.6),0 0 20px rgba(255,165,0,.3)}50%{box-shadow:0 0 16px rgba(255,255,200,.9),0 0 40px rgba(255,215,0,.6),0 0 70px rgba(255,140,0,.3)}}
+.gf-champion::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#ffd700 0%,#fff8a0 10%,#ff8c00 20%,#ffd700 30%,#fffce0 40%,#ffaa00 50%,#ffd700 60%,#ffe566 70%,#ff6a00 78%,#ffd700 86%,#fff4c0 93%,#ffd700 100%);animation:champSpin 3s linear infinite}
+.gf-champion::after{content:'';position:absolute;inset:-14px;border-radius:50%;z-index:-2;background:conic-gradient(from 0deg,transparent 0%,rgba(255,200,0,.55) 7%,transparent 14%,transparent 48%,rgba(255,215,0,.65) 55%,transparent 62%);animation:champSpin 2s linear infinite reverse;filter:blur(5px)}
+.gf-champion .gf-glow{position:absolute;inset:-22px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 32%,rgba(255,200,0,.22) 58%,rgba(255,160,0,.14) 78%,transparent);animation:champPulse 2s ease-in-out infinite}
+/* [NEW] Champion badge in profile */
+.champion-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;background:linear-gradient(135deg,rgba(255,215,0,.15),rgba(255,140,0,.08));border:1px solid rgba(255,215,0,.55);font-size:0.78rem;font-weight:800;color:#ffd700;letter-spacing:.06em;animation:champBadgePulse 2.5s ease-in-out infinite}
+/* [NEW] Champion crown in leaderboard */
+.lb-champion-crown{display:inline-flex;align-items:center;gap:2px;font-size:.68rem;color:#ffd700;margin-left:4px;animation:champPulse 2.5s ease-in-out infinite;vertical-align:middle}
 /* lite/light mode: keep frame animations, fix name gradient colors for light bg */
 @keyframes gNameVoidGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(120,0,180,.9)) drop-shadow(0 0 10px rgba(80,0,140,.5))}50%{filter:drop-shadow(0 0 10px rgba(160,0,220,1)) drop-shadow(0 0 22px rgba(120,0,180,.7))}}
 @keyframes gNameHaloGlowLight{0%,100%{filter:drop-shadow(0 0 4px rgba(150,100,0,.8)) drop-shadow(0 0 10px rgba(120,80,0,.4))}50%{filter:drop-shadow(0 0 8px rgba(180,130,0,1)) drop-shadow(0 0 18px rgba(150,100,0,.7))}}
@@ -1564,11 +1576,13 @@ function normalizePlayer(p) {
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
   const HOF_PFX = '__hof:';
+  const S1000_PFX = '__s1000:'; // [NEW] Super 1000 champion title count
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
-  const cachEntry = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
+  const cachEntry    = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
   const catalogEntry = pt.find(t => typeof t === 'string' && t.startsWith(CATALOG_PFX));
-  const hofEntry = pt.find(t => typeof t === 'string' && t.startsWith(HOF_PFX));
-  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX))));
+  const hofEntry     = pt.find(t => typeof t === 'string' && t.startsWith(HOF_PFX));
+  const s1000Entry   = pt.find(t => typeof t === 'string' && t.startsWith(S1000_PFX)); // [NEW]
+  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX))));
   let ca = [];
   if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
   if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
@@ -1577,6 +1591,9 @@ function normalizePlayer(p) {
   if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
   let hofShared = null;
   if (hofEntry) { try { hofShared = JSON.parse(hofEntry.slice(HOF_PFX.length)); } catch(e) {} }
+  // [NEW] Parse Super 1000 title count from prime_titles
+  let super1000Titles = 0;
+  if (s1000Entry) { try { super1000Titles = Math.max(0, parseInt(s1000Entry.slice(S1000_PFX.length)) || 0); } catch(e) {} }
   // ── localStorage gacha fallback (ถ้า DB column ยังไม่มี) ──
   let _lsGacha = {};
   try { _lsGacha = JSON.parse(localStorage.getItem('bmt_gacha_' + p.id) || '{}'); } catch(e) {}
@@ -1584,7 +1601,7 @@ function normalizePlayer(p) {
   const _gName  = p.gacha_name  || _lsGacha.gacha_name  || null;
   const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv };
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles }; // [NEW] super1000Titles added
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
@@ -1593,6 +1610,7 @@ function buildPlayerPrimeTitles(player, opts) {
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
   const HOF_PFX = '__hof:';
+  const S1000_PFX = '__s1000:'; // [NEW] Super 1000 champion count
   const pt = [...(player.primeTitles || [])];
   const awards = opts.awards !== undefined ? opts.awards : (player.customAch || []);
   if (awards && awards.length > 0) pt.push(CACH_PFX + JSON.stringify(awards));
@@ -1600,6 +1618,9 @@ function buildPlayerPrimeTitles(player, opts) {
   if (catalog && catalog.length > 0) pt.push(CATALOG_PFX + JSON.stringify(catalog));
   const hof = opts.hof !== undefined ? opts.hof : player._hofShared;
   if (hof && hof.length > 0) pt.push(HOF_PFX + JSON.stringify(hof));
+  // [NEW] Encode Super 1000 title count
+  const s1000 = opts.s1000 !== undefined ? opts.s1000 : (player.super1000Titles || 0);
+  if (s1000 > 0) pt.push(S1000_PFX + s1000);
   return JSON.stringify(pt);
 }
 // ── HALL OF FAME ─────────────────────────────────────────────
@@ -1890,7 +1911,7 @@ function lbRenderBoard(data, animate = true) {
           ${rank.id==='king'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
         </div>
         <div>
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${(p.super1000Titles||0)>0 ? ` <span class="lb-champion-crown">👑×${p.super1000Titles}</span>` : ''}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${getRankLabel(p.pts,p.id)}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
         </div>
       </div>
@@ -2432,8 +2453,9 @@ async function renderAdmin() {
       return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${getRankLabel(p.pts,p.id)}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
     }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
-    renderCachAdmin();
-    migrateCachToSupabase();
+    renderCachAdmin(); // [FIXED] render immediately with cached data
+    await migrateCachToSupabase(); // [FIXED] await migration so catalog is fully synced
+    renderCachAdmin(); // [FIXED] re-render after migration to pick up any newly synced items
   } catch(e) { console.error(e); }
 }
 
@@ -3325,6 +3347,9 @@ function renderPrimeSSTitles(player) {
 
 // ── CUSTOM ACHIEVEMENT SYSTEM ──────────────────────────────────
 const CACH_KEY = 'badminton_cach_catalog';
+const CACH_KEY_BAK = 'badminton_cach_catalog_bak'; // [NEW] backup key for robustness
+
+// [FIXED] getCachCatalog — reads from 4 sources for maximum resilience
 function getCachCatalog() {
   const out = [];
   const seen = new Set();
@@ -3334,20 +3359,27 @@ function getCachCatalog() {
     const holder = [...db.players].sort((a,b)=>a.id-b.id).find(p => p._catalogShared && Array.isArray(p._catalogShared) && p._catalogShared.length);
     if (holder) for (const item of holder._catalogShared) add(item);
   }
-  // 2. localStorage (this device)
+  // 2. Primary localStorage key
   try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY)||'[]')) add(item); } catch(e) {}
-  // 3. Reconstruct from any awards already given out (backup)
+  // 3. [NEW] Backup localStorage key (in case primary was overwritten or cleared)
+  try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY_BAK)||'[]')) add(item); } catch(e) {}
+  // 4. Reconstruct from any awards already given out (last-resort backup)
   if (typeof db !== 'undefined' && db.players) {
     for (const p of db.players) {
       for (const a of (p.customAch||[])) {
-        if (a && a.id) add({ id:a.id, icon:a.icon||'🏆', title:a.title||'', desc:a.desc||'', frame:a.frame||'gold' });
+        if (a && a.id && !a.id.startsWith('sys_')) // skip system achievements
+          add({ id:a.id, icon:a.icon||'🏆', title:a.title||'', desc:a.desc||'', frame:a.frame||'gold' });
       }
     }
   }
   return out;
 }
+
+// [FIXED] saveCachCatalog — writes to both localStorage keys, logs errors visibly
 async function saveCachCatalog(c) {
-  localStorage.setItem(CACH_KEY, JSON.stringify(c));
+  const json = JSON.stringify(c);
+  localStorage.setItem(CACH_KEY, json);
+  localStorage.setItem(CACH_KEY_BAK, json); // [NEW] dual-write for resilience
   // Sync to Supabase via lowest-ID admin (or lowest-ID player) prime_titles
   if (typeof db === 'undefined' || !db.players || !db.players.length) return;
   const admins = db.players.filter(p => p.isAdmin === 1);
@@ -3357,7 +3389,10 @@ async function saveCachCatalog(c) {
     holder._catalogShared = c;
     const ptStr = buildPlayerPrimeTitles(holder, { catalog: c });
     await dbUpdatePlayer(holder.id, { prime_titles: ptStr });
-  } catch(e) { /* silent */ }
+  } catch(e) {
+    // [FIXED] Log warning instead of silent fail — helps debugging
+    console.warn('[Achievement] Supabase sync failed (prime_titles column may be missing):', e.message);
+  }
 }
 
 const CACH_FRAME_COLOR = { gold:'#ffd700', silver:'#c8c8c8', bronze:'#cd7f32' };
@@ -3711,10 +3746,44 @@ const ACHIEVEMENTS_DEF = [
   }
 ];
 
+// [NEW] Tournament achievement definitions — check via customAch (awarded by admin on declare champion)
+const TOURNAMENT_ACHIEVEMENTS_DEF = [
+  {
+    id: 'sys_tour_regular',
+    icon: '🏆', title: 'Tournament Champion',
+    desc: 'ชนะ Regular Tournament',
+    color: '#cd7f32', glow: 'rgba(205,127,50,0.5)',
+    check: (p) => (p.customAch || []).some(a => a.id === 'sys_tour_regular')
+  },
+  {
+    id: 'sys_tour_s500',
+    icon: '🥈', title: 'Super 500 Champion',
+    desc: 'ชนะ Super 500 Tournament',
+    color: '#c8c8c8', glow: 'rgba(192,192,192,0.5)',
+    check: (p) => (p.customAch || []).some(a => a.id === 'sys_tour_s500')
+  },
+  {
+    id: 'sys_tour_s1000',
+    icon: '👑', title: 'Super 1000 Champion',
+    desc: 'ชนะ Super 1000 Tournament',
+    color: '#ffd700', glow: 'rgba(255,215,0,0.6)',
+    check: (p) => (p.customAch || []).some(a => a.id === 'sys_tour_s1000')
+  },
+  {
+    id: 'sys_tour_doubles',
+    icon: '⚔️', title: 'Doubles Champion',
+    desc: 'ชนะ Tournament โหมด 2v2',
+    color: '#8a9fff', glow: 'rgba(138,159,255,0.5)',
+    check: (p) => (p.customAch || []).some(a => a.id === 'sys_tour_doubles')
+  },
+];
+
 function getAchievements(playerId) {
   const p = db.players.find(x => x.id === playerId);
   if (!p) return [];
-  return ACHIEVEMENTS_DEF.map(ach => ({
+  // [NEW] Merge built-in ACHIEVEMENTS_DEF + tournament achievements
+  const allDefs = [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF];
+  return allDefs.map(ach => ({
     ...ach,
     unlocked: ach.check(p, db.players, db.matches)
   }));
@@ -5330,6 +5399,168 @@ async function cancelTournament(tournamentId) {
   } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
 
+// ════════════════════════════════════════════════════════════
+// [NEW] TOURNAMENT REWARD & CHAMPION DECLARATION SYSTEM
+// ════════════════════════════════════════════════════════════
+
+// Coin rewards per tournament tier
+const TOUR_COIN_REWARDS = { 'Regular': 100, 'Super 500': 500, 'Super 1000': 1000 };
+
+// System achievement templates (auto-awarded, stored as customAch)
+const TOUR_ACH_DEFS = {
+  regular:  { id:'sys_tour_regular',  icon:'🏆', title:'Tournament Champion',  desc:'ชนะ Regular Tournament',     frame:'bronze' },
+  super500: { id:'sys_tour_s500',     icon:'🥈', title:'Super 500 Champion',    desc:'ชนะ Super 500 Tournament',   frame:'silver' },
+  super1000:{ id:'sys_tour_s1000',    icon:'👑', title:'Super 1000 Champion',   desc:'ชนะ Super 1000 Tournament',  frame:'gold'   },
+  doubles:  { id:'sys_tour_doubles',  icon:'⚔️', title:'Doubles Champion',      desc:'ชนะ Tournament โหมด 2v2',   frame:'gold'   },
+};
+
+// ── [NEW] Get Super 1000 title count from player ──
+function getS1000Titles(player) { return player?.super1000Titles || 0; }
+
+// ── [NEW] Increment Super 1000 titles counter and save to DB ──
+async function incrementS1000Titles(playerId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  pl.super1000Titles = (pl.super1000Titles || 0) + 1;
+  try {
+    const ptStr = buildPlayerPrimeTitles(pl, { s1000: pl.super1000Titles });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+  } catch(e) { console.warn('[S1000] save failed:', e.message); }
+}
+
+// ── [NEW] Auto-award a system tournament achievement to player(s) ──
+async function awardTournamentAchievement(playerIds, achDef) {
+  for (const pid of playerIds) {
+    const pl = db.players.find(x => x.id === pid);
+    if (!pl) continue;
+    let cur = [...(pl.customAch || [])];
+    if (cur.some(a => a.id === achDef.id)) continue; // already has this achievement
+    cur.push({ id: achDef.id, icon: achDef.icon, title: achDef.title, desc: achDef.desc, frame: achDef.frame });
+    pl.customAch = cur;
+    // Save to localStorage + Supabase
+    try { saveCachAwardLS(pid, cur); } catch(e) {}
+    try {
+      const ptStr = buildPlayerPrimeTitles(pl, { awards: cur });
+      await dbUpdatePlayer(pid, { prime_titles: ptStr });
+    } catch(e) {
+      try { await dbUpdatePlayer(pid, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
+    }
+  }
+}
+
+// ── [NEW] Show "ประกาศแชมป์" confirmation modal ──
+function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
+  document.getElementById('tChampModal')?.remove();
+  const realGroups = getTournamentGroups(groups);
+  const modal = document.createElement('div');
+  modal.id = 'tChampModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
+
+  // Build winner options
+  let winnerOpts = '';
+  if (matchType === '2v2') {
+    for (const grp of realGroups) {
+      if (!grp.teams) continue;
+      for (const team of grp.teams) {
+        const label = getTeamDisplayName(team, db.players);
+        winnerOpts += `<option value="${team.playerIds[0]}" data-grp="${grp.letter}">${label} (Group ${grp.letter})</option>`;
+      }
+    }
+  } else {
+    for (const grp of realGroups) {
+      for (const pid of (grp.playerIds || [])) {
+        const pl = db.players.find(x => x.id === pid);
+        if (pl) winnerOpts += `<option value="${pl.id}">${pl.name} (Group ${grp.letter})</option>`;
+      }
+    }
+  }
+
+  const coins = TOUR_COIN_REWARDS[tierName] || 100;
+  const tierColor = tierName === 'Super 1000' ? '#ffd700' : tierName === 'Super 500' ? '#c8c8c8' : '#cd7f32';
+
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
+      <div style="font-size:2rem;margin-bottom:6px">👑</div>
+      <div style="font-size:1rem;font-weight:700;margin-bottom:4px">ประกาศแชมป์</div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px">
+        <span style="color:${tierColor};font-weight:700">${tierName}</span> · รางวัล
+        <span style="color:#ffd700;font-weight:700">+${coins} 🪙</span> ต่อคน
+      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;text-align:left">เลือกผู้ชนะ:</div>
+      <select class="inp" id="tChampWinnerSel" style="margin-bottom:14px;font-size:0.82rem">${winnerOpts}</select>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.82rem"
+          onclick="document.getElementById('tChampModal').remove()">ปิด</button>
+        <button class="btn" style="flex:1;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-size:0.82rem"
+          onclick="executeDeclareChampion(${tournamentId},'${tierName}','${matchType}',${JSON.stringify(groups).replace(/'/g,'&#39;')})">
+          👑 ยืนยัน</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// ── [NEW] Execute champion declaration: award coins + achievements ──
+async function executeDeclareChampion(tournamentId, tierName, matchType, groups) {
+  const winnerAnchorId = parseInt(document.getElementById('tChampWinnerSel')?.value);
+  document.getElementById('tChampModal')?.remove();
+  if (!winnerAnchorId) return toast('กรุณาเลือกผู้ชนะ', 'error');
+
+  const coins = TOUR_COIN_REWARDS[tierName] || 100;
+  let winnerPlayerIds = [];
+
+  if (matchType === '2v2') {
+    // Find full team from anchor
+    const team = getTeamByAnchor(groups, winnerAnchorId);
+    winnerPlayerIds = team?.playerIds || [winnerAnchorId];
+  } else {
+    winnerPlayerIds = [winnerAnchorId];
+  }
+
+  try {
+    toast('กำลังมอบรางวัล...', 'info');
+
+    // 1. Award coins to all winners
+    for (const pid of winnerPlayerIds) {
+      await dbAddCoins(pid, coins);
+      const pl = db.players.find(x => x.id === pid);
+      if (pl) await dbSendMail(pid, 'coins', String(coins),
+        `🏆 ${tierName} Champion! รางวัล +${coins} 🪙`);
+    }
+
+    // 2. Award tournament achievement badge
+    const achKey = tierName === 'Super 1000' ? 'super1000' : tierName === 'Super 500' ? 'super500' : 'regular';
+    await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS[achKey]);
+
+    // 3. Award Doubles achievement if 2v2
+    if (matchType === '2v2') {
+      await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles);
+    }
+
+    // 4. Super 1000: increment title counter (for champion profile)
+    if (tierName === 'Super 1000') {
+      for (const pid of winnerPlayerIds) {
+        await incrementS1000Titles(pid);
+      }
+    }
+
+    // 5. Mark tournament as completed in DB
+    try {
+      await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
+    } catch(e) { /* status update is best-effort */ }
+
+    // 6. Reload players so profile and LB reflect new data
+    await loadPlayers();
+
+    // 7. Show winner names in toast
+    const winnerNames = winnerPlayerIds.map(pid => db.players.find(x => x.id === pid)?.name || '?').join(' & ');
+    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${coins} 🪙 each`, 'success');
+
+    renderTournamentSection();
+
+  } catch(e) { toast('มอบรางวัลไม่ได้: ' + e.message, 'error'); }
+}
+
 // ── [NEW] Toggle Group B section in 2v2 create form ──
 function toggle2v2GroupB(show) {
   const el = document.getElementById('t2v2_groupB_section');
@@ -5428,6 +5659,13 @@ async function renderTournamentSection() {
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
         // Escape single quotes in tournament name for inline onclick
         const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const isCompleted = t.status === 'completed';
+        // [NEW] Champion button shown only for active tournaments
+        const champBtn = isCompleted
+          ? `<span style="font-size:0.72rem;color:var(--neon);font-weight:700">✅ จบแล้ว</span>`
+          : `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
+               onclick="confirmDeclareChampion(${t.id},'${t.tier}','${matchType}',${JSON.stringify(groups).replace(/\\/g,'\\\\').replace(/'/g,"\\'")})"
+             >👑 ประกาศแชมป์</button>`;
         html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
           <!-- [NEW] Cancel button — top-right of each tournament card -->
           <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px"
@@ -5437,6 +5675,8 @@ async function renderTournamentSection() {
             <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span>
           </div>
           ${await renderTournamentBracket(t, groups)}
+          <!-- [NEW] Declare champion button at bottom of bracket -->
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:flex-end">${champBtn}</div>
         </div>`;
       }
     }
@@ -5824,7 +6064,7 @@ async function adminSendMail() {
   } catch(e) { toast('ส่งไม่ได้: ' + e.message, 'error'); }
 }
 
-// ── PATCH openPlayerProfile for Best Day + Coins + Gacha ─
+// ── PATCH openPlayerProfile for Best Day + Coins + Gacha + Champion ─
 const _openPlayerProfileV4 = openPlayerProfile;
 openPlayerProfile = function(playerId) {
   _openPlayerProfileV4(playerId);
@@ -5845,6 +6085,26 @@ openPlayerProfile = function(playerId) {
         dayDiv.className = 'pp2-stat';
         dayDiv.innerHTML = `<div class="pp2-stat-n" style="font-size:0.85rem;color:var(--neon2)">${bestDay}</div><div class="pp2-stat-l">วันชนะบ่อยสุด</div>`;
         statsEl.appendChild(dayDiv);
+      }
+      // [NEW] Super 1000 Titles stat
+      const s1000 = getS1000Titles(p);
+      if (s1000 > 0) {
+        const s1kDiv = document.createElement('div');
+        s1kDiv.className = 'pp2-stat';
+        s1kDiv.innerHTML = `<div class="pp2-stat-n" style="color:#ffd700">${s1000}</div><div class="pp2-stat-l">S1000 Titles</div>`;
+        statsEl.appendChild(s1kDiv);
+      }
+    }
+    // [NEW] Super 1000 Champion badge — injected below pp2-hero if qualifying
+    const s1000 = getS1000Titles(p);
+    if (s1000 > 0 && !sheet.querySelector('.champion-badge-wrap')) {
+      const hero = sheet.querySelector('.pp2-hero');
+      if (hero) {
+        const badgeDiv = document.createElement('div');
+        badgeDiv.className = 'champion-badge-wrap';
+        badgeDiv.style.cssText = 'padding:0 20px 10px;display:flex;justify-content:center';
+        badgeDiv.innerHTML = `<div class="champion-badge">👑 SUPER 1000 CHAMPION &nbsp;<span style="opacity:.75">×${s1000}</span></div>`;
+        hero.after(badgeDiv);
       }
     }
     if (currentUser && currentUser.id === playerId) {
