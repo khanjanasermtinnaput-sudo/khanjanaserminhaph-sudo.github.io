@@ -62,6 +62,9 @@ body.x2-active .toast-wrap{bottom:120px}
 #profileCard.king-profile > *{position:relative;z-index:1}
 .king-banner{text-align:center;font-family:'Rajdhani','Sarabun',sans-serif;font-size:0.88rem;font-weight:800;letter-spacing:0.3em;padding:4px 0 10px;background:linear-gradient(90deg,#b8860b,#ffd700,#fff4a3,#ffd700,#b8860b);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:kingTitleShine 3s linear infinite;margin:-2px 0 4px}
 @keyframes kingTitleShine{to{background-position:200% center}}
+@keyframes lbKingThroneGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,0.45),0 4px 20px rgba(255,200,0,0.18),inset 0 1px 0 rgba(255,215,0,0.12)}50%{box-shadow:0 0 0 1px rgba(255,215,0,0.8),0 6px 32px rgba(255,200,0,0.35),inset 0 1px 0 rgba(255,215,0,0.22)}}
+.lb-king-throne{border-color:rgba(255,215,0,0.55)!important;background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,170,0,0.04))!important;animation:lbKingThroneGlow 2.4s ease-in-out infinite!important}
+[data-style="lite"] .lb-king-throne{animation:none!important;border-color:rgba(255,215,0,0.6)!important;background:rgba(255,215,0,0.05)!important;box-shadow:none!important}
 #profileCard.king-profile .profile-avatar{position:relative;box-shadow:0 0 0 3px #ffd700,0 0 25px rgba(255,215,0,0.6);animation:kingAvatarPulse 2.5s ease-in-out infinite}
 #profileCard.king-profile .profile-avatar::after{content:'👑';position:absolute;top:-22px;left:50%;font-size:1.6rem;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.5s ease-in-out infinite;z-index:5;line-height:1}
 @keyframes kingCrownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(-8deg)}50%{transform:translateX(-50%) translateY(-5px) rotate(8deg)}}
@@ -263,29 +266,41 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .gn-void,[data-theme="light"] .gn-void{background:linear-gradient(135deg,#8800cc 0%,#550099 25%,#cc0055 55%,#330066 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameVoidGlitch 5s ease-in-out infinite,gNameVoidFlicker 5s ease-in-out infinite,gNameVoidGlowLight 2s ease-in-out infinite}
 [data-style="lite"] .gn-halo,[data-theme="light"] .gn-halo{background:linear-gradient(90deg,#7a5500 0%,#aa7700 15%,#cc9900 30%,#997700 45%,#bb8800 50%,#997700 55%,#cc9900 70%,#aa7700 85%,#7a5500 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameHaloShimmer 3s linear infinite,gNameHaloGlowLight 2s ease-in-out infinite}
 [data-style="lite"] .gn-ice,[data-theme="light"] .gn-ice{background:linear-gradient(90deg,#005599 0%,#0077bb 20%,#0099cc 40%,#006699 50%,#0099cc 60%,#0077bb 80%,#005599 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameIceShimmer 3.5s linear infinite,gNameIceGlowLight 2s ease-in-out infinite}
-/* ══════ KING SOLAR CROWN FRAME (Unique Rank) ══════ */
-@keyframes solarSpin{to{transform:rotate(360deg)}}
-@keyframes solarPulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.15);opacity:1}}
-@keyframes solarRayPulse{0%,100%{opacity:.6}50%{opacity:1}}
-@keyframes solarNameShimmer{0%{background-position:-300% center}100%{background-position:300% center}}
-@keyframes solarNameGlow{0%,100%{filter:drop-shadow(0 0 6px rgba(255,215,0,1)) drop-shadow(0 0 18px rgba(255,160,0,.7))}50%{filter:drop-shadow(0 0 16px rgba(255,255,200,1)) drop-shadow(0 0 36px rgba(255,200,0,.95)) drop-shadow(0 0 60px rgba(255,140,0,.6))}}
-@keyframes solarNameGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(180,100,0,.9)) drop-shadow(0 0 14px rgba(150,80,0,.6))}50%{filter:drop-shadow(0 0 10px rgba(210,130,0,1)) drop-shadow(0 0 28px rgba(180,100,0,.8))}}
-.gf-solar{background:radial-gradient(circle at 50% 50%,#2a1800 0%,#0d0800 100%)}
-.gf-solar::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#ffd700 0%,#fff8a0 8%,#ff8c00 16%,#ffd700 24%,#fff4c0 32%,#ffaa00 40%,#ffd700 48%,#ffe566 56%,#ff6a00 64%,#ffd700 72%,#fffce0 80%,#ffbb00 88%,#ffd700 100%);animation:solarSpin 4s linear infinite}
-.gf-solar::after{content:'';position:absolute;inset:-14px;border-radius:50%;z-index:-2;background:conic-gradient(from 0deg,transparent 0%,rgba(255,200,0,0.6) 6%,transparent 12%,transparent 46%,rgba(255,215,0,0.7) 52%,transparent 58%);animation:solarSpin 3s linear infinite reverse;filter:blur(4px)}
-.gf-solar .gf-glow{position:absolute;inset:-20px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 35%,rgba(255,200,0,0.18) 60%,transparent 80%);animation:solarPulse 2.5s ease-in-out infinite}
-.gf-solar .gf-ray{position:absolute;top:50%;left:50%;width:3px;transform-origin:0 0;border-radius:2px;z-index:-2;animation:solarRayPulse 1.8s ease-in-out infinite}
-.gf-solar .gf-ray:nth-child(2){height:22px;background:linear-gradient(rgba(255,215,0,.9),transparent);transform:rotate(0deg) translateY(-68px)}
-.gf-solar .gf-ray:nth-child(3){height:18px;background:linear-gradient(rgba(255,180,0,.7),transparent);transform:rotate(45deg) translateY(-68px);animation-delay:.23s}
-.gf-solar .gf-ray:nth-child(4){height:22px;background:linear-gradient(rgba(255,215,0,.9),transparent);transform:rotate(90deg) translateY(-68px);animation-delay:.45s}
-.gf-solar .gf-ray:nth-child(5){height:18px;background:linear-gradient(rgba(255,200,0,.7),transparent);transform:rotate(135deg) translateY(-68px);animation-delay:.68s}
-.gf-solar .gf-ray:nth-child(6){height:22px;background:linear-gradient(rgba(255,215,0,.9),transparent);transform:rotate(180deg) translateY(-68px);animation-delay:.9s}
-.gf-solar .gf-ray:nth-child(7){height:18px;background:linear-gradient(rgba(255,180,0,.7),transparent);transform:rotate(225deg) translateY(-68px);animation-delay:1.13s}
-.gf-solar .gf-ray:nth-child(8){height:22px;background:linear-gradient(rgba(255,215,0,.9),transparent);transform:rotate(270deg) translateY(-68px);animation-delay:1.35s}
-.gf-solar .gf-ray:nth-child(9){height:18px;background:linear-gradient(rgba(255,200,0,.7),transparent);transform:rotate(315deg) translateY(-68px);animation-delay:1.58s}
-.gn-solar{background:linear-gradient(90deg,#b06000 0%,#ffd700 12%,#fff8a0 22%,#ffffff 30%,#fff4c0 38%,#ffd700 48%,#ffaa00 58%,#fff8a0 68%,#ffd700 78%,#ff8800 88%,#b06000 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:solarNameShimmer 2.5s linear infinite,solarNameGlow 2s ease-in-out infinite;font-weight:900;letter-spacing:2px}
-[data-style="lite"] .gf-solar .gf-glow{opacity:.4}
-[data-style="lite"] .gn-solar,[data-theme="light"] .gn-solar{background:linear-gradient(90deg,#7a3800 0%,#aa6600 12%,#cc8800 22%,#995500 30%,#b07000 38%,#884400 48%,#a06000 58%,#cc8800 68%,#b06000 78%,#7a3800 88%,#7a3800 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:solarNameShimmer 2.5s linear infinite,solarNameGlowLight 2s ease-in-out infinite;font-weight:900;letter-spacing:2px}
+/* ══════ 👑 KING — SOLAR EMPEROR (Prestige · Auto-unlock when #1 + King rank) ══════ */
+@keyframes seRingRot{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes sePulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes seRayPulse{0%,100%{opacity:.5;transform:scaleY(1)}50%{opacity:.9;transform:scaleY(1.1)}}
+@keyframes seEclipseRot{0%{transform:rotate(0deg);opacity:.7}50%{transform:rotate(180deg);opacity:1}100%{transform:rotate(360deg);opacity:.7}}
+@keyframes seCorona{0%,100%{opacity:.38;transform:scale(1)}40%{opacity:.8;transform:scale(1.06)}70%{opacity:.55}}
+@keyframes seParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:.9}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(var(--gr)) scale(0);opacity:0}}
+@keyframes seNameShimmer{0%{background-position:-400% center}100%{background-position:400% center}}
+@keyframes seNameGlow{0%,100%{filter:drop-shadow(0 0 9px rgba(255,215,0,1)) drop-shadow(0 0 20px rgba(255,165,0,.75)) drop-shadow(0 0 42px rgba(255,100,0,.4))}50%{filter:drop-shadow(0 0 20px rgba(255,255,200,1)) drop-shadow(0 0 46px rgba(255,215,0,1)) drop-shadow(0 0 96px rgba(255,150,0,.7)) drop-shadow(0 0 160px rgba(255,100,0,.35))}}
+@keyframes seNameGlowLight{0%,100%{filter:drop-shadow(0 0 6px rgba(180,120,0,.9)) drop-shadow(0 0 14px rgba(150,100,0,.6))}50%{filter:drop-shadow(0 0 12px rgba(210,150,0,1)) drop-shadow(0 0 28px rgba(180,120,0,.8))}}
+.gf-solaremperor{background:radial-gradient(circle at 50% 50%,#1a0d00 0%,#0b0500 100%)}
+.gf-solaremperor::before{content:'';position:absolute;inset:-6px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#b8860b 0%,#ffd700 7%,#fffff0 14%,#ffd700 21%,#ffaa00 28%,#fff8a0 35%,#ffd700 42%,#ffe566 49%,#ff8c00 56%,#ffd700 63%,#fffff0 70%,#ffcc33 77%,#ff8c00 84%,#ffd700 91%,#b8860b 100%);animation:seRingRot 5s linear infinite}
+.gf-solaremperor::after{content:'';position:absolute;inset:-20px;border-radius:50%;z-index:-2;background:conic-gradient(from 0deg,transparent 0%,rgba(255,220,60,.55) 5%,rgba(255,255,200,.85) 9%,rgba(255,200,0,.6) 13%,transparent 19%,transparent 43%,rgba(255,215,0,.65) 48%,rgba(255,255,180,.9) 53%,rgba(255,180,0,.55) 58%,transparent 64%,transparent 80%,rgba(255,215,0,.4) 85%,transparent 91%);animation:seRingRot 9s linear infinite reverse;filter:blur(4px)}
+.gf-solaremperor .gf-glow{position:absolute;inset:-26px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 28%,rgba(255,215,0,.13) 50%,rgba(255,165,0,.2) 70%,rgba(255,100,0,.07) 87%,transparent);animation:sePulse 2.8s ease-in-out infinite}
+.gf-solaremperor .gf-eclipse{position:absolute;inset:-24px;border-radius:50%;border:2.5px solid rgba(255,215,0,.4);pointer-events:none;z-index:-1;box-shadow:0 0 12px rgba(255,215,0,.14),inset 0 0 10px rgba(255,215,0,.08);animation:seEclipseRot 10s linear infinite}
+.gf-solaremperor .gf-corona{position:absolute;inset:-16px;border-radius:50%;pointer-events:none;z-index:-2;background:radial-gradient(circle,transparent 52%,rgba(255,200,60,.18) 70%,rgba(255,160,0,.1) 88%,transparent);animation:seCorona 3.4s ease-in-out infinite}
+.gf-solaremperor .gf-ray{position:absolute;top:50%;left:50%;transform-origin:0 0;border-radius:2px;z-index:-2;animation:seRayPulse 2.2s ease-in-out infinite;width:3px}
+.gf-solaremperor .gf-ray:nth-child(4){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(0deg) translateY(-73px)}
+.gf-solaremperor .gf-ray:nth-child(5){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(45deg) translateY(-73px);animation-delay:.28s;width:2px}
+.gf-solaremperor .gf-ray:nth-child(6){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(90deg) translateY(-73px);animation-delay:.55s}
+.gf-solaremperor .gf-ray:nth-child(7){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(135deg) translateY(-73px);animation-delay:.83s;width:2px}
+.gf-solaremperor .gf-ray:nth-child(8){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(180deg) translateY(-73px);animation-delay:1.1s}
+.gf-solaremperor .gf-ray:nth-child(9){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(225deg) translateY(-73px);animation-delay:1.38s;width:2px}
+.gf-solaremperor .gf-ray:nth-child(10){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(270deg) translateY(-73px);animation-delay:1.65s}
+.gf-solaremperor .gf-ray:nth-child(11){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(315deg) translateY(-73px);animation-delay:1.93s;width:2px}
+.gf-solaremperor .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#ffe566;animation:seParticle 4.8s linear infinite;--gr:60px;--gd:0deg}
+.gf-solaremperor .gf-p:nth-child(12){background:#fff8c0;width:3px;height:3px;margin:-1.5px;animation-delay:-1.2s;--gd:90deg}
+.gf-solaremperor .gf-p:nth-child(13){background:#ffd700;animation-delay:-2.4s;--gd:180deg;width:5px;height:5px;margin:-2.5px}
+.gf-solaremperor .gf-p:nth-child(14){background:#ffcc33;width:3px;height:3px;margin:-1.5px;animation-delay:-3.6s;--gd:270deg}
+.gn-solaremperor{background:linear-gradient(90deg,#7a5500 0%,#cc9900 7%,#ffe566 14%,#fff8c0 22%,#ffffff 28%,#fffce0 34%,#ffd700 42%,#ffaa00 50%,#ffd700 58%,#fff8c0 66%,#ffffff 72%,#ffe566 80%,#cc9900 88%,#7a5500 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 2.2s linear infinite,seNameGlow 2s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+[data-style="lite"] .gn-solaremperor,[data-theme="light"] .gn-solaremperor{background:linear-gradient(90deg,#5a3a00 0%,#8a6000 10%,#aa8000 20%,#887000 30%,#aa8800 40%,#997700 50%,#bb9000 60%,#887000 70%,#aa8000 80%,#8a6000 90%,#5a3a00 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 2.2s linear infinite,seNameGlowLight 2s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+[data-style="lite"] .gf-solaremperor .gf-glow{opacity:.4}
+[data-style="lite"] .gf-solaremperor::after{display:none}
+[data-style="lite"] .gf-solaremperor .gf-eclipse,[data-style="lite"] .gf-solaremperor .gf-corona{animation:none!important}
+[data-style="lite"] .gf-solaremperor .gf-ray,[data-style="lite"] .gf-solaremperor .gf-p{animation:none!important;opacity:.5}
 /* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
 @keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes tgPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
@@ -966,8 +981,8 @@ END $$;</pre>
     <div class="form-group"><label>คะแนน</label><input class="inp" type="number" id="editPlayerPts"></div>
     <div class="form-group"><label>PIN ใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label><input class="inp" type="password" maxlength="4" id="editPlayerPin" inputmode="numeric" placeholder="xxxx"></div>
     <div class="form-group"><label>สิทธิ์ Admin</label><select class="inp" id="editPlayerAdmin"><option value="0">ไม่ใช่ Admin</option><option value="1">Admin</option></select></div>
-    <div class="form-group"><label>⭐ Gacha Frame</label><select class="inp" id="editPlayerGachaFrame"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Abyss</option><option value="halo">✨ Celestial Halo</option><option value="blaze">🔥 Crimson Blaze</option><option value="ice">❄️ Phantom Ice</option><option value="solar">☀️ Solar Crown (King Unique)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
-    <div class="form-group"><label>⭐ Gacha Name Effect</label><select class="inp" id="editPlayerGachaName"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Corruption</option><option value="halo">✨ Celestial Script</option><option value="blaze">🔥 Blaze Script</option><option value="ice">❄️ Ice Script</option><option value="solar">☀️ Solar Script (King Unique)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
+    <div class="form-group"><label>⭐ Gacha Frame</label><select class="inp" id="editPlayerGachaFrame"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Abyss</option><option value="halo">✨ Celestial Halo</option><option value="blaze">🔥 Crimson Blaze</option><option value="ice">❄️ Phantom Ice</option><option value="solaremperor">👑 Solar Emperor (King Prestige)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
+    <div class="form-group"><label>⭐ Gacha Name Effect</label><select class="inp" id="editPlayerGachaName"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Corruption</option><option value="halo">✨ Celestial Script</option><option value="blaze">🔥 Blaze Script</option><option value="ice">❄️ Ice Script</option><option value="solaremperor">👑 Solar Emperor Script (King Prestige)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="deletePlayer()">🗑️ ลบ</button>
       <button class="btn btn-danger btn-sm" style="background:rgba(255,140,0,0.12);border-color:rgba(255,140,0,0.35);color:#ff8c00" onclick="clearPlayerHistory(parseInt(document.getElementById('editPlayerId').value))">🔄 ล้างประวัติ</button>
@@ -1473,24 +1488,31 @@ const GACHA_FRAME_INNER = {
   ice: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   rainbow: '',
   robot: '<div class="gf-robot-gear">⚙️</div>',
-  solar: '<div class="gf-glow"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div>',
+  solaremperor: '<div class="gf-glow"></div><div class="gf-eclipse"></div><div class="gf-corona"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  solar: '<div class="gf-glow"></div><div class="gf-eclipse"></div><div class="gf-corona"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
+// Backward-compat alias: old 'solar' key maps to new 'solaremperor'
+function _resolveFrameKey(f) { return (f === 'solar') ? 'solaremperor' : f; }
+function _resolveNameKey(n)  { return (n === 'solar') ? 'solaremperor' : n; }
 // Returns extra class for the avatar element e.g. "gf-void"
 function getGachaFrameClass(player) {
-  const f = player && player.gachaFrame;
+  const raw = player && player.gachaFrame;
+  const f = _resolveFrameKey(raw);
   if (!f || !(f in GACHA_FRAME_INNER)) return '';
   return 'gf-' + f;
 }
 // Returns inner HTML to inject inside the avatar element for particles/glow
 function getGachaFrameInner(player) {
-  const f = player && player.gachaFrame;
+  const raw = player && player.gachaFrame;
+  const f = _resolveFrameKey(raw);
   return (f && (f in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[f] : '';
 }
 // Returns extra class for the name element e.g. "gn-void"
 function getGachaNameClass(player) {
-  const n = player && player.gachaName;
-  if (!n || !['void','halo','blaze','ice','thundergod'].includes(n)) return '';
+  const raw = player && player.gachaName;
+  const n = _resolveNameKey(raw);
+  if (!n || !['void','halo','blaze','ice','thundergod','solaremperor'].includes(n)) return '';
   return 'gn-' + n;
 }
 // Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
@@ -1525,7 +1547,8 @@ const GACHA_THEME = {
   halo:  { label:'✨ CELESTIAL HALO', name:'Celestial Script',  color:'#ffe566', color2:'#ffd700', color3:'#ffaa00', bg:'linear-gradient(135deg,#3a2a00,#1c1500)',          border:'#ffd700', glow:'rgba(255,200,0,0.6)',  glow2:'rgba(255,160,0,0.3)' },
   blaze: { label:'🔥 CRIMSON BLAZE',  name:'Blaze Script',       color:'#ff7744', color2:'#ff4400', color3:'#cc2200', bg:'linear-gradient(135deg,#3a0500,#1c0200)',          border:'#ff4400', glow:'rgba(255,80,0,0.6)',    glow2:'rgba(200,30,0,0.3)' },
   ice:   { label:'❄️ PHANTOM ICE',    name:'Ice Script',         color:'#88ddff', color2:'#00ccff', color3:'#0088cc', bg:'linear-gradient(135deg,#001530,#000a1c)',          border:'#0088cc', glow:'rgba(0,180,255,0.6)',   glow2:'rgba(0,120,200,0.3)' },
-  solar: { label:'☀️ SOLAR CROWN', name:'Solar Script', color:'#ffe566', color2:'#ffd700', color3:'#ff8800', bg:'linear-gradient(135deg,#2a1800,#0d0800)', border:'#ffd700', glow:'rgba(255,200,0,0.7)', glow2:'rgba(255,140,0,0.35)' },
+  solaremperor: { label:'👑 SOLAR EMPEROR', name:'Solar Emperor', color:'#FFD700', color2:'#FFE566', color3:'#FFAA00', bg:'linear-gradient(135deg,#050810,#0B1020)', border:'#FFD700', glow:'rgba(255,215,0,0.75)', glow2:'rgba(255,170,0,0.38)' },
+  solar: { label:'👑 SOLAR EMPEROR', name:'Solar Emperor', color:'#FFD700', color2:'#FFE566', color3:'#FFAA00', bg:'linear-gradient(135deg,#050810,#0B1020)', border:'#FFD700', glow:'rgba(255,215,0,0.75)', glow2:'rgba(255,170,0,0.38)' },
   thundergod: { label:'⚡ SECRET: THUNDER GOD', name:'Thunder God', color:'#00d4ff', color2:'#0099ee', color3:'#0055cc', bg:'linear-gradient(135deg,#000c1a,#000510)', border:'#00aaff', glow:'rgba(0,180,255,0.75)', glow2:'rgba(0,120,200,0.38)' },
 };
 function showGachaReveal(playerName, frame, name) {
@@ -1549,12 +1572,14 @@ function showGachaReveal(playerName, frame, name) {
   overlay.style.setProperty('--gr-color3', theme.color3);
   // Frame demo
   const demo = document.getElementById('grFrameDemo');
-  demo.className = 'gr-frame-demo' + (frame ? ' gf-'+frame : '');
-  demo.innerHTML = (frame && GACHA_FRAME_INNER[frame] ? GACHA_FRAME_INNER[frame] : '') + (playerName ? playerName.charAt(0).toUpperCase() : '?');
+  const _grFrame = _resolveFrameKey(frame);
+  const _grName  = _resolveNameKey(name);
+  demo.className = 'gr-frame-demo' + (_grFrame ? ' gf-'+_grFrame : '');
+  demo.innerHTML = (_grFrame && GACHA_FRAME_INNER[_grFrame] ? GACHA_FRAME_INNER[_grFrame] : '') + (playerName ? playerName.charAt(0).toUpperCase() : '?');
   demo.style.background = theme.bg;
   // Name
   const nameEl = document.getElementById('grName');
-  nameEl.className = 'gr-name' + (name ? ' gn-'+name : '');
+  nameEl.className = 'gr-name' + (_grName ? ' gn-'+_grName : '');
   nameEl.textContent = playerName || '—';
   // Labels
   document.getElementById('grLabel').textContent = '★ 3% RATE ★';
@@ -1822,9 +1847,143 @@ function checkKingChange() {
       }
     }
     localStorage.setItem('badminton_king_tracker', JSON.stringify({ id: king.id, name: king.name }));
+    // Auto-grant Solar Emperor prestige to current king (if it's the logged-in user)
+    if (currentUser && king.id === currentUser.id) {
+      _grantKingCosmetic(king);
+    }
   } else {
     localStorage.removeItem('badminton_king_tracker');
   }
+}
+
+// ── SOLAR EMPEROR PRESTIGE HELPERS ───────────────────────────
+function _getKingHistory(playerId) {
+  try { return JSON.parse(localStorage.getItem('bmt_king_h_' + playerId) || 'null'); } catch(e) { return null; }
+}
+function _setKingHistory(playerId, data) {
+  localStorage.setItem('bmt_king_h_' + playerId, JSON.stringify(data));
+}
+async function _grantKingCosmetic(king) {
+  // Once per session guard — prevent double-fire
+  const sessionKey = 'bmt_king_granted_' + king.id;
+  if (sessionStorage.getItem(sessionKey)) return;
+  sessionStorage.setItem(sessionKey, '1');
+
+  // Update king history
+  const now = Date.now();
+  const hist = _getKingHistory(king.id) || {};
+  const isFirstCrown = !hist.firstDate;
+  hist.firstDate = hist.firstDate || now;
+  hist.reignCount = (hist.reignCount || 0) + (isFirstCrown ? 1 : 0);
+  hist.lastDate = now;
+  hist.maxElo = Math.max(hist.maxElo || 0, king.pts || 0);
+  _setKingHistory(king.id, hist);
+
+  // Check if already owns solaremperor (permanent — never take away)
+  const inv = getGachaInventory(king.id);
+  const alreadyOwns = (inv.frames || []).includes('solaremperor') || (inv.names || []).includes('solaremperor');
+
+  if (!alreadyOwns) {
+    // Grant permanently
+    if (!inv.frames) inv.frames = [];
+    if (!inv.names)  inv.names  = [];
+    if (!inv.frames.includes('solaremperor')) inv.frames.push('solaremperor');
+    if (!inv.names.includes('solaremperor'))  inv.names.push('solaremperor');
+    _saveGachaInventoryToDB(king.id, inv);
+
+    // Equip solaremperor
+    try {
+      const lsKey = 'bmt_gacha_' + king.id;
+      const ls = JSON.parse(localStorage.getItem(lsKey) || '{}');
+      ls.gacha_frame = 'solaremperor';
+      ls.gacha_name  = 'solaremperor';
+      localStorage.setItem(lsKey, JSON.stringify(ls));
+      await dbUpdatePlayer(king.id, { gacha_frame: 'solaremperor', gacha_name: 'solaremperor' });
+      await loadPlayers();
+    } catch(e) { /* non-blocking */ }
+
+    // Show First Ascension cinematic
+    setTimeout(() => showSolarEmperorAscension(king.name, true), 600);
+  } else {
+    // Already owns — still update reign count if new reign
+    hist.reignCount = (hist.reignCount || 1);
+    _setKingHistory(king.id, hist);
+  }
+}
+
+// ── SOLAR EMPEROR ASCENSION CINEMATIC ────────────────────────
+function showSolarEmperorAscension(playerName, isFirst) {
+  // Remove stale instance if any
+  const old = document.getElementById('seAscension');
+  if (old) old.remove();
+
+  const el = document.createElement('div');
+  el.id = 'seAscension';
+  el.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;background:rgba(5,8,16,0)';
+  el.innerHTML = `
+    <style>
+      @keyframes seaBgReveal{0%{background:rgba(5,8,16,0)}60%{background:rgba(5,8,16,0.97)}100%{background:rgba(5,8,16,0.97)}}
+      @keyframes seaFlash{0%,100%{opacity:0}30%{opacity:1}60%{opacity:0}}
+      @keyframes seaRingExpand{0%{transform:scale(0.2);opacity:1}100%{transform:scale(3.5);opacity:0}}
+      @keyframes seaCrownDrop{0%{transform:translateY(-120px) scale(0.5);opacity:0}60%{transform:translateY(8px) scale(1.08);opacity:1}80%{transform:translateY(-4px) scale(0.97);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
+      @keyframes seaTitleReveal{0%{opacity:0;transform:scale(1.4);letter-spacing:0.6em}100%{opacity:1;transform:scale(1);letter-spacing:0.15em}}
+      @keyframes seaNameIgnite{0%{opacity:0;filter:brightness(3) blur(6px)}50%{opacity:1;filter:brightness(1.8) blur(1px)}100%{opacity:1;filter:brightness(1) blur(0)}}
+      @keyframes seaRayRot{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+      @keyframes seaSubReveal{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:translateY(0)}}
+      #seAscension .sea-flash{position:absolute;inset:0;background:radial-gradient(circle,#fff9d6,#ffd700,transparent);opacity:0;pointer-events:none}
+      #seAscension .sea-ring{position:absolute;top:50%;left:50%;width:200px;height:200px;margin:-100px;border-radius:50%;border:3px solid rgba(255,215,0,0.7);opacity:0;pointer-events:none}
+      #seAscension .sea-rays{position:absolute;top:50%;left:50%;width:500px;height:500px;margin:-250px;border-radius:50%;background:conic-gradient(transparent 0deg,rgba(255,215,0,0.04) 5deg,transparent 10deg,transparent 30deg,rgba(255,225,100,0.06) 35deg,transparent 40deg,transparent 60deg,rgba(255,215,0,0.04) 65deg,transparent 70deg,transparent 90deg,rgba(255,225,100,0.06) 95deg,transparent 100deg,transparent 120deg,rgba(255,215,0,0.04) 125deg,transparent 130deg,transparent 150deg,rgba(255,225,100,0.06) 155deg,transparent 160deg,transparent 180deg,rgba(255,215,0,0.04) 185deg,transparent 190deg,transparent 210deg,rgba(255,225,100,0.06) 215deg,transparent 220deg,transparent 240deg,rgba(255,215,0,0.04) 245deg,transparent 250deg,transparent 270deg,rgba(255,225,100,0.06) 275deg,transparent 280deg,transparent 300deg,rgba(255,215,0,0.04) 305deg,transparent 310deg,transparent 330deg,rgba(255,225,100,0.06) 335deg,transparent 360deg);opacity:0;pointer-events:none}
+      #seAscension .sea-card{display:flex;flex-direction:column;align-items:center;gap:12px;opacity:1}
+      #seAscension .sea-crown{font-size:clamp(3rem,10vw,5.5rem);opacity:0;filter:drop-shadow(0 0 30px rgba(255,215,0,0.9))}
+      #seAscension .sea-title{font-size:clamp(1.1rem,3.5vw,1.7rem);font-weight:900;color:#FFD700;text-transform:uppercase;letter-spacing:0.15em;opacity:0;text-shadow:0 0 24px rgba(255,215,0,0.9),0 0 48px rgba(255,200,0,0.5)}
+      #seAscension .sea-name{font-size:clamp(1.4rem,4.5vw,2.3rem);font-weight:900;letter-spacing:2px;opacity:0;background:linear-gradient(90deg,#7a5500,#FFD700,#FFF4B5,#FFE566,#FFAA00,#FFD700,#7a5500);background-size:400% auto;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-shadow:none;filter:drop-shadow(0 0 18px rgba(255,215,0,1))}
+      #seAscension .sea-sub{font-size:clamp(0.75rem,2vw,0.95rem);color:rgba(255,230,150,0.75);letter-spacing:0.1em;opacity:0;text-align:center;max-width:280px}
+      #seAscension .sea-hint{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);font-size:0.75rem;color:rgba(255,215,0,0.4);letter-spacing:0.08em;opacity:0;transition:opacity 1s}
+    </style>
+    <div class="sea-flash" id="seaFlash"></div>
+    <div class="sea-ring" id="seaRing1"></div>
+    <div class="sea-ring" id="seaRing2" style="width:320px;height:320px;margin:-160px;border-color:rgba(255,215,0,0.4)"></div>
+    <div class="sea-rays" id="seaRays"></div>
+    <div class="sea-card">
+      <div class="sea-crown" id="seaCrown">👑</div>
+      <div class="sea-title" id="seaTitle">${isFirst ? 'FIRST ASCENSION' : 'SOLAR EMPEROR'}</div>
+      <div class="sea-name" id="seaName">${playerName}</div>
+      <div class="sea-sub" id="seaSub">${isFirst ? 'เจ้าแห่งสนาม · ขึ้นสู่บัลลังก์ Solar Emperor' : 'กลับสู่บัลลังก์อีกครั้ง · King of Badminton'}</div>
+    </div>
+    <div class="sea-hint" id="seaHint">แตะเพื่อปิด</div>
+  `;
+
+  document.body.appendChild(el);
+
+  // Sequence
+  const $ = id => document.getElementById(id);
+  const animate = (id, css, delay) => setTimeout(() => { const e=$('sea'+id.charAt(0).toUpperCase()+id.slice(1)); if(e) Object.assign(e.style,css); }, delay);
+
+  // bg fade
+  setTimeout(() => { el.style.animation='seaBgReveal 1.2s ease forwards'; }, 0);
+  // flash
+  setTimeout(() => { $('seaFlash').style.animation='seaFlash 0.7s ease forwards'; }, 400);
+  // rays spin in
+  setTimeout(() => { $('seaRays').style.opacity='1'; $('seaRays').style.animation='seaRayRot 20s linear infinite'; }, 700);
+  // ring1 expand
+  setTimeout(() => { $('seaRing1').style.animation='seaRingExpand 1s ease-out forwards'; }, 900);
+  // ring2 expand (delay)
+  setTimeout(() => { $('seaRing2').style.animation='seaRingExpand 1s ease-out forwards'; }, 1100);
+  // crown drops
+  setTimeout(() => { $('seaCrown').style.animation='seaCrownDrop 0.9s cubic-bezier(0.22,1,0.36,1) forwards'; }, 1300);
+  // title reveals
+  setTimeout(() => { $('seaTitle').style.animation='seaTitleReveal 0.7s ease-out forwards'; }, 2000);
+  // name ignites
+  setTimeout(() => { $('seaName').style.animation='seaNameIgnite 0.9s ease-out forwards'; }, 2600);
+  // sub fades
+  setTimeout(() => { $('seaSub').style.animation='seaSubReveal 0.6s ease-out forwards'; }, 3200);
+  // hint appears
+  setTimeout(() => { $('seaHint').style.opacity='0.7'; }, 4000);
+
+  // Close on click/tap
+  el.addEventListener('click', () => { el.style.transition='opacity 0.5s'; el.style.opacity='0'; setTimeout(()=>el.remove(),500); });
+  // Auto-close after 9 seconds
+  setTimeout(() => { if(document.getElementById('seAscension')) { el.style.transition='opacity 0.8s'; el.style.opacity='0'; setTimeout(()=>el.remove(),800); } }, 9000);
 }
 
 // ── KING'S CHALLENGE ─────────────────────────────────────────
@@ -1990,7 +2149,8 @@ async function renderLeaderboard() {
       const av = getAvatar(p.id, p.name);
       const wr = p.wins + p.losses > 0 ? Math.round(p.wins / (p.wins + p.losses) * 100) : 0;
       const canvasId = `lbpc${i}`;
-      return `<div class="lb-pc lb-glass ${cls}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
+      const isSE = isFirst && (_resolveFrameKey(p.gachaFrame) === 'solaremperor');
+      return `<div class="lb-pc lb-glass ${cls}${isSE ? ' lb-king-throne' : ''}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
         <canvas class="lb-pod-canvas" id="${canvasId}"></canvas>
         <div class="lb-pod-shim"></div>
         ${isFirst ? '<div class="lb-crown">👑</div>' : ''}
@@ -2044,8 +2204,9 @@ function lbRenderBoard(data, animate = true) {
     // trend badge
     const trendBdg = rank.id === 'king' ? '👑' : rank.id === 'master' ? '🔥' : rank.id === 'diamond' ? '💠' : rank.id === 'platinum' ? '💎' : rank.id === 'gold' ? '🥇' : rank.id === 'silver' ? '🥈' : '🥉';
 
+    const isKingThrone = (globalPos === 1 && rank.id === 'king');
     const row = document.createElement('div');
-    row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}`;
+    row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
@@ -2767,8 +2928,10 @@ async function saveEditPlayer() {
     closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
     // ── Show cosmetic reveal (cinematic for SECRET, normal card for others) ──
     if (newFrame || newName) {
-      const isSecret = gachaFrame === 'thundergod' || gachaName === 'thundergod';
-      if (isSecret) showThunderGodCinematic(playerName);
+      const isThunderGod  = gachaFrame === 'thundergod' || gachaName === 'thundergod';
+      const isSolarEmperor = gachaFrame === 'solaremperor' || gachaName === 'solaremperor';
+      if (isThunderGod) showThunderGodCinematic(playerName);
+      else if (isSolarEmperor) showSolarEmperorAscension(playerName, false);
       else showGachaReveal(playerName, gachaFrame || null, gachaName || null);
     }
   } catch(e) {
@@ -3044,6 +3207,36 @@ function openPlayerProfile(playerId) {
 
         <div class="pp2-sec">${t('elo_timeline')}</div>
         ${chartSVG}
+
+        ${(() => {
+          const kh = _getKingHistory(p.id);
+          if (!kh || !kh.firstDate) return '';
+          const firstDateStr = new Date(kh.firstDate).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' });
+          const lastDateStr  = kh.lastDate ? new Date(kh.lastDate).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' }) : firstDateStr;
+          const isCurrentKing = (() => { try { const s=JSON.parse(localStorage.getItem('badminton_king_tracker')||'null'); return s && s.id === p.id; } catch(e){return false;} })();
+          return `
+          <div style="background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,170,0,0.04));border:1px solid rgba(255,215,0,0.25);border-radius:14px;padding:12px 14px;margin-bottom:4px">
+            <div style="display:flex;align-items:center;gap:7px;margin-bottom:8px">
+              <span style="font-size:1.1rem;filter:drop-shadow(0 0 6px rgba(255,215,0,0.8))">👑</span>
+              <span style="font-size:0.8rem;font-weight:700;color:#FFD700;letter-spacing:0.06em;text-transform:uppercase">King History</span>
+              ${isCurrentKing ? '<span style="margin-left:auto;font-size:0.6rem;background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid rgba(255,215,0,0.3);border-radius:20px;padding:2px 8px;font-weight:600">👑 REIGNING</span>' : ''}
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center">
+              <div style="padding:7px 4px;background:rgba(0,0,0,0.2);border-radius:10px">
+                <div style="font-size:0.6rem;color:rgba(255,230,100,0.6);margin-bottom:3px">First Crown</div>
+                <div style="font-size:0.72rem;font-weight:700;color:#FFE566">${firstDateStr}</div>
+              </div>
+              <div style="padding:7px 4px;background:rgba(0,0,0,0.2);border-radius:10px">
+                <div style="font-size:0.6rem;color:rgba(255,230,100,0.6);margin-bottom:3px">Reigns</div>
+                <div style="font-family:'Rajdhani';font-size:1.2rem;font-weight:700;color:#FFD700;line-height:1">${kh.reignCount || 1}</div>
+              </div>
+              <div style="padding:7px 4px;background:rgba(0,0,0,0.2);border-radius:10px">
+                <div style="font-size:0.6rem;color:rgba(255,230,100,0.6);margin-bottom:3px">Peak ELO</div>
+                <div style="font-family:'Rajdhani';font-size:1.2rem;font-weight:700;color:#FFCC33;line-height:1">${kh.maxElo || p.pts}</div>
+              </div>
+            </div>
+          </div>`;
+        })()}
 
         <div class="pp2-sec">${t('h2h')}</div>
         ${h2hHTML}
@@ -4816,11 +5009,13 @@ function _avbUpdatePreview() {
   const bg = _avC || baseCols[1];
   const content = _avE || getInitial(currentUser.name);
   const fs = _avE ? '1.8rem' : '1.2rem';
-  // frame class + inner particles
-  const frameClass = (myFrame && (myFrame in GACHA_FRAME_INNER)) ? 'gf-'+myFrame : '';
-  const frameInner = (myFrame && (myFrame in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[myFrame] : '';
+  // frame class + inner particles (solar → solaremperor backward compat)
+  const _myFrameResolved = _resolveFrameKey(myFrame);
+  const frameClass = (_myFrameResolved && (_myFrameResolved in GACHA_FRAME_INNER)) ? 'gf-'+_myFrameResolved : '';
+  const frameInner = (_myFrameResolved && (_myFrameResolved in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[_myFrameResolved] : '';
   // name class
-  const nameClass = (myNameFx && ['void','halo','blaze','ice'].includes(myNameFx)) ? 'gn-'+myNameFx : '';
+  const _myNameResolved = _resolveNameKey(myNameFx);
+  const nameClass = (_myNameResolved && ['void','halo','blaze','ice','thundergod','solaremperor'].includes(_myNameResolved)) ? 'gn-'+_myNameResolved : '';
   const wrap = document.getElementById('avPreviewWrap');
   if (!wrap) return;
   wrap.innerHTML = `
