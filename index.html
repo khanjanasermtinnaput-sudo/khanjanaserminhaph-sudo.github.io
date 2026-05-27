@@ -255,6 +255,7 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .gf-void .gf-p,[data-style="lite"] .gf-halo .gf-p,
 [data-style="lite"] .gf-blaze .gf-p,[data-style="lite"] .gf-ice .gf-p{display:none!important}
 [data-style="lite"] .gn-void,[data-style="lite"] .gn-halo,[data-style="lite"] .gn-blaze,[data-style="lite"] .gn-ice{animation:none!important;-webkit-text-fill-color:var(--text)!important;background:none!important;filter:none!important}
+</style>
 </head>
 <body>
 
@@ -1372,9 +1373,16 @@ function initQuickLogin() {
   if (!saved || !saved.name || !saved.pin) return;
   const avEl = document.getElementById('qlAv');
   const avData = getAvatar(saved.id, saved.name);
-  avEl.style.cssText = `background:${avData.bg};color:${avData.fg};${avData.fs?'font-size:'+avData.fs:''}`;
-  avEl.textContent = avData.content;
-  document.getElementById('qlName').textContent = saved.name;
+  const pObj = (db.players || []).find(x => x.id === saved.id) || saved;
+  const gFrame = getGachaFrameClass(pObj);
+  const gInner = getGachaFrameInner(pObj);
+  const gNameCls = getGachaNameClass(pObj);
+  avEl.style.cssText = `background:${avData.bg};color:${avData.fg};${avData.fs?'font-size:'+avData.fs:''};position:relative;isolation:isolate`;
+  avEl.className = 'ql-av' + (gFrame ? ' ' + gFrame : '');
+  avEl.innerHTML = gInner + avData.content;
+  const nameEl = document.getElementById('qlName');
+  nameEl.textContent = saved.name;
+  nameEl.className = 'ql-name' + (gNameCls ? ' ' + gNameCls : '');
   document.getElementById('quickLoginCard').classList.remove('hidden');
   document.querySelector('#loginSection .tab-row').classList.add('hidden');
   document.getElementById('loginForm').classList.add('hidden');
@@ -2215,8 +2223,22 @@ async function saveEditPlayer() {
   const data = { name: document.getElementById('editPlayerName').value.trim() || p.name, pts: Math.max(0, parseInt(document.getElementById('editPlayerPts').value) || 0), is_admin: document.getElementById('editPlayerAdmin').value === '1', gacha_frame: gachaFrame || null, gacha_name: gachaName || null };
   const newPin = document.getElementById('editPlayerPin').value.trim();
   if (newPin) data.pin = newPin;
-  try { await dbUpdatePlayer(id, data); await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success'); }
-  catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
+  try {
+    await dbUpdatePlayer(id, data);
+    await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
+  } catch(e) {
+    // Fallback: retry without gacha columns if DB schema is outdated
+    if (/gacha_(frame|name)/.test(e.message || '')) {
+      delete data.gacha_frame; delete data.gacha_name;
+      try {
+        await dbUpdatePlayer(id, data);
+        await loadPlayers(); closeModal('editPlayerModal'); renderAdmin();
+        toast('บันทึกแล้ว — แต่ Gacha effect ยังไม่มี column ใน DB (รัน ALTER TABLE ใน Admin → SQL)', 'info');
+        return;
+      } catch(e2) { toast('บันทึกไม่ได้: ' + e2.message, 'error'); return; }
+    }
+    toast('บันทึกไม่ได้: ' + e.message, 'error');
+  }
 }
 async function deletePlayer() {
   const id = parseInt(document.getElementById('editPlayerId').value);
@@ -3008,8 +3030,10 @@ function renderCachAdmin() {
       <div style="margin-top:8px;background:rgba(0,0,0,0.25);border-radius:10px;padding:10px;font-size:0.7rem;color:var(--muted)">
         รัน SQL นี้ใน Supabase → SQL Editor แล้ว achievements จะ sync ข้ามเครื่องได้:
         <pre style="margin:8px 0 6px;padding:8px;background:rgba(0,0,0,0.3);border-radius:7px;font-size:0.68rem;overflow-x:auto;white-space:pre-wrap;color:#a8d8a8">ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';
-ALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';</pre>
-        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:4px 10px" onclick="navigator.clipboard.writeText(\`ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';\`).then(()=>toast('คัดลอกแล้ว!','success'))">📋 คัดลอก SQL</button>
+ALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
+        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:4px 10px" onclick="navigator.clipboard.writeText(\`ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;\`).then(()=>toast('คัดลอกแล้ว!','success'))">📋 คัดลอก SQL</button>
       </div>
     </details>`;
 }
