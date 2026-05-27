@@ -286,6 +286,68 @@ body.x2-active .toast-wrap{bottom:120px}
 .gn-solar{background:linear-gradient(90deg,#b06000 0%,#ffd700 12%,#fff8a0 22%,#ffffff 30%,#fff4c0 38%,#ffd700 48%,#ffaa00 58%,#fff8a0 68%,#ffd700 78%,#ff8800 88%,#b06000 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:solarNameShimmer 2.5s linear infinite,solarNameGlow 2s ease-in-out infinite;font-weight:900;letter-spacing:2px}
 [data-style="lite"] .gf-solar .gf-glow{opacity:.4}
 [data-style="lite"] .gn-solar,[data-theme="light"] .gn-solar{background:linear-gradient(90deg,#7a3800 0%,#aa6600 12%,#cc8800 22%,#995500 30%,#b07000 38%,#884400 48%,#a06000 58%,#cc8800 68%,#b06000 78%,#7a3800 88%,#7a3800 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:solarNameShimmer 2.5s linear infinite,solarNameGlowLight 2s ease-in-out infinite;font-weight:900;letter-spacing:2px}
+/* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
+@keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes tgPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
+@keyframes tgBolt{0%,60%,100%{opacity:0}62%{opacity:.95}64%{opacity:.3}66%{opacity:.9}68%{opacity:.2}71%{opacity:.75}75%{opacity:0}}
+@keyframes tgParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:1}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(var(--gr)) scale(0);opacity:0}}
+@keyframes tgRingPulse{0%,100%{opacity:.65;transform:scale(1)}50%{opacity:1;transform:scale(1.05)}}
+@keyframes tgShake{0%,100%{transform:translate(0,0)}12%{transform:translate(-2px,1px)}25%{transform:translate(2px,-1px)}37%{transform:translate(-1.5px,1.5px)}50%{transform:translate(2.5px,-1px)}62%{transform:translate(-1px,1px)}75%{transform:translate(1.5px,-.5px)}}
+/* ── .gf-thundergod frame ── */
+.gf-thundergod::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#003070,#00d4ff,#0040aa,#22ffff,#001040,#0099ee,#003070,#44ddff,#001a55,#00ccff,#003070,#11eeff,#003070);animation:tgSpin 1.8s linear infinite}
+.gf-thundergod::after{content:'';position:absolute;inset:-12px;border-radius:50%;z-index:-2;background:conic-gradient(from 90deg,transparent 45%,rgba(0,200,255,.8) 65%,rgba(100,240,255,1) 76%,transparent 90%);animation:tgSpin 1.3s linear infinite reverse;filter:blur(4px)}
+.gf-thundergod .gf-glow{position:absolute;inset:-18px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 30%,rgba(0,200,255,.22) 55%,rgba(0,140,220,.38) 78%,transparent);animation:tgPulse 1.4s ease-in-out infinite}
+.gf-thundergod .gf-ring{position:absolute;inset:-18px;border-radius:50%;border:2px solid rgba(0,220,255,.65);pointer-events:none;z-index:-1;animation:tgRingPulse 2s ease-in-out infinite}
+.gf-thundergod .gf-ring2{position:absolute;inset:-27px;border-radius:50%;border:1.5px solid rgba(0,180,255,.35);pointer-events:none;z-index:-2;animation:tgRingPulse 3.2s ease-in-out infinite reverse}
+.gf-thundergod .gf-bolt{position:absolute;top:50%;left:50%;width:2px;transform-origin:0 0;z-index:2;pointer-events:none;background:linear-gradient(rgba(0,220,255,1),rgba(100,240,255,.8),transparent);border-radius:1px}
+.gf-thundergod .gf-bolt:nth-child(4){height:28px;transform:rotate(30deg) translateY(-54px);animation:tgBolt 2.2s ease-in-out infinite}
+.gf-thundergod .gf-bolt:nth-child(5){height:22px;transform:rotate(150deg) translateY(-52px);animation:tgBolt 2.2s ease-in-out infinite .73s}
+.gf-thundergod .gf-bolt:nth-child(6){height:26px;transform:rotate(270deg) translateY(-55px);animation:tgBolt 2.2s ease-in-out infinite 1.47s}
+.gf-thundergod .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#00d4ff;animation:tgParticle 2.6s linear infinite;--gr:52px;--gd:0deg}
+.gf-thundergod .gf-p:nth-child(7){background:#44ffee;width:3px;height:3px;margin:-1.5px;animation-delay:-.87s;--gd:120deg}
+.gf-thundergod .gf-p:nth-child(8){background:#0088cc;animation-delay:-1.73s;--gd:240deg;width:5px;height:5px;margin:-2.5px}
+/* ── .gn-thundergod name ── */
+@keyframes tgNameShimmer{0%{background-position:-400% center}100%{background-position:400% center}}
+@keyframes tgNameFlicker{0%,80%,100%{opacity:1}81%{opacity:.5}82.5%{opacity:1}84%{opacity:.22}85%{opacity:1}87%{opacity:.65}88%{opacity:1}}
+@keyframes tgNameGlow{0%,100%{filter:drop-shadow(0 0 7px rgba(0,220,255,1)) drop-shadow(0 0 16px rgba(0,160,240,.7)) drop-shadow(0 0 32px rgba(0,100,200,.4))}50%{filter:drop-shadow(0 0 16px rgba(100,240,255,1)) drop-shadow(0 0 34px rgba(0,210,255,1)) drop-shadow(0 0 64px rgba(0,160,255,.7)) drop-shadow(0 0 110px rgba(0,80,220,.4))}}
+@keyframes tgNameGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(0,100,180,.9)) drop-shadow(0 0 12px rgba(0,80,160,.5))}50%{filter:drop-shadow(0 0 10px rgba(0,120,200,1)) drop-shadow(0 0 24px rgba(0,100,180,.8))}}
+.gn-thundergod{background:linear-gradient(90deg,#003399 0%,#0055cc 8%,#0099ff 16%,#00ddff 24%,#ffffff 32%,#44ffff 40%,#00ccff 48%,#ffffff 55%,#00eeff 62%,#0088ee 70%,#0055cc 80%,#002288 88%,#003399 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:tgNameShimmer 1.8s linear infinite,tgNameFlicker 3.5s ease-in-out infinite,tgNameGlow 1.6s ease-in-out infinite;font-weight:900;letter-spacing:3px}
+[data-style="lite"] .gn-thundergod,[data-theme="light"] .gn-thundergod{background:linear-gradient(90deg,#002277 0%,#003399 8%,#0055bb 16%,#0077cc 24%,#005599 32%,#003388 40%,#0066aa 48%,#004499 55%,#0077bb 62%,#0055aa 70%,#003388 80%,#001166 88%,#002277 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:tgNameShimmer 1.8s linear infinite,tgNameFlicker 3.5s ease-in-out infinite,tgNameGlowLight 1.6s ease-in-out infinite;font-weight:900;letter-spacing:3px}
+/* ── SECRET badge (profile / leaderboard) ── */
+@keyframes secretBadgePulse{0%,100%{box-shadow:0 0 8px rgba(0,200,255,.6),0 0 20px rgba(0,150,220,.3)}50%{box-shadow:0 0 18px rgba(100,240,255,1),0 0 42px rgba(0,200,255,.7),0 0 72px rgba(0,120,200,.4)}}
+.secret-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:20px;background:linear-gradient(135deg,rgba(0,200,255,.12),rgba(0,100,200,.06));border:1px solid rgba(0,220,255,.55);font-size:.72rem;font-weight:800;color:#00d4ff;letter-spacing:.1em;text-transform:uppercase;animation:secretBadgePulse 2s ease-in-out infinite}
+/* ── Thunder God Cinematic ── */
+#tgCinematic{position:fixed;inset:0;z-index:10000;display:none;overflow:hidden;cursor:pointer}
+#tgCinematic.active{display:block}
+.tc-bg{position:absolute;inset:0;background:#000510;will-change:transform}
+.tc-storm{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 58%,rgba(0,60,150,.32) 0%,rgba(0,20,60,.14) 40%,transparent 70%);animation:tgPulse 1.2s ease-in-out infinite;will-change:opacity}
+.tc-flash{position:absolute;inset:0;background:rgba(150,225,255,.96);pointer-events:none;opacity:0;will-change:opacity;mix-blend-mode:screen}
+.tc-scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.2) 2px,rgba(0,0,0,.2) 4px);opacity:.22;z-index:20}
+@keyframes tcBoltIn{0%{opacity:0;transform:scaleY(0);transform-origin:top center}8%{opacity:1;transform:scaleY(1)}26%{opacity:.6}38%{opacity:0;transform:scaleY(1)}}
+.tc-bolt-main{position:absolute;left:50%;top:0;width:8px;margin-left:-4px;height:55%;background:linear-gradient(to bottom,rgba(255,255,255,1) 0%,rgba(160,235,255,1) 15%,rgba(0,200,255,1) 40%,rgba(0,100,220,.7) 75%,transparent 100%);box-shadow:0 0 22px #00d4ff,0 0 64px rgba(0,180,255,.6);transform:scaleY(0);transform-origin:top center;will-change:transform,opacity;border-radius:4px;z-index:5}
+@keyframes tcFlash{0%{opacity:0}7%{opacity:.88}13%{opacity:.18}17%{opacity:.72}23%{opacity:0}}
+@keyframes tcRingExpand{0%{transform:translate(-50%,-50%) scale(0);opacity:.9}100%{transform:translate(-50%,-50%) scale(7);opacity:0}}
+.tc-ring{position:absolute;top:50%;left:50%;width:100px;height:100px;border-radius:50%;border:3px solid rgba(0,210,255,.9);pointer-events:none;will-change:transform,opacity;transform:translate(-50%,-50%) scale(0);z-index:6}
+.tc-ring2{border-color:rgba(0,160,255,.7);border-width:2px;width:80px;height:80px}
+.tc-ring3{border-color:rgba(0,120,220,.5);border-width:1.5px;width:130px;height:130px}
+@keyframes tcAvatarReveal{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}65%{transform:translate(-50%,-50%) scale(1.08)}85%{transform:translate(-50%,-50%) scale(.97)}100%{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.tc-avatar-wrap{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:16px;opacity:0;will-change:transform,opacity;z-index:10}
+.tc-avatar{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2.9rem;font-weight:900;color:#fff;position:relative;isolation:isolate;background:radial-gradient(circle,#001530,#000510);font-family:'Rajdhani',sans-serif}
+@keyframes tcGlitch{0%,87%,100%{clip-path:none;transform:none}88%{clip-path:inset(15% 0 55% 0);transform:translate(-5px,0)}89.5%{clip-path:inset(45% 0 22% 0);transform:translate(5px,0)}91%{clip-path:inset(28% 0 42% 0);transform:translate(-3px,0)}92.5%{clip-path:none;transform:none}}
+.tc-glitch-layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2.9rem;font-weight:900;color:#00d4ff;animation:tcGlitch 2.8s ease-in-out infinite;pointer-events:none;opacity:.55;font-family:'Rajdhani',sans-serif;border-radius:50%}
+@keyframes tcSecretReveal{0%{opacity:0;transform:translateX(-50%) scale(2.5)}55%{transform:translateX(-50%) scale(.93)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+@keyframes tcSecretPulse{0%,100%{text-shadow:0 0 22px #00d4ff,0 0 55px rgba(0,180,255,.5),0 0 100px rgba(0,120,200,.3)}50%{text-shadow:0 0 44px #44ffff,0 0 100px rgba(0,220,255,1),0 0 180px rgba(0,150,255,.7)}}
+.tc-secret-text{position:absolute;top:9%;left:50%;transform:translateX(-50%);font-family:'Rajdhani',sans-serif;font-size:clamp(.9rem,4vw,1.9rem);font-weight:900;letter-spacing:.3em;color:#00d4ff;text-transform:uppercase;opacity:0;will-change:transform,opacity;white-space:nowrap;z-index:15;text-align:center}
+@keyframes tcNameReveal{0%{opacity:0;transform:translateX(-50%) scale(.65)}60%{transform:translateX(-50%) scale(1.07)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+.tc-player-name{position:absolute;bottom:19%;left:50%;transform:translateX(-50%);font-family:'Rajdhani',sans-serif;font-size:clamp(1.4rem,5vw,2.3rem);font-weight:900;letter-spacing:.15em;opacity:0;will-change:transform,opacity;white-space:nowrap;z-index:15}
+@keyframes tcSpark{0%{opacity:1;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.1)}}
+@keyframes tcArc{0%,100%{opacity:0}50%{opacity:.7}}
+.tc-hint{position:absolute;bottom:4.5%;left:50%;transform:translateX(-50%);font-size:.62rem;letter-spacing:.28em;color:rgba(0,200,255,.4);text-transform:uppercase;z-index:15;animation:tgNameFlicker 2.5s ease-in-out infinite}
+/* lite/light mode — keep cinematic usable but no heavy animations */
+[data-style="lite"] #tgCinematic .tc-storm,[data-style="lite"] #tgCinematic .tc-scanlines{display:none}
+[data-style="lite"] .gf-thundergod::before,[data-style="lite"] .gf-thundergod::after{animation:none!important}
+[data-style="lite"] .gf-thundergod .gf-glow,[data-style="lite"] .gf-thundergod .gf-ring,[data-style="lite"] .gf-thundergod .gf-ring2{animation:none!important}
+[data-style="lite"] .gf-thundergod .gf-bolt,[data-style="lite"] .gf-thundergod .gf-p{animation:none!important}
 /* ── 3% Pull Reveal Overlay ── */
 #gachaRevealOverlay{position:fixed;inset:0;z-index:9998;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer}
 #gachaRevealOverlay.show{display:flex;animation:gOverlayIn .3s ease forwards}
@@ -1412,6 +1474,7 @@ const GACHA_FRAME_INNER = {
   rainbow: '',
   robot: '<div class="gf-robot-gear">⚙️</div>',
   solar: '<div class="gf-glow"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div>',
+  thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
 // Returns extra class for the avatar element e.g. "gf-void"
 function getGachaFrameClass(player) {
@@ -1427,7 +1490,7 @@ function getGachaFrameInner(player) {
 // Returns extra class for the name element e.g. "gn-void"
 function getGachaNameClass(player) {
   const n = player && player.gachaName;
-  if (!n || !['void','halo','blaze','ice'].includes(n)) return '';
+  if (!n || !['void','halo','blaze','ice','thundergod'].includes(n)) return '';
   return 'gn-' + n;
 }
 // Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
@@ -1463,6 +1526,7 @@ const GACHA_THEME = {
   blaze: { label:'🔥 CRIMSON BLAZE',  name:'Blaze Script',       color:'#ff7744', color2:'#ff4400', color3:'#cc2200', bg:'linear-gradient(135deg,#3a0500,#1c0200)',          border:'#ff4400', glow:'rgba(255,80,0,0.6)',    glow2:'rgba(200,30,0,0.3)' },
   ice:   { label:'❄️ PHANTOM ICE',    name:'Ice Script',         color:'#88ddff', color2:'#00ccff', color3:'#0088cc', bg:'linear-gradient(135deg,#001530,#000a1c)',          border:'#0088cc', glow:'rgba(0,180,255,0.6)',   glow2:'rgba(0,120,200,0.3)' },
   solar: { label:'☀️ SOLAR CROWN', name:'Solar Script', color:'#ffe566', color2:'#ffd700', color3:'#ff8800', bg:'linear-gradient(135deg,#2a1800,#0d0800)', border:'#ffd700', glow:'rgba(255,200,0,0.7)', glow2:'rgba(255,140,0,0.35)' },
+  thundergod: { label:'⚡ SECRET: THUNDER GOD', name:'Thunder God', color:'#00d4ff', color2:'#0099ee', color3:'#0055cc', bg:'linear-gradient(135deg,#000c1a,#000510)', border:'#00aaff', glow:'rgba(0,180,255,0.75)', glow2:'rgba(0,120,200,0.38)' },
 };
 function showGachaReveal(playerName, frame, name) {
   const overlay = document.getElementById('gachaRevealOverlay');
@@ -1513,6 +1577,86 @@ function closeGachaReveal() {
     window._gachaRevealOnClose = null;
     setTimeout(cb, 200);
   }
+}
+
+// ── ⚡ SECRET: THUNDER GOD Cinematic ──────────────────────────
+function showThunderGodCinematic(playerName) {
+  const initial = playerName ? playerName.charAt(0).toUpperCase() : '⚡';
+  let ov = document.getElementById('tgCinematic');
+  if (!ov) { ov = document.createElement('div'); ov.id = 'tgCinematic'; document.body.appendChild(ov); }
+  ov.innerHTML = `
+    <div class="tc-bg" id="tcBg"></div>
+    <div class="tc-storm"></div>
+    <div class="tc-scanlines"></div>
+    <div class="tc-flash" id="tcFlash"></div>
+    <div class="tc-bolt-main" id="tcBolt"></div>
+    <div class="tc-ring" id="tcRing1"></div>
+    <div class="tc-ring tc-ring2" id="tcRing2"></div>
+    <div class="tc-ring tc-ring3" id="tcRing3"></div>
+    <div class="tc-avatar-wrap" id="tcAvatarWrap">
+      <div class="tc-avatar gf-thundergod" id="tcAvatar">
+        <div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div>
+        <div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div>
+        <div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>
+        <span class="tc-glitch-layer">${initial}</span>${initial}
+      </div>
+    </div>
+    <div class="tc-secret-text" id="tcSecretText">⚡ &nbsp;SECRET: THUNDER GOD&nbsp; ⚡</div>
+    <div class="tc-player-name gn-thundergod" id="tcPlayerName">${playerName||'—'}</div>
+    <div class="tc-hint">— tap to close —</div>`;
+  // Spawn sparks
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElement('div');
+    const ang = Math.random() * Math.PI * 2;
+    const dst = 60 + Math.random() * 110;
+    s.style.cssText = `position:absolute;border-radius:50%;pointer-events:none;will-change:transform,opacity;`
+      + `left:${10+Math.random()*80}%;top:${8+Math.random()*84}%;`
+      + `width:${1+Math.random()*3}px;height:${1+Math.random()*3}px;`
+      + `background:${Math.random()<.55?'#00d4ff':Math.random()<.5?'#fff':'#44ffff'};`
+      + `--dx:${(Math.cos(ang)*dst).toFixed(1)}px;--dy:${(Math.sin(ang)*dst).toFixed(1)}px;`
+      + `animation:tcSpark ${(.25+Math.random()*.65).toFixed(2)}s ease-out ${(Math.random()*3).toFixed(2)}s infinite;`;
+    ov.appendChild(s);
+  }
+  // Electric arc rings (background atmosphere)
+  for (let i = 0; i < 5; i++) {
+    const a = document.createElement('div');
+    const sz = 50 + i * 35;
+    a.style.cssText = `position:absolute;top:calc(50% - ${sz/2}px);left:calc(50% - ${sz/2}px);`
+      + `width:${sz}px;height:${sz}px;border-radius:50%;pointer-events:none;will-change:opacity;z-index:8;`
+      + `border:1.5px solid rgba(0,${145+i*18},255,${(.45-i*.06).toFixed(2)});`
+      + `animation:tcArc ${(.55+i*.18).toFixed(2)}s ease-in-out ${(i*.1).toFixed(2)}s infinite;`;
+    ov.appendChild(a);
+  }
+  ov.classList.add('active');
+  ov.style.opacity = '0'; ov.style.transition = 'opacity .4s';
+  ov.onclick = closeTgCinematic;
+  requestAnimationFrame(() => requestAnimationFrame(() => { ov.style.opacity = '1'; }));
+  const G = id => document.getElementById(id);
+  // Sequence
+  setTimeout(() => { const b=G('tcBg'); if(b) b.style.animation='tgShake .35s ease-in-out'; }, 320);
+  setTimeout(() => { const bo=G('tcBolt'); if(bo) bo.style.animation='tcBoltIn .7s ease-out forwards'; }, 720);
+  setTimeout(() => {
+    const fl=G('tcFlash'); if(fl) fl.style.animation='tcFlash .55s ease-out forwards';
+    const b=G('tcBg'); if(b){ b.style.animation='none'; void b.offsetHeight; b.style.animation='tgShake .22s ease-in-out 3'; }
+  }, 940);
+  setTimeout(() => { const b=G('tcBg'); if(b) b.style.animation=''; }, 1200);
+  setTimeout(() => { const r=G('tcRing1'); if(r) r.style.animation='tcRingExpand 1.05s ease-out forwards'; }, 1060);
+  setTimeout(() => { const r=G('tcRing2'); if(r) r.style.animation='tcRingExpand 1.15s ease-out forwards'; }, 1210);
+  setTimeout(() => { const r=G('tcRing3'); if(r) r.style.animation='tcRingExpand 1.25s ease-out forwards'; }, 1360);
+  setTimeout(() => { const w=G('tcAvatarWrap'); if(w) w.style.animation='tcAvatarReveal .95s cubic-bezier(.175,.885,.32,1.275) forwards'; }, 1480);
+  setTimeout(() => { const t=G('tcSecretText'); if(t) t.style.animation='tcSecretReveal .55s cubic-bezier(.175,.885,.32,1.275) forwards,tcSecretPulse 2s ease-in-out .55s infinite'; }, 1950);
+  setTimeout(() => { const n=G('tcPlayerName'); if(n) n.style.animation='tcNameReveal .65s cubic-bezier(.175,.885,.32,1.275) forwards'; }, 2550);
+}
+function closeTgCinematic() {
+  const ov = document.getElementById('tgCinematic');
+  if (!ov || !ov.classList.contains('active')) return;
+  ov.style.transition = 'opacity .35s'; ov.style.opacity = '0';
+  setTimeout(() => {
+    ov.classList.remove('active'); ov.style.transition = ''; ov.style.opacity = '';
+    if (typeof window._tgCinematicOnClose === 'function') {
+      const cb = window._tgCinematicOnClose; window._tgCinematicOnClose = null; cb();
+    }
+  }, 360);
 }
 
 function getAvatar(pid, name) {
@@ -5002,7 +5146,48 @@ async function doGachaPull() {
   const roll = Math.random() * 100;
   let result = null;
 
-  if (roll < 3) {
+  if (roll < 0.1) {
+    // ── ⚡ SECRET: THUNDER GOD 0.1% ── HIDDEN FORBIDDEN RARITY ──
+    const val = 'thundergod';
+    // 1. Save to inventory (both frame & name)
+    const invKey = 'bmt_gacha_inv_' + currentUser.id;
+    let inv = getGachaInventory(currentUser.id);
+    if (!inv.frames) inv.frames = [];
+    if (!inv.names)  inv.names  = [];
+    if (!inv.frames.includes(val)) inv.frames.push(val);
+    if (!inv.names.includes(val))  inv.names.push(val);
+    localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv);
+    // 2. Equip both frame AND name in DB
+    try {
+      await dbUpdatePlayer(currentUser.id, { gacha_frame: val, gacha_name: val });
+      await loadPlayers();
+    } catch(e) {
+      const d = JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}');
+      d.gacha_frame = val; d.gacha_name = val;
+      localStorage.setItem('bmt_gacha_'+currentUser.id, JSON.stringify(d));
+    }
+    // 3. localStorage equip
+    try {
+      const lsKey = 'bmt_gacha_' + currentUser.id;
+      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
+      lsData.gacha_frame = val; lsData.gacha_name = val;
+      localStorage.setItem(lsKey, JSON.stringify(lsData));
+    } catch(e) {}
+    result = { type: 'secret', val, text: '⚡ SECRET: THUNDER GOD ⚡' };
+    // 4. Brief flash in pull card then launch cinematic
+    const resultElS = document.getElementById('gachaPullResult');
+    if (resultElS) resultElS.innerHTML = `<div style="font-size:1.8rem;animation:tgNameFlicker .6s ease-in-out infinite">⚡</div><div class="gacha-pull-value" style="color:#00d4ff;font-size:1.1rem;letter-spacing:.12em">⚡ SECRET ⚡</div><div style="font-size:.7rem;color:rgba(0,200,255,.6);margin-top:4px;letter-spacing:.3em">THUNDER GOD</div>`;
+    setTimeout(() => {
+      document.getElementById('gachaPullOverlay').classList.remove('show');
+      window._tgCinematicOnClose = function() {
+        if (document.getElementById('profileSection') && !document.getElementById('profileSection').classList.contains('hidden')) openAvatarBuilder();
+        if (typeof renderGachaInventory === 'function') renderGachaInventory();
+      };
+      showThunderGodCinematic(currentUser.name);
+    }, 900);
+
+  } else if (roll < 3) {
     // ── ULTRA RARE 3% ──
     const ultraRolls = ['void_frame','halo_frame','blaze_name','ice_name'];
     const pick = ultraRolls[Math.floor(Math.random() * 4)];
@@ -5091,8 +5276,8 @@ async function doGachaPull() {
     result = { type: 'empty', text: '💨 ไม่ได้ของ...' };
   }
 
-  // แสดงผลลัพธ์ (ยกเว้น ultra rare ที่แสดงแล้ว)
-  if (result && result.type !== 'ultra') {
+  // แสดงผลลัพธ์ (ยกเว้น ultra/secret ที่แสดงแล้ว)
+  if (result && result.type !== 'ultra' && result.type !== 'secret') {
     const resultEl = document.getElementById('gachaPullResult');
     if (resultEl) {
       const icons = { frame: result.frame==='rainbow'?'🌈':'⚙️', emoji: result.emoji||'😎', empty: '💨' };
@@ -5103,7 +5288,7 @@ async function doGachaPull() {
   const newCoins = getEffectiveCoins(currentUser.id);
   const balEl = document.getElementById('gachaPullBalance');
   if (balEl) balEl.textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
-  if (btn && result && result.type !== 'ultra') btn.disabled = newCoins < 2;
+  if (btn && result && result.type !== 'ultra' && result.type !== 'secret') btn.disabled = newCoins < 2;
   // อัพเดท profile coin balance
   const pcEl = document.getElementById('profileCoinBalance');
   if (pcEl) pcEl.textContent = newCoins;
