@@ -966,8 +966,8 @@ END $$;</pre>
     <div class="form-group"><label>คะแนน</label><input class="inp" type="number" id="editPlayerPts"></div>
     <div class="form-group"><label>PIN ใหม่ (เว้นว่างถ้าไม่เปลี่ยน)</label><input class="inp" type="password" maxlength="4" id="editPlayerPin" inputmode="numeric" placeholder="xxxx"></div>
     <div class="form-group"><label>สิทธิ์ Admin</label><select class="inp" id="editPlayerAdmin"><option value="0">ไม่ใช่ Admin</option><option value="1">Admin</option></select></div>
-    <div class="form-group"><label>⭐ 3% Gacha Frame</label><select class="inp" id="editPlayerGachaFrame"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Abyss</option><option value="halo">✨ Celestial Halo</option><option value="blaze">🔥 Crimson Blaze</option><option value="ice">❄️ Phantom Ice</option><option value="solar">☀️ Solar Crown (King Unique)</option></select></div>
-    <div class="form-group"><label>⭐ 3% Gacha Name Effect</label><select class="inp" id="editPlayerGachaName"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Corruption</option><option value="halo">✨ Celestial Script</option><option value="blaze">🔥 Blaze Script</option><option value="ice">❄️ Ice Script</option><option value="solar">☀️ Solar Script (King Unique)</option></select></div>
+    <div class="form-group"><label>⭐ Gacha Frame</label><select class="inp" id="editPlayerGachaFrame"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Abyss</option><option value="halo">✨ Celestial Halo</option><option value="blaze">🔥 Crimson Blaze</option><option value="ice">❄️ Phantom Ice</option><option value="solar">☀️ Solar Crown (King Unique)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
+    <div class="form-group"><label>⭐ Gacha Name Effect</label><select class="inp" id="editPlayerGachaName"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Corruption</option><option value="halo">✨ Celestial Script</option><option value="blaze">🔥 Blaze Script</option><option value="ice">❄️ Ice Script</option><option value="solar">☀️ Solar Script (King Unique)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="deletePlayer()">🗑️ ลบ</button>
       <button class="btn btn-danger btn-sm" style="background:rgba(255,140,0,0.12);border-color:rgba(255,140,0,0.35);color:#ff8c00" onclick="clearPlayerHistory(parseInt(document.getElementById('editPlayerId').value))">🔄 ล้างประวัติ</button>
@@ -2754,8 +2754,23 @@ async function saveEditPlayer() {
   if (newPin) data.pin = newPin;
   try {
     await dbUpdatePlayer(id, data);
-    await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
-    if (newFrame || newName) showGachaReveal(playerName, gachaFrame || null, gachaName || null);
+    await loadPlayers();
+    // ── Also add new item to the player's gacha_inventory so it appears in Avatar Builder ──
+    if (newFrame || newName) {
+      const inv = getGachaInventory(id);
+      if (!inv.frames) inv.frames = [];
+      if (!inv.names)  inv.names  = [];
+      if (newFrame && !inv.frames.includes(gachaFrame)) inv.frames.push(gachaFrame);
+      if (newName  && !inv.names.includes(gachaName))   inv.names.push(gachaName);
+      _saveGachaInventoryToDB(id, inv); // async — fire and forget
+    }
+    closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
+    // ── Show cosmetic reveal (cinematic for SECRET, normal card for others) ──
+    if (newFrame || newName) {
+      const isSecret = gachaFrame === 'thundergod' || gachaName === 'thundergod';
+      if (isSecret) showThunderGodCinematic(playerName);
+      else showGachaReveal(playerName, gachaFrame || null, gachaName || null);
+    }
   } catch(e) {
     // Fallback: retry without gacha columns if DB schema is outdated
     if (/gacha_(frame|name)/.test(e.message || '')) {
