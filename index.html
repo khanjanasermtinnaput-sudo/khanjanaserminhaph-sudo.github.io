@@ -341,6 +341,21 @@ body.x2-active .toast-wrap{bottom:120px}
 .tournament-table{width:100%;border-collapse:collapse;font-size:0.78rem}
 .tournament-table th,.tournament-table td{padding:6px 8px;text-align:left;border-bottom:1px solid var(--glass-border)}
 .tournament-table th{color:var(--muted);font-weight:600}
+/* [NEW] Tournament mode badges (Singles / Doubles) */
+.t-mode-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:0.67rem;font-weight:700;letter-spacing:.04em;vertical-align:middle}
+.t-mode-singles{background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)}
+.t-mode-doubles{background:rgba(120,140,255,.1);border:1px solid rgba(120,140,255,.4);color:#8a9fff}
+/* [NEW] Cancel tournament button */
+.t-cancel-btn{background:rgba(255,60,60,.1);border:1px solid rgba(255,60,60,.3);color:#ff7070;border-radius:8px;padding:3px 10px;font-size:0.72rem;font-weight:600;cursor:pointer;transition:.15s;line-height:1.4}
+.t-cancel-btn:hover{background:rgba(255,60,60,.22);border-color:rgba(255,60,60,.65);color:#ff5050}
+/* [NEW] 2v2 team selection box */
+.t-team-box{border:1px solid var(--glass-border);border-radius:12px;padding:10px;background:var(--glass,rgba(255,255,255,.04));flex:1;min-width:140px}
+.t-team-label{font-size:0.74rem;font-weight:700;color:var(--neon);margin-bottom:6px}
+/* lite/light mode overrides for new tournament elements */
+[data-style="lite"] .t-team-box{background:rgba(0,0,0,.04)}
+[data-style="lite"] .t-cancel-btn{background:rgba(200,0,0,.08);color:#cc2222}
+[data-style="lite"] .t-mode-singles{background:rgba(0,160,80,.08);color:#008844}
+[data-style="lite"] .t-mode-doubles{background:rgba(60,80,200,.08);color:#4455cc}
 
 /* ── Gacha reveal ทำงานได้แม้ใน Lite mode ── */
 [data-style="lite"] #gachaRevealOverlay,
@@ -5220,6 +5235,8 @@ function getGrandFinalBadge(playerId) {
 }
 
 // ── 11. TOURNAMENT BRACKET ────────────────────────────────
+
+// ── DB helpers (unchanged) ──
 async function dbGetTournaments() {
   try { return await supaFetch('tournaments?order=created_at.desc'); } catch(e) { return []; }
 }
@@ -5234,9 +5251,108 @@ async function dbAddTournamentMatch(tournamentId, groupLetter, playerA, playerB,
   await supaFetch('tournament_matches', { method: 'POST', body: JSON.stringify({ tournament_id: tournamentId, group_letter: groupLetter, player_a: playerA, player_b: playerB, score_a: scoreA, score_b: scoreB, winner_id: winnerId }), prefer: 'return=minimal' });
 }
 
+// ── [NEW] Delete tournament + all its matches ──
+async function dbDeleteTournament(tournamentId) {
+  await supaFetch(`tournament_matches?tournament_id=eq.${tournamentId}`, { method: 'DELETE', prefer: 'return=minimal' });
+  await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'DELETE', prefer: 'return=minimal' });
+}
+
+// ── [NEW] Read match type from groups array (_meta sentinel) ──
+function getTournamentMatchType(groups) {
+  if (!Array.isArray(groups)) return '1v1';
+  const meta = groups.find(g => g._meta);
+  return meta?.matchType || '1v1';
+}
+
+// ── [NEW] Return actual groups, skipping the _meta sentinel ──
+function getTournamentGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  return groups.filter(g => !g._meta);
+}
+
+// ── [NEW] Find a 2v2 team by its anchor (playerIds[0]) ──
+function getTeamByAnchor(groups, anchorId) {
+  for (const grp of getTournamentGroups(groups)) {
+    if (grp.teams) {
+      const t = grp.teams.find(team => team.playerIds && team.playerIds[0] === anchorId);
+      if (t) return t;
+    }
+  }
+  return null;
+}
+
+// ── [NEW] Human-readable team name: "Alice + Bob" ──
+function getTeamDisplayName(team, players) {
+  if (!team || !team.playerIds) return '—';
+  return team.playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(' + ');
+}
+
+// ── [NEW] Render Singles / Doubles badge ──
+function renderModeBadge(matchType) {
+  return matchType === '2v2'
+    ? `<span class="t-mode-badge t-mode-doubles">⚔️ Doubles</span>`
+    : `<span class="t-mode-badge t-mode-singles">🏸 Singles</span>`;
+}
+
+// ── [NEW] Show confirm-cancel modal ──
+function confirmCancelTournament(tournamentId, tournamentName) {
+  document.getElementById('tCancelModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'tCancelModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(255,60,60,.4);border-radius:18px;padding:24px 20px;max-width:320px;width:90%;text-align:center;box-shadow:0 0 40px rgba(255,60,60,.15)">
+      <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px">ยกเลิก Tournament?</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:18px">
+        <strong style="color:var(--text)">"${tournamentName}"</strong><br>
+        จะถูกลบพร้อมผลการแข่งขันทั้งหมด<br>ไม่สามารถกู้คืนได้
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.82rem"
+          onclick="document.getElementById('tCancelModal').remove()">ปิด</button>
+        <button class="btn" style="flex:1;background:rgba(255,60,60,.15);border:1px solid rgba(255,60,60,.5);color:#ff6060;font-size:0.82rem"
+          onclick="cancelTournament(${tournamentId})">🗑️ ยืนยันลบ</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+// ── [NEW] Execute tournament deletion ──
+async function cancelTournament(tournamentId) {
+  document.getElementById('tCancelModal')?.remove();
+  try {
+    toast('กำลังลบ Tournament...', 'info');
+    await dbDeleteTournament(tournamentId);
+    toast('ลบ Tournament เรียบร้อย ✅', 'success');
+    renderTournamentSection();
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+// ── [NEW] Toggle Group B section in 2v2 create form ──
+function toggle2v2GroupB(show) {
+  const el = document.getElementById('t2v2_groupB_section');
+  if (el) el.style.display = show ? '' : 'none';
+}
+
+// ── [NEW] Switch between 1v1 checkboxes and 2v2 team UI ──
+function onTournamentModeChange() {
+  const mode = document.getElementById('tournamentMatchType')?.value || '1v1';
+  const d1 = document.getElementById('tournamentPlayerSelect1v1');
+  const d2 = document.getElementById('tournamentPlayerSelect2v2');
+  if (d1) d1.style.display = mode === '1v1' ? '' : 'none';
+  if (d2) d2.style.display = mode === '2v2' ? '' : 'none';
+}
+
+// ── renderTournamentSection (updated: add matchType selector + 2v2 team UI) ──
 async function renderTournamentSection() {
   const container = document.getElementById('tournamentAdminSection');
   if (!container) return;
+
+  // Player dropdown options shared across 2v2 selects
+  const pOpts = db.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+
   let html = `<div style="margin-bottom:12px">
     <div style="font-size:0.83rem;color:var(--muted);margin-bottom:8px">สร้าง Tournament ใหม่</div>
     <input class="inp" id="tournamentName" placeholder="ชื่อทัวร์นาเมนต์" style="margin-bottom:8px">
@@ -5245,12 +5361,62 @@ async function renderTournamentSection() {
       <option value="Super 500">Super 500</option>
       <option value="Super 1000">Super 1000</option>
     </select>
-    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">เลือกผู้เล่น 4-6 คน:</div>
-    <div id="tournamentPlayerSelect" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-      ${db.players.map(p => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer"><input type="checkbox" value="${p.id}" id="tp_${p.id}"> ${p.name}</label>`).join('')}
+    <!-- [NEW] Match type selector: 1v1 Singles / 2v2 Doubles -->
+    <select class="inp" id="tournamentMatchType" style="margin-bottom:10px" onchange="onTournamentModeChange()">
+      <option value="1v1">🏸 1v1 — Singles</option>
+      <option value="2v2">⚔️ 2v2 — Doubles</option>
+    </select>
+
+    <!-- [NEW] 1v1 player checkboxes (shown by default) -->
+    <div id="tournamentPlayerSelect1v1">
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">เลือกผู้เล่น 4-6 คน:</div>
+      <div id="tournamentPlayerSelect" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        ${db.players.map(p => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer"><input type="checkbox" value="${p.id}" id="tp_${p.id}"> ${p.name}</label>`).join('')}
+      </div>
     </div>
+
+    <!-- [NEW] 2v2 team builder (hidden until mode = 2v2) -->
+    <div id="tournamentPlayerSelect2v2" style="display:none">
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">ระบุผู้เล่นในแต่ละทีม (ไม่ซ้ำกัน):</div>
+      <div style="font-size:0.75rem;font-weight:700;color:var(--neon);margin-bottom:6px">📌 Group A</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+        <div class="t-team-box">
+          <div class="t-team-label">⚔️ Team A1</div>
+          <select class="inp" id="t2v2_A_0_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
+          <select class="inp" id="t2v2_A_0_1" style="font-size:0.76rem">${pOpts}</select>
+        </div>
+        <div style="font-weight:700;color:var(--muted);padding:4px;align-self:center">vs</div>
+        <div class="t-team-box">
+          <div class="t-team-label">⚔️ Team A2</div>
+          <select class="inp" id="t2v2_A_1_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
+          <select class="inp" id="t2v2_A_1_1" style="font-size:0.76rem">${pOpts}</select>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;cursor:pointer;margin-bottom:8px">
+        <input type="checkbox" id="t2v2_addGroupB" onchange="toggle2v2GroupB(this.checked)">
+        เพิ่ม Group B (Group Stage)
+      </label>
+      <div id="t2v2_groupB_section" style="display:none">
+        <div style="font-size:0.75rem;font-weight:700;color:var(--neon);margin-bottom:6px">📌 Group B</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+          <div class="t-team-box">
+            <div class="t-team-label">⚔️ Team B1</div>
+            <select class="inp" id="t2v2_B_0_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
+            <select class="inp" id="t2v2_B_0_1" style="font-size:0.76rem">${pOpts}</select>
+          </div>
+          <div style="font-weight:700;color:var(--muted);padding:4px;align-self:center">vs</div>
+          <div class="t-team-box">
+            <div class="t-team-label">⚔️ Team B2</div>
+            <select class="inp" id="t2v2_B_1_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
+            <select class="inp" id="t2v2_B_1_1" style="font-size:0.76rem">${pOpts}</select>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary btn-sm" style="width:auto" onclick="createTournament()">🏆 สร้าง Tournament</button>
   </div>`;
+
   try {
     const tournaments = await dbGetTournaments();
     if (tournaments.length) {
@@ -5258,9 +5424,18 @@ async function renderTournamentSection() {
       for (const t of tournaments) {
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+        const matchType = getTournamentMatchType(groups);
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
-        html += `<div class="tournament-group" style="margin-bottom:16px">
-          <div class="tournament-group-title">${tierBadge} ${t.name} <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span></div>
+        // Escape single quotes in tournament name for inline onclick
+        const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
+          <!-- [NEW] Cancel button — top-right of each tournament card -->
+          <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px"
+            onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
+          <div class="tournament-group-title" style="padding-right:90px">
+            ${tierBadge} ${t.name} ${renderModeBadge(matchType)}
+            <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span>
+          </div>
           ${await renderTournamentBracket(t, groups)}
         </div>`;
       }
@@ -5269,71 +5444,186 @@ async function renderTournamentSection() {
   container.innerHTML = html;
 }
 
+// ── renderTournamentBracket (updated: handles 1v1 AND 2v2, all stages) ──
 async function renderTournamentBracket(tournament, groups) {
   let html = '';
   const tMatches = await dbGetTournamentMatches(tournament.id);
-  for (const grp of groups) {
+  const matchType = getTournamentMatchType(groups);
+  const realGroups = getTournamentGroups(groups); // skip _meta
+
+  for (const grp of realGroups) {
     const grpLetter = grp.letter;
-    const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
-    const standings = grpPlayers.map(p => {
-      const pw = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length;
-      const pl = tMatches.filter(m => m.group_letter === grpLetter && (m.player_a === p.id || m.player_b === p.id) && m.winner_id !== p.id).length;
-      return { p, w: pw, l: pl };
-    }).sort((a,b) => b.w - a.w);
-    html += `<div style="margin-bottom:10px">
-      <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter}</div>
-      <table class="tournament-table">
-        <thead><tr><th>ผู้เล่น</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
-        <tbody>${standings.map(s => `<tr><td>${s.p.name}</td><td style="color:var(--neon)">${s.w}</td><td style="color:var(--red)">${s.l}</td><td>${s.w*2 - s.l}</td></tr>`).join('')}</tbody>
-      </table>
-      <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ใน Group ${grpLetter}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
-          ${grpPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
-        </select>
-        <span style="font-size:0.8rem">vs</span>
-        <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
-          ${grpPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
-        </select>
-        <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-        <span>-</span>
-        <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem" onclick="recordTournamentMatch(${tournament.id},'${grpLetter}')">✅</button>
-      </div>
-    </div>`;
+
+    if (matchType === '2v2' && grp.teams) {
+      // ══ 2v2 group standings ══
+      const standings = grp.teams.map(team => {
+        const anchor = team.playerIds[0];
+        const w = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === anchor).length;
+        const l = tMatches.filter(m => m.group_letter === grpLetter
+          && (m.player_a === anchor || m.player_b === anchor) && m.winner_id !== anchor).length;
+        return { team, anchor, w, l };
+      }).sort((a,b) => b.w - a.w);
+
+      // Team options for match-recording selects
+      const teamOpts = grp.teams.map(team =>
+        `<option value="${team.playerIds[0]}">${getTeamDisplayName(team, db.players)}</option>`
+      ).join('');
+
+      html += `<div style="margin-bottom:12px">
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">
+          Group ${grpLetter} <span class="t-mode-badge t-mode-doubles" style="font-size:0.64rem">Doubles</span>
+        </div>
+        <table class="tournament-table">
+          <thead><tr><th>ทีม</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
+          <tbody>${standings.map(s => `<tr>
+            <td style="font-weight:600">${getTeamDisplayName(s.team, db.players)}</td>
+            <td style="color:var(--neon)">${s.w}</td>
+            <td style="color:var(--red)">${s.l}</td>
+            <td>${s.w * 2 - s.l}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}"
+            style="flex:1;min-width:110px;font-size:0.76rem;padding:6px 8px">${teamOpts}</select>
+          <span style="font-size:0.8rem">vs</span>
+          <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}"
+            style="flex:1;min-width:110px;font-size:0.76rem;padding:6px 8px">${teamOpts}</select>
+          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}"
+            placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <span>-</span>
+          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}"
+            placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
+            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','2v2')">✅</button>
+        </div>
+      </div>`;
+
+    } else {
+      // ══ 1v1 group standings (original logic, backward-compatible) ══
+      const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
+      const standings = grpPlayers.map(p => {
+        const pw = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length;
+        const pl = tMatches.filter(m => m.group_letter === grpLetter
+          && (m.player_a === p.id || m.player_b === p.id) && m.winner_id !== p.id).length;
+        return { p, w: pw, l: pl };
+      }).sort((a,b) => b.w - a.w);
+      html += `<div style="margin-bottom:10px">
+        <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter}</div>
+        <table class="tournament-table">
+          <thead><tr><th>ผู้เล่น</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
+          <tbody>${standings.map(s => `<tr>
+            <td>${s.p.name}</td>
+            <td style="color:var(--neon)">${s.w}</td>
+            <td style="color:var(--red)">${s.l}</td>
+            <td>${s.w * 2 - s.l}</td>
+          </tr>`).join('')}</tbody>
+        </table>
+        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ใน Group ${grpLetter}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}"
+            style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
+            ${grpPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+          <span style="font-size:0.8rem">vs</span>
+          <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}"
+            style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
+            ${grpPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
+          </select>
+          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}"
+            placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <span>-</span>
+          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}"
+            placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
+            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','1v1')">✅</button>
+        </div>
+      </div>`;
+    }
   }
+
+  // ── Race to Grand Final (works for both modes) ──
   const top2PerGroup = [];
-  for (const grp of groups) {
-    const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
-    const standings = grpPlayers.map(p => ({
-      p, w: tMatches.filter(m => m.group_letter === grp.letter && m.winner_id === p.id).length
-    })).sort((a,b) => b.w - a.w);
-    if (standings[0]) top2PerGroup.push({ player: standings[0].p, group: grp.letter, rank: 1 });
-    if (standings[1]) top2PerGroup.push({ player: standings[1].p, group: grp.letter, rank: 2 });
+  for (const grp of realGroups) {
+    const grpLetter = grp.letter;
+    if (matchType === '2v2' && grp.teams) {
+      const ranked = grp.teams.map(team => ({
+        label: getTeamDisplayName(team, db.players),
+        w: tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === team.playerIds[0]).length
+      })).sort((a,b) => b.w - a.w);
+      if (ranked[0]) top2PerGroup.push({ label: ranked[0].label, group: grpLetter, rank: 1 });
+      if (ranked[1]) top2PerGroup.push({ label: ranked[1].label, group: grpLetter, rank: 2 });
+    } else {
+      const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
+      const ranked = grpPlayers.map(p => ({
+        label: p.name,
+        w: tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length
+      })).sort((a,b) => b.w - a.w);
+      if (ranked[0]) top2PerGroup.push({ label: ranked[0].label, group: grpLetter, rank: 1 });
+      if (ranked[1]) top2PerGroup.push({ label: ranked[1].label, group: grpLetter, rank: 2 });
+    }
   }
   if (top2PerGroup.length >= 4) {
     html += `<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,215,0,0.3);border-radius:10px;background:rgba(255,215,0,0.04)">
       <div style="font-weight:600;font-size:0.82rem;color:var(--gold);margin-bottom:6px">🏆 Race to Grand Final</div>
       <div style="font-size:0.78rem;color:var(--muted)">
-        Semi: ${top2PerGroup[0]?.player.name} (A1) vs ${top2PerGroup[3]?.player.name} (B2)<br>
-        Semi: ${top2PerGroup[1]?.player.name} (A2) vs ${top2PerGroup[2]?.player.name} (B1)
+        Semi: <strong>${top2PerGroup[0]?.label}</strong> (${top2PerGroup[0]?.group}1)
+        vs <strong>${top2PerGroup[3]?.label}</strong> (${top2PerGroup[3]?.group}2)<br>
+        Semi: <strong>${top2PerGroup[1]?.label}</strong> (${top2PerGroup[1]?.group}2)
+        vs <strong>${top2PerGroup[2]?.label}</strong> (${top2PerGroup[2]?.group}1)
       </div>
     </div>`;
   }
   return html;
 }
 
+// ── createTournament (updated: reads matchType, builds 1v1 or 2v2 groups) ──
 async function createTournament() {
   const name = (document.getElementById('tournamentName')?.value || '').trim();
-  const tier = document.getElementById('tournamentTier')?.value || 'Regular';
+  const tier  = document.getElementById('tournamentTier')?.value || 'Regular';
+  const matchType = document.getElementById('tournamentMatchType')?.value || '1v1';
   if (!name) return toast('กรุณากรอกชื่อทัวร์นาเมนต์', 'error');
-  const checked = Array.from(document.querySelectorAll('#tournamentPlayerSelect input:checked')).map(x => parseInt(x.value));
-  if (checked.length < 4 || checked.length > 6) return toast('เลือกผู้เล่น 4-6 คน', 'error');
-  const half = Math.ceil(checked.length / 2);
-  const groups = [
-    { letter: 'A', playerIds: checked.slice(0, half) },
-    { letter: 'B', playerIds: checked.slice(half) },
-  ];
+
+  let groups = [];
+
+  if (matchType === '2v2') {
+    // ── [NEW] Build 2v2 groups from dropdown selections ──
+    const gv = id => parseInt(document.getElementById(id)?.value);
+    const teamA1 = { playerIds: [gv('t2v2_A_0_0'), gv('t2v2_A_0_1')] };
+    const teamA2 = { playerIds: [gv('t2v2_A_1_0'), gv('t2v2_A_1_1')] };
+    const allA = teamA1.playerIds.concat(teamA2.playerIds);
+    if (allA.some(isNaN)) return toast('กรุณาเลือกผู้เล่น Group A ให้ครบ', 'error');
+    if (new Set(allA).size !== allA.length) return toast('ผู้เล่นใน Group A ต้องไม่ซ้ำกัน', 'error');
+
+    // _meta sentinel stores matchType for future reads
+    groups = [
+      { _meta: true, matchType: '2v2' },
+      { letter: 'A', matchType: '2v2', teams: [teamA1, teamA2] }
+    ];
+
+    // Optional Group B
+    if (document.getElementById('t2v2_addGroupB')?.checked) {
+      const teamB1 = { playerIds: [gv('t2v2_B_0_0'), gv('t2v2_B_0_1')] };
+      const teamB2 = { playerIds: [gv('t2v2_B_1_0'), gv('t2v2_B_1_1')] };
+      const allB = teamB1.playerIds.concat(teamB2.playerIds);
+      if (allB.some(isNaN)) return toast('กรุณาเลือกผู้เล่น Group B ให้ครบ', 'error');
+      const combined = allA.concat(allB);
+      if (new Set(combined).size !== combined.length) return toast('ผู้เล่นซ้ำกันระหว่าง Group A และ B', 'error');
+      groups.push({ letter: 'B', matchType: '2v2', teams: [teamB1, teamB2] });
+    }
+
+  } else {
+    // ── 1v1: original logic (unchanged) ──
+    const checked = Array.from(document.querySelectorAll('#tournamentPlayerSelect input:checked'))
+      .map(x => parseInt(x.value));
+    if (checked.length < 4 || checked.length > 6) return toast('เลือกผู้เล่น 4-6 คน', 'error');
+    const half = Math.ceil(checked.length / 2);
+    groups = [
+      { letter: 'A', playerIds: checked.slice(0, half) },
+      { letter: 'B', playerIds: checked.slice(half) },
+    ];
+  }
+
   try {
     toast('กำลังสร้าง...', 'info');
     await dbCreateTournament(name, tier, groups);
@@ -5342,15 +5632,35 @@ async function createTournament() {
   } catch(e) { toast('สร้างไม่ได้: ' + e.message, 'error'); }
 }
 
-async function recordTournamentMatch(tournamentId, groupLetter) {
+// ── recordTournamentMatch (updated: supports both modes + coin award for 2v2) ──
+async function recordTournamentMatch(tournamentId, groupLetter, matchType) {
   const pa = parseInt(document.getElementById(`tm_pa_${tournamentId}_${groupLetter}`)?.value);
   const pb = parseInt(document.getElementById(`tm_pb_${tournamentId}_${groupLetter}`)?.value);
   const sa = parseInt(document.getElementById(`tm_sa_${tournamentId}_${groupLetter}`)?.value);
   const sb = parseInt(document.getElementById(`tm_sb_${tournamentId}_${groupLetter}`)?.value);
-  if (!pa || !pb || pa === pb) return toast('เลือกผู้เล่น 2 คนที่แตกต่างกัน', 'error');
+  const mType = matchType || '1v1';
+  if (!pa || !pb || pa === pb) return toast('เลือก' + (mType === '2v2' ? 'ทีม' : 'ผู้เล่น') + ' 2 ฝ่ายที่ต่างกัน', 'error');
   if (isNaN(sa) || isNaN(sb)) return toast('กรุณากรอกสกอร์', 'error');
+  const winnerId = sa > sb ? pa : pb;
   try {
-    await dbAddTournamentMatch(tournamentId, groupLetter, pa, pb, sa, sb, sa > sb ? pa : pb);
+    await dbAddTournamentMatch(tournamentId, groupLetter, pa, pb, sa, sb, winnerId);
+
+    // [NEW] Award coins to ALL players in the winning 2v2 team
+    if (mType === '2v2' && isAdminUser()) {
+      try {
+        const allTs = await dbGetTournaments();
+        const t = allTs.find(x => x.id === tournamentId);
+        if (t) {
+          let grps = [];
+          try { grps = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+          const winTeam = getTeamByAnchor(grps, winnerId);
+          if (winTeam?.playerIds) {
+            await awardMatchCoins(winTeam.playerIds);
+          }
+        }
+      } catch(e) { /* coin award is best-effort, don't block */ }
+    }
+
     toast('บันทึก Tournament Match แล้ว!', 'success');
     renderTournamentSection();
   } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
