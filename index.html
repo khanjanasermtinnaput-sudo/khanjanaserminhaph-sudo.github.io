@@ -255,12 +255,46 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .gf-void .gf-p,[data-style="lite"] .gf-halo .gf-p,
 [data-style="lite"] .gf-blaze .gf-p,[data-style="lite"] .gf-ice .gf-p{display:none!important}
 [data-style="lite"] .gn-void,[data-style="lite"] .gn-halo,[data-style="lite"] .gn-blaze,[data-style="lite"] .gn-ice{animation:none!important;-webkit-text-fill-color:var(--text)!important;background:none!important;filter:none!important}
+/* ── 3% Pull Reveal Overlay ── */
+#gachaRevealOverlay{position:fixed;inset:0;z-index:9998;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);cursor:pointer}
+#gachaRevealOverlay.show{display:flex;animation:gOverlayIn .3s ease forwards}
+@keyframes gOverlayIn{from{opacity:0}to{opacity:1}}
+.gr-shockwave{position:absolute;width:100px;height:100px;border-radius:50%;border:3px solid var(--gr-color,#cc88ff);animation:grShock 1.4s ease-out infinite;pointer-events:none;top:50%;left:50%;margin:-50px}
+.gr-shockwave:nth-child(2){animation-delay:.4s;border-color:var(--gr-color2,#aa44ff);opacity:.5}
+.gr-shockwave:nth-child(3){animation-delay:.8s;border-color:var(--gr-color3,#7700bb);opacity:.3}
+@keyframes grShock{0%{transform:scale(0.6);opacity:1}100%{transform:scale(3.2);opacity:0}}
+.gr-card{position:relative;z-index:5;width:240px;padding:30px 20px;border-radius:24px;display:flex;flex-direction:column;align-items:center;gap:14px;background:var(--gr-bg,linear-gradient(135deg,#1a0030,#0c0018));border:2px solid var(--gr-border,#9900dd);box-shadow:0 0 40px var(--gr-glow,rgba(150,0,220,0.6)),0 0 80px var(--gr-glow2,rgba(100,0,180,0.3));animation:grCardReveal 1s cubic-bezier(.175,.885,.32,1.275) forwards;opacity:0}
+@keyframes grCardReveal{0%{transform:scale(0.4) rotateY(180deg);opacity:0}50%{transform:scale(1.12) rotateY(15deg);opacity:1}70%{transform:scale(0.96) rotateY(-5deg)}85%{transform:scale(1.04) rotateY(2deg)}100%{transform:scale(1) rotateY(0deg);opacity:1}}
+.gr-label{font-family:'Rajdhani',sans-serif;font-size:0.7rem;letter-spacing:5px;color:var(--gr-color,#cc88ff);text-transform:uppercase;font-weight:700}
+.gr-rate{font-family:'Rajdhani',sans-serif;font-size:1.8rem;font-weight:800;color:var(--gr-color,#cc88ff);text-shadow:0 0 20px var(--gr-color,#cc88ff);letter-spacing:2px}
+.gr-frame-demo{width:90px;height:90px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:2.2rem;color:#fff;position:relative;isolation:isolate}
+.gr-name{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.2rem;letter-spacing:2px}
+.gr-rarity{font-size:0.6rem;letter-spacing:3px;color:rgba(255,255,255,0.7);text-transform:uppercase;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid var(--gr-border,#9900dd)}
+.gr-tap{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);font-size:0.7rem;letter-spacing:3px;color:rgba(255,255,255,0.4);text-transform:uppercase;animation:grTapBlink 1.6s ease infinite}
+@keyframes grTapBlink{0%,100%{opacity:.35}50%{opacity:.85}}
+[data-style="lite"] .gr-shockwave{display:none!important}
+[data-style="lite"] .gr-card{animation:none!important;opacity:1!important;transform:none!important}
 </style>
 </head>
 <body>
 
 <!-- ELO x2 BANNER -->
 <div class="elo-x2-banner" id="eloX2Banner">⚡ ELO x2 MODE เปิดใช้งาน — คะแนนทุกแมตช์คูณ 2!</div>
+
+<!-- 3% GACHA REVEAL OVERLAY -->
+<div id="gachaRevealOverlay" onclick="closeGachaReveal()">
+  <div class="gr-shockwave"></div>
+  <div class="gr-shockwave"></div>
+  <div class="gr-shockwave"></div>
+  <div class="gr-card" id="grCard">
+    <div class="gr-label" id="grLabel">★ 3% RATE ★</div>
+    <div class="gr-rate" id="grRate">ULTRA RARE</div>
+    <div class="gr-frame-demo" id="grFrameDemo">?</div>
+    <div class="gr-name" id="grName">PlayerName</div>
+    <div class="gr-rarity" id="grRarity">— effect type —</div>
+  </div>
+  <div class="gr-tap">tap to close</div>
+</div>
 
 <nav id="mainNav" class="hidden">
   <div class="nav-inner">
@@ -1159,6 +1193,73 @@ function getGachaNameClass(player) {
   if (!n || !['void','halo','blaze','ice'].includes(n)) return '';
   return 'gn-' + n;
 }
+// Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
+function resolveGachaPlayer(p) {
+  if (!p) return null;
+  if (p.gachaFrame !== undefined || p.gachaName !== undefined) return p;
+  return (db.players || []).find(x => x.id === p.id) || p;
+}
+// Render an array of team players as "Name1 & Name2" with per-name gacha class applied
+function formatTeamNames(team, sep) {
+  sep = sep || ' & ';
+  return (team || []).map(pm => {
+    const full = resolveGachaPlayer(pm);
+    const cls = getGachaNameClass(full);
+    return cls ? `<span class="${cls}">${pm.name}</span>` : pm.name;
+  }).join(sep);
+}
+// Show 3% pull reveal overlay (called after admin assigns frame/name)
+const GACHA_THEME = {
+  void:  { label:'🌑 VOID ABYSS',     name:'Void Corruption',   color:'#cc88ff', color2:'#aa44ff', color3:'#7700bb', bg:'linear-gradient(135deg,#1a0030,#0c0018)',          border:'#9900dd', glow:'rgba(150,0,220,0.6)', glow2:'rgba(100,0,180,0.3)' },
+  halo:  { label:'✨ CELESTIAL HALO', name:'Celestial Script',  color:'#ffe566', color2:'#ffd700', color3:'#ffaa00', bg:'linear-gradient(135deg,#3a2a00,#1c1500)',          border:'#ffd700', glow:'rgba(255,200,0,0.6)',  glow2:'rgba(255,160,0,0.3)' },
+  blaze: { label:'🔥 CRIMSON BLAZE',  name:'Blaze Script',       color:'#ff7744', color2:'#ff4400', color3:'#cc2200', bg:'linear-gradient(135deg,#3a0500,#1c0200)',          border:'#ff4400', glow:'rgba(255,80,0,0.6)',    glow2:'rgba(200,30,0,0.3)' },
+  ice:   { label:'❄️ PHANTOM ICE',    name:'Ice Script',         color:'#88ddff', color2:'#00ccff', color3:'#0088cc', bg:'linear-gradient(135deg,#001530,#000a1c)',          border:'#0088cc', glow:'rgba(0,180,255,0.6)',   glow2:'rgba(0,120,200,0.3)' },
+};
+function showGachaReveal(playerName, frame, name) {
+  const overlay = document.getElementById('gachaRevealOverlay');
+  if (!overlay) return;
+  // Choose theme: frame wins; else name; else default
+  const theme = GACHA_THEME[frame] || GACHA_THEME[name] || GACHA_THEME.void;
+  const card = document.getElementById('grCard');
+  card.style.setProperty('--gr-color', theme.color);
+  card.style.setProperty('--gr-color2', theme.color2);
+  card.style.setProperty('--gr-color3', theme.color3);
+  card.style.setProperty('--gr-bg', theme.bg);
+  card.style.setProperty('--gr-border', theme.border);
+  card.style.setProperty('--gr-glow', theme.glow);
+  card.style.setProperty('--gr-glow2', theme.glow2);
+  card.style.background = theme.bg;
+  card.style.borderColor = theme.border;
+  // Apply same on shockwave colors
+  overlay.style.setProperty('--gr-color', theme.color);
+  overlay.style.setProperty('--gr-color2', theme.color2);
+  overlay.style.setProperty('--gr-color3', theme.color3);
+  // Frame demo
+  const demo = document.getElementById('grFrameDemo');
+  demo.className = 'gr-frame-demo' + (frame ? ' gf-'+frame : '');
+  demo.innerHTML = (frame && GACHA_FRAME_INNER[frame] ? GACHA_FRAME_INNER[frame] : '') + (playerName ? playerName.charAt(0).toUpperCase() : '?');
+  demo.style.background = theme.bg;
+  // Name
+  const nameEl = document.getElementById('grName');
+  nameEl.className = 'gr-name' + (name ? ' gn-'+name : '');
+  nameEl.textContent = playerName || '—';
+  // Labels
+  document.getElementById('grLabel').textContent = '★ 3% RATE ★';
+  const parts = [];
+  if (frame) parts.push('Frame: ' + theme.label);
+  if (name) parts.push('Name: ' + (GACHA_THEME[name] ? GACHA_THEME[name].name : name));
+  document.getElementById('grRarity').textContent = parts.join(' · ') || 'ULTRA RARE';
+  document.getElementById('grRate').textContent = 'ULTRA RARE';
+  overlay.classList.add('show');
+  // Reset card animation
+  card.style.animation = 'none';
+  void card.offsetHeight;
+  card.style.animation = '';
+}
+function closeGachaReveal() {
+  const overlay = document.getElementById('gachaRevealOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
 
 function getAvatar(pid, name) {
   const sv = getCustomAvatar(pid);
@@ -1612,7 +1713,7 @@ function renderMatchSetup() {
   document.getElementById('singleB').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
 }
 function renderDoublesPlayers() {
-  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name">${p.name} <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || `<div class="text-muted">${t('no_players')}</div>`;
+  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name"><span class="${getGachaNameClass(p)}">${p.name}</span> <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || `<div class="text-muted">${t('no_players')}</div>`;
   document.getElementById('doublesPlayerList').innerHTML = html;
   window._doublesSelected = { A: [], B: [] };
 }
@@ -1661,12 +1762,17 @@ function showMatchPlaying() {
     if (_kc && n === _kc.name) s = '🤺 ' + s;
     return s;
   };
-  const nameA = currentMatch.teamA.map(p=>_addBadge(p.name)).join(' & ');
-  const nameB = currentMatch.teamB.map(p=>_addBadge(p.name)).join(' & ');
-  document.getElementById('teamAName').textContent = nameA;
-  document.getElementById('teamBName').textContent = nameB;
-  document.getElementById('refHalfNameA').textContent = nameA;
-  document.getElementById('refHalfNameB').textContent = nameB;
+  const teamHTML = team => team.map(pm => {
+    const full = resolveGachaPlayer(pm);
+    const cls = getGachaNameClass(full);
+    const badged = _addBadge(pm.name);
+    return cls ? `<span class="${cls}">${badged}</span>` : badged;
+  }).join(' & ');
+  const htmlA = teamHTML(currentMatch.teamA), htmlB = teamHTML(currentMatch.teamB);
+  document.getElementById('teamAName').innerHTML = htmlA;
+  document.getElementById('teamBName').innerHTML = htmlB;
+  document.getElementById('refHalfNameA').innerHTML = htmlA;
+  document.getElementById('refHalfNameB').innerHTML = htmlB;
   document.getElementById('scoreA').textContent = '0';
   document.getElementById('scoreB').textContent = '0';
   document.getElementById('refHalfScoreA').textContent = '0';
@@ -1834,7 +1940,7 @@ function confirmFinish() {
   document.getElementById('finishModalContent').innerHTML = `
     <div style="text-align:center;margin-bottom:16px">
       <div style="font-size:2rem;margin-bottom:4px">🏆</div>
-      <div style="font-size:1.1rem;font-weight:700;color:var(--neon)">${winners.map(p=>p.name).join(' & ')} ชนะ!</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--neon)">${formatTeamNames(winners)} ชนะ!</div>
       <div style="font-size:1.8rem;font-family:'Rajdhani';font-weight:700;color:var(--text);margin:8px 0">${scoreW} - ${scoreL}</div>
       <div style="font-size:0.72rem;color:var(--muted)">Score Multiplier: ${multLabel}x · ระบบ True ELO</div>
     </div>
@@ -1978,7 +2084,7 @@ async function renderHistory() {
     matches = matches.slice(0, 200);
 
     const html = matches.map(m => {
-      const nameA = m.teamA.map(p=>p.name).join(' & '), nameB = m.teamB.map(p=>p.name).join(' & ');
+      const nameA = formatTeamNames(m.teamA), nameB = formatTeamNames(m.teamB);
       const winner = m.winTeam === 'A' ? nameA : nameB, loser = m.winTeam === 'A' ? nameB : nameA;
       const date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
       const typeLabel = m.type === 'doubles' ? '👥 Doubles' : '👤 Singles';
@@ -2056,7 +2162,7 @@ async function renderProfile() {
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
       const opp = inA ? m.teamB : m.teamA, date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
-      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${opp.map(x=>x.name).join(' & ')} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts</div></div>`;
+      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts</div></div>`;
     }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_match')}</div>`;
   } catch(e) { console.error(e); }
 }
@@ -2069,7 +2175,7 @@ async function renderAdmin() {
     const sorted = [...db.players].sort((a,b)=>b.pts-a.pts);
     document.getElementById('adminPlayerList').innerHTML = sorted.map(p => {
       const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id);
-      return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
+      return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
     }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
     renderCachAdmin();
@@ -2091,8 +2197,8 @@ async function renderPendingList() {
     badge.classList.remove('hidden');
     list.innerHTML = rows.map(r => {
       const teamA = r.team_a, teamB = r.team_b;
-      const nameA = teamA.map(p=>p.name).join(' & ');
-      const nameB = teamB.map(p=>p.name).join(' & ');
+      const nameA = formatTeamNames(teamA);
+      const nameB = formatTeamNames(teamB);
       const winLabel = r.win_team === 'A' ? nameA : nameB;
       const submitter = db.players.find(p=>p.id===r.submitted_by);
       const submitterName = submitter ? submitter.name : t('unknown');
@@ -2220,12 +2326,16 @@ async function saveEditPlayer() {
   const p = db.players.find(x=>x.id===id); if (!p) return;
   const gachaFrame = document.getElementById('editPlayerGachaFrame').value;
   const gachaName = document.getElementById('editPlayerGachaName').value;
-  const data = { name: document.getElementById('editPlayerName').value.trim() || p.name, pts: Math.max(0, parseInt(document.getElementById('editPlayerPts').value) || 0), is_admin: document.getElementById('editPlayerAdmin').value === '1', gacha_frame: gachaFrame || null, gacha_name: gachaName || null };
+  const newFrame = (gachaFrame !== (p.gachaFrame || '')) && gachaFrame;
+  const newName = (gachaName !== (p.gachaName || '')) && gachaName;
+  const playerName = document.getElementById('editPlayerName').value.trim() || p.name;
+  const data = { name: playerName, pts: Math.max(0, parseInt(document.getElementById('editPlayerPts').value) || 0), is_admin: document.getElementById('editPlayerAdmin').value === '1', gacha_frame: gachaFrame || null, gacha_name: gachaName || null };
   const newPin = document.getElementById('editPlayerPin').value.trim();
   if (newPin) data.pin = newPin;
   try {
     await dbUpdatePlayer(id, data);
     await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
+    if (newFrame || newName) showGachaReveal(playerName, gachaFrame || null, gachaName || null);
   } catch(e) {
     // Fallback: retry without gacha columns if DB schema is outdated
     if (/gacha_(frame|name)/.test(e.message || '')) {
@@ -2396,10 +2506,11 @@ function openPlayerProfile(playerId) {
     const total = h.w + h.l;
     const pct = total > 0 ? Math.round(h.w / total * 100) : 0;
     const oppColors = getAvatarColor(h.id);
+    const oppP = (db.players||[]).find(x=>x.id===h.id) || h;
     return `<div class="pp2-h2h">
-      <div class="pp2-partner-av" style="background:${oppColors[1]};color:${oppColors[0]};width:32px;height:32px;font-size:0.82rem;flex-shrink:0">${getInitial(h.name)}</div>
+      <div class="pp2-partner-av ${getGachaFrameClass(oppP)}" style="background:${oppColors[1]};color:${oppColors[0]};width:32px;height:32px;font-size:0.82rem;flex-shrink:0;position:relative;isolation:isolate">${getGachaFrameInner(oppP)}${getInitial(h.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="pp2-h2h-name">${h.name}</div>
+        <div class="pp2-h2h-name ${getGachaNameClass(oppP)}">${h.name}</div>
         <div class="pp2-h2h-bar-wrap"><div class="pp2-h2h-bar-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="pp2-h2h-score" style="color:${pct>=50?'var(--neon)':'var(--red)'}">${h.w}W ${h.l}L</div>
@@ -2422,9 +2533,10 @@ function openPlayerProfile(playerId) {
   const partnerHTML = bestPartner ? (() => {
     const pc = getAvatarColor(bestPartner.id);
     const pwr = bestPartner.games > 0 ? Math.round(bestPartner.wins / bestPartner.games * 100) : 0;
+    const bpP = (db.players||[]).find(x=>x.id===bestPartner.id) || bestPartner;
     return `<div class="pp2-partner">
-      <div class="pp2-partner-av" style="background:${pc[1]};color:${pc[0]}">${getInitial(bestPartner.name)}</div>
-      <div style="flex:1"><div style="font-weight:600;font-size:0.88rem">${bestPartner.name}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${bestPartner.games} ${t('matches_with')} · ${t('won')} ${pwr}%</div></div>
+      <div class="pp2-partner-av ${getGachaFrameClass(bpP)}" style="background:${pc[1]};color:${pc[0]};position:relative;isolation:isolate">${getGachaFrameInner(bpP)}${getInitial(bestPartner.name)}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:0.88rem" class="${getGachaNameClass(bpP)}">${bestPartner.name}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${bestPartner.games} ${t('matches_with')} · ${t('won')} ${pwr}%</div></div>
       <div style="font-family:'Rajdhani';font-size:1rem;font-weight:700;color:var(--neon)">${bestPartner.wins}W</div>
     </div>`;
   })() : `<div class="text-muted" style="font-size:0.8rem;padding:8px 0">${t('no_doubles')}</div>`;
@@ -2437,7 +2549,7 @@ function openPlayerProfile(playerId) {
     const date = new Date(m.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
     return `<div class="pp2-hist">
       <div class="pp2-hist-res ${win ? 'w' : 'l'}">${win ? t('win_label') : t('lose_label')}</div>
-      <div style="flex:1;color:var(--muted)">vs ${opp.map(x => x.name).join(' & ')}</div>
+      <div style="flex:1;color:var(--muted)">vs ${formatTeamNames(opp)}</div>
       <div style="font-family:'Rajdhani';font-weight:700;font-size:0.88rem">${m.scoreA}-${m.scoreB}</div>
       <div style="font-size:0.7rem;color:var(--muted);white-space:nowrap">${date}</div>
     </div>`;
@@ -3915,8 +4027,8 @@ async function renderLiveTbl() {
     if (!pend || !pend.length) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     lst.innerHTML = pend.slice(0,5).map(m => {
-      const ta = (m.team_a||[]).map(p=>p.name).join(' & ');
-      const tb = (m.team_b||[]).map(p=>p.name).join(' & ');
+      const ta = formatTeamNames(m.team_a||[]);
+      const tb = formatTeamNames(m.team_b||[]);
       return `<div class="live-match-item">
         <div class="live-dot"></div>
         <div style="flex:1;font-size:.82rem"><b>${ta}</b><span style="color:var(--muted)"> vs </span><b>${tb}</b></div>
@@ -4039,7 +4151,7 @@ function renderTodayHist() {
   if(!ms.length){card.style.display='none';return;}
   card.style.display='';
   wrap.innerHTML=ms.slice(0,6).map(m=>{
-    const w=m.winTeam==='A'?m.teamA.map(p=>p.name).join(' & '):m.teamB.map(p=>p.name).join(' & ');
+    const w=m.winTeam==='A'?formatTeamNames(m.teamA):formatTeamNames(m.teamB);
     const t=new Date(m.date).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--glass-border);font-size:.78rem">
       <span style="color:var(--muted);font-size:.65rem;flex-shrink:0">${t}</span>
@@ -4065,11 +4177,12 @@ function doRematch() {
   if (!_lastMatchData) return;
   closeModal('finishModal');
   currentMatch = { type:_lastMatchData.type, teamA:_lastMatchData.teamA, teamB:_lastMatchData.teamB, scoreA:0, scoreB:0 };
-  document.getElementById('teamAName').textContent = currentMatch.teamA.map(p=>p.name).join(' & ');
-  document.getElementById('teamBName').textContent = currentMatch.teamB.map(p=>p.name).join(' & ');
+  const htmlA = formatTeamNames(currentMatch.teamA), htmlB = formatTeamNames(currentMatch.teamB);
+  document.getElementById('teamAName').innerHTML = htmlA;
+  document.getElementById('teamBName').innerHTML = htmlB;
   ['scoreA','scoreB'].forEach(k=>{ document.getElementById(k).textContent='0'; });
-  document.getElementById('refHalfNameA').textContent = currentMatch.teamA.map(p=>p.name).join(' & ');
-  document.getElementById('refHalfNameB').textContent = currentMatch.teamB.map(p=>p.name).join(' & ');
+  document.getElementById('refHalfNameA').innerHTML = htmlA;
+  document.getElementById('refHalfNameB').innerHTML = htmlB;
   document.getElementById('refHalfScoreA').textContent='0';
   document.getElementById('refHalfScoreB').textContent='0';
   document.getElementById('matchPlaying').classList.remove('hidden');
