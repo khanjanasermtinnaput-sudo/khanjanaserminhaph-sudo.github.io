@@ -751,6 +751,7 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
 ALTER TABLE players ADD COLUMN IF NOT EXISTS coins integer DEFAULT 0;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_emoji text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS consecutive_losses integer DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_inventory text DEFAULT '{}';
 
 -- กล่องจดหมาย
 CREATE TABLE IF NOT EXISTS mailbox (
@@ -1538,7 +1539,8 @@ function normalizePlayer(p) {
   const _gFrame = p.gacha_frame || _lsGacha.gacha_frame || null;
   const _gName  = p.gacha_name  || _lsGacha.gacha_name  || null;
   const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0 };
+  let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv };
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
@@ -4755,7 +4757,23 @@ const GACHA_EMOJIS = ['🏸','🔥','⚡','🌟','💥','🎯','🦅','🌊','�
 
 // ── Gacha Inventory: แสดง/เปลี่ยน Frame/Name ที่มีในคลัง ──
 function getGachaInventory(userId) {
-  try { return JSON.parse(localStorage.getItem('bmt_gacha_inv_' + userId) || '{}'); } catch(e) { return {}; }
+  // Merge localStorage + DB inventory so items persist across devices
+  let ls = {};
+  try { ls = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + userId) || '{}'); } catch(e) {}
+  const pl = db.players.find(x => x.id === userId);
+  const dbInv = pl ? (pl._dbGachaInv || {}) : {};
+  const frames = [...new Set([...(ls.frames||[]), ...(dbInv.frames||[])])];
+  const names  = [...new Set([...(ls.names||[]),  ...(dbInv.names||[])])];
+  const emojis = [...new Set([...(ls.emojis||[]), ...(dbInv.emojis||[])])];
+  return { frames, names, emojis };
+}
+
+async function _saveGachaInventoryToDB(userId, inv) {
+  try {
+    await dbUpdatePlayer(userId, { gacha_inventory: JSON.stringify(inv) });
+    const pl = db.players.find(x => x.id === userId);
+    if (pl) pl._dbGachaInv = inv;
+  } catch(e) { /* localStorage already saved */ }
 }
 function renderGachaInventory() {
   const el = document.getElementById('gachaInventoryBox');
@@ -4861,15 +4879,15 @@ async function doGachaPull() {
     const pick = ultraRolls[Math.floor(Math.random() * 4)];
     const [val, col] = pick.split('_');
 
-    // ── 1. บันทึกลง inventory localStorage (ไม่ลบทับ) ──
+    // ── 1. บันทึกลง inventory (localStorage + DB ถาวร) ──
     const invKey = 'bmt_gacha_inv_' + currentUser.id;
-    let inv = {};
-    try { inv = JSON.parse(localStorage.getItem(invKey) || '{}'); } catch(e) { inv = {}; }
+    let inv = getGachaInventory(currentUser.id);
     if (!inv.frames) inv.frames = [];
     if (!inv.names)  inv.names  = [];
     if (col === 'frame' && !inv.frames.includes(val)) inv.frames.push(val);
     if (col === 'name'  && !inv.names.includes(val))  inv.names.push(val);
     localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv); // async, ไม่ต้อง await
 
     // ── 2. บันทึกลง DB: equip ชิ้นนี้เสมอ (replace — user เปลี่ยนเองได้จากคลัง) ──
     try {
@@ -4911,30 +4929,29 @@ async function doGachaPull() {
   } else if (roll < 10) {
     // ── REGULAR FRAME 7% ──
     const frame = Math.random() < 0.5 ? 'rainbow' : 'robot';
-    try {
-      await dbUpdatePlayer(currentUser.id, { gacha_frame: frame });
-      await loadPlayers();
-    } catch(e) {
-      const lsKey = 'bmt_gacha_' + currentUser.id;
-      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
-      lsData.gacha_frame = frame;
-      localStorage.setItem(lsKey, JSON.stringify(lsData));
-    }
+    // บันทึกลง inventory (สะสม)
+    const invF = getGachaInventory(currentUser.id);
+    if (!invF.frames) invF.frames = [];
+    if (!invF.frames.includes(frame)) invF.frames.push(frame);
+    localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(invF));
+    _saveGachaInventoryToDB(currentUser.id, invF);
+    // equip
+    try { await dbUpdatePlayer(currentUser.id, { gacha_frame: frame }); await loadPlayers(); }
+    catch(e) { const d=JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}'); d.gacha_frame=frame; localStorage.setItem('bmt_gacha_'+currentUser.id,JSON.stringify(d)); }
     result = { type: 'frame', text: `${frame==='rainbow'?'🌈 Rainbow':'⚙️ Robot'} Frame ได้แล้ว!`, frame };
 
   } else if (roll < 30) {
     // ── EMOJI 20% ──
     const emoji = GACHA_EMOJIS[Math.floor(Math.random() * GACHA_EMOJIS.length)];
-    try {
-      await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji });
-      await loadPlayers();
-    } catch(e) {
-      const lsKey = 'bmt_gacha_' + currentUser.id;
-      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
-      lsData.gacha_emoji = emoji;
-      localStorage.setItem(lsKey, JSON.stringify(lsData));
-    }
-    // บันทึก emoji ลง avatar ด้วย
+    // บันทึกลง inventory (สะสม)
+    const invE = getGachaInventory(currentUser.id);
+    if (!invE.emojis) invE.emojis = [];
+    if (!invE.emojis.includes(emoji)) invE.emojis.push(emoji);
+    localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(invE));
+    _saveGachaInventoryToDB(currentUser.id, invE);
+    // equip
+    try { await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji }); await loadPlayers(); }
+    catch(e) { const d=JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}'); d.gacha_emoji=emoji; localStorage.setItem('bmt_gacha_'+currentUser.id,JSON.stringify(d)); }
     const sv = getCustomAvatar(currentUser.id);
     sv.emoji = emoji;
     localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
