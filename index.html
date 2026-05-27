@@ -62,9 +62,9 @@ body.x2-active .toast-wrap{bottom:120px}
 #profileCard.king-profile > *{position:relative;z-index:1}
 .king-banner{text-align:center;font-family:'Rajdhani','Sarabun',sans-serif;font-size:0.88rem;font-weight:800;letter-spacing:0.3em;padding:4px 0 10px;background:linear-gradient(90deg,#b8860b,#ffd700,#fff4a3,#ffd700,#b8860b);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:kingTitleShine 3s linear infinite;margin:-2px 0 4px}
 @keyframes kingTitleShine{to{background-position:200% center}}
-@keyframes lbKingThroneGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,0.45),0 4px 20px rgba(255,200,0,0.18),inset 0 1px 0 rgba(255,215,0,0.12)}50%{box-shadow:0 0 0 1px rgba(255,215,0,0.8),0 6px 32px rgba(255,200,0,0.35),inset 0 1px 0 rgba(255,215,0,0.22)}}
-.lb-king-throne{border-color:rgba(255,215,0,0.55)!important;background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,170,0,0.04))!important;animation:lbKingThroneGlow 2.4s ease-in-out infinite!important}
-[data-style="lite"] .lb-king-throne{animation:none!important;border-color:rgba(255,215,0,0.6)!important;background:rgba(255,215,0,0.05)!important;box-shadow:none!important}
+@keyframes lbKingThroneGlow{0%,100%{box-shadow:0 0 0 1px rgba(255,215,0,.48),0 2px 18px rgba(255,200,0,.18),0 4px 40px rgba(255,185,0,.10),inset 0 1px 0 rgba(255,215,0,.10)}50%{box-shadow:0 0 0 1.5px rgba(255,238,120,.92),0 4px 28px rgba(255,215,0,.36),0 8px 64px rgba(255,190,0,.22),inset 0 1px 0 rgba(255,215,0,.20)}}
+.lb-king-throne{border-color:rgba(255,215,0,.52)!important;background:linear-gradient(135deg,rgba(255,215,0,.065),rgba(10,14,32,.7),rgba(255,185,0,.042))!important;animation:lbKingThroneGlow 2.8s ease-in-out infinite!important}
+[data-style="lite"] .lb-king-throne{animation:none!important;border-color:rgba(255,215,0,.6)!important;background:rgba(255,215,0,.05)!important;box-shadow:none!important}
 #profileCard.king-profile .profile-avatar{position:relative;box-shadow:0 0 0 3px #ffd700,0 0 25px rgba(255,215,0,0.6);animation:kingAvatarPulse 2.5s ease-in-out infinite}
 #profileCard.king-profile .profile-avatar::after{content:'👑';position:absolute;top:-22px;left:50%;font-size:1.6rem;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.5s ease-in-out infinite;z-index:5;line-height:1}
 @keyframes kingCrownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(-8deg)}50%{transform:translateX(-50%) translateY(-5px) rotate(8deg)}}
@@ -266,41 +266,64 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .gn-void,[data-theme="light"] .gn-void{background:linear-gradient(135deg,#8800cc 0%,#550099 25%,#cc0055 55%,#330066 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameVoidGlitch 5s ease-in-out infinite,gNameVoidFlicker 5s ease-in-out infinite,gNameVoidGlowLight 2s ease-in-out infinite}
 [data-style="lite"] .gn-halo,[data-theme="light"] .gn-halo{background:linear-gradient(90deg,#7a5500 0%,#aa7700 15%,#cc9900 30%,#997700 45%,#bb8800 50%,#997700 55%,#cc9900 70%,#aa7700 85%,#7a5500 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameHaloShimmer 3s linear infinite,gNameHaloGlowLight 2s ease-in-out infinite}
 [data-style="lite"] .gn-ice,[data-theme="light"] .gn-ice{background:linear-gradient(90deg,#005599 0%,#0077bb 20%,#0099cc 40%,#006699 50%,#0099cc 60%,#0077bb 80%,#005599 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameIceShimmer 3.5s linear infinite,gNameIceGlowLight 2s ease-in-out infinite}
-/* ══════ 👑 KING — SOLAR EMPEROR (Prestige · Auto-unlock when #1 + King rank) ══════ */
-@keyframes seRingRot{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-@keyframes sePulse{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
-@keyframes seRayPulse{0%,100%{opacity:.5;transform:scaleY(1)}50%{opacity:.9;transform:scaleY(1.1)}}
-@keyframes seEclipseRot{0%{transform:rotate(0deg);opacity:.7}50%{transform:rotate(180deg);opacity:1}100%{transform:rotate(360deg);opacity:.7}}
-@keyframes seCorona{0%,100%{opacity:.38;transform:scale(1)}40%{opacity:.8;transform:scale(1.06)}70%{opacity:.55}}
-@keyframes seParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:.9}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(var(--gr)) scale(0);opacity:0}}
+/* ══════ 👑 SOLAR EMPEROR — GOD-TIER PRESTIGE FRAME (King Unique) ══════ */
+@keyframes seStarsMove{0%{background-position:2px 3px,9px 12px,4px 7px,17px 9px,1px 5px}100%{background-position:16px 16px,28px 29px,13px 16px,40px 30px,7px 12px}}
+@keyframes seStars2Move{0%{background-position:6px 8px,11px 4px,3px 11px}100%{background-position:26px 26px,37px 26px,19px 33px}}
+@keyframes seRingPulse{0%,100%{box-shadow:0 0 0 2px rgba(255,215,0,.72),0 0 10px rgba(255,215,0,.42),0 0 24px rgba(255,200,0,.24),0 0 50px rgba(255,170,0,.12)}50%{box-shadow:0 0 0 2.5px rgba(255,238,120,.97),0 0 18px rgba(255,220,0,.78),0 0 42px rgba(255,200,0,.48),0 0 88px rgba(255,170,0,.30)}}
+@keyframes seOuterBloom{0%,100%{opacity:.45;transform:scale(1)}50%{opacity:.78;transform:scale(1.05)}}
+@keyframes seSweepRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes seSweepRotR{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
+@keyframes seFlareGlow{0%,100%{opacity:.1}40%{opacity:.82}60%{opacity:.6}100%{opacity:.1}}
+@keyframes seCrownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(-6deg) scale(1)}50%{transform:translateX(-50%) translateY(-6px) rotate(6deg) scale(1.06)}}
+@keyframes seCrownGlow{0%,100%{filter:drop-shadow(0 0 7px rgba(255,215,0,.98)) drop-shadow(0 0 16px rgba(255,200,0,.72)) drop-shadow(0 0 30px rgba(255,180,0,.4))}50%{filter:drop-shadow(0 0 14px rgba(255,252,190,1)) drop-shadow(0 0 30px rgba(255,220,0,1)) drop-shadow(0 0 60px rgba(255,190,0,.75)) drop-shadow(0 0 100px rgba(255,160,0,.45))}}
+@keyframes seSpTwinkle{0%,100%{opacity:.1;transform:scale(.7)}45%{opacity:1;transform:scale(1.7);box-shadow:0 0 5px rgba(255,235,120,.95),0 0 12px rgba(255,215,0,.6)}}
+@keyframes seSpCross{0%,100%{opacity:0;transform:scale(.5) rotate(0deg)}45%{opacity:1;transform:scale(1) rotate(45deg)}}
 @keyframes seNameShimmer{0%{background-position:-400% center}100%{background-position:400% center}}
-@keyframes seNameGlow{0%,100%{filter:drop-shadow(0 0 9px rgba(255,215,0,1)) drop-shadow(0 0 20px rgba(255,165,0,.75)) drop-shadow(0 0 42px rgba(255,100,0,.4))}50%{filter:drop-shadow(0 0 20px rgba(255,255,200,1)) drop-shadow(0 0 46px rgba(255,215,0,1)) drop-shadow(0 0 96px rgba(255,150,0,.7)) drop-shadow(0 0 160px rgba(255,100,0,.35))}}
-@keyframes seNameGlowLight{0%,100%{filter:drop-shadow(0 0 6px rgba(180,120,0,.9)) drop-shadow(0 0 14px rgba(150,100,0,.6))}50%{filter:drop-shadow(0 0 12px rgba(210,150,0,1)) drop-shadow(0 0 28px rgba(180,120,0,.8))}}
-.gf-solaremperor{background:radial-gradient(circle at 50% 50%,#1a0d00 0%,#0b0500 100%)}
-.gf-solaremperor::before{content:'';position:absolute;inset:-6px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#b8860b 0%,#ffd700 7%,#fffff0 14%,#ffd700 21%,#ffaa00 28%,#fff8a0 35%,#ffd700 42%,#ffe566 49%,#ff8c00 56%,#ffd700 63%,#fffff0 70%,#ffcc33 77%,#ff8c00 84%,#ffd700 91%,#b8860b 100%);animation:seRingRot 5s linear infinite}
-.gf-solaremperor::after{content:'';position:absolute;inset:-20px;border-radius:50%;z-index:-2;background:conic-gradient(from 0deg,transparent 0%,rgba(255,220,60,.55) 5%,rgba(255,255,200,.85) 9%,rgba(255,200,0,.6) 13%,transparent 19%,transparent 43%,rgba(255,215,0,.65) 48%,rgba(255,255,180,.9) 53%,rgba(255,180,0,.55) 58%,transparent 64%,transparent 80%,rgba(255,215,0,.4) 85%,transparent 91%);animation:seRingRot 9s linear infinite reverse;filter:blur(4px)}
-.gf-solaremperor .gf-glow{position:absolute;inset:-26px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 28%,rgba(255,215,0,.13) 50%,rgba(255,165,0,.2) 70%,rgba(255,100,0,.07) 87%,transparent);animation:sePulse 2.8s ease-in-out infinite}
-.gf-solaremperor .gf-eclipse{position:absolute;inset:-24px;border-radius:50%;border:2.5px solid rgba(255,215,0,.4);pointer-events:none;z-index:-1;box-shadow:0 0 12px rgba(255,215,0,.14),inset 0 0 10px rgba(255,215,0,.08);animation:seEclipseRot 10s linear infinite}
-.gf-solaremperor .gf-corona{position:absolute;inset:-16px;border-radius:50%;pointer-events:none;z-index:-2;background:radial-gradient(circle,transparent 52%,rgba(255,200,60,.18) 70%,rgba(255,160,0,.1) 88%,transparent);animation:seCorona 3.4s ease-in-out infinite}
-.gf-solaremperor .gf-ray{position:absolute;top:50%;left:50%;transform-origin:0 0;border-radius:2px;z-index:-2;animation:seRayPulse 2.2s ease-in-out infinite;width:3px}
-.gf-solaremperor .gf-ray:nth-child(4){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(0deg) translateY(-73px)}
-.gf-solaremperor .gf-ray:nth-child(5){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(45deg) translateY(-73px);animation-delay:.28s;width:2px}
-.gf-solaremperor .gf-ray:nth-child(6){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(90deg) translateY(-73px);animation-delay:.55s}
-.gf-solaremperor .gf-ray:nth-child(7){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(135deg) translateY(-73px);animation-delay:.83s;width:2px}
-.gf-solaremperor .gf-ray:nth-child(8){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(180deg) translateY(-73px);animation-delay:1.1s}
-.gf-solaremperor .gf-ray:nth-child(9){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(225deg) translateY(-73px);animation-delay:1.38s;width:2px}
-.gf-solaremperor .gf-ray:nth-child(10){height:26px;background:linear-gradient(rgba(255,215,0,.95),rgba(255,180,0,.5),transparent);transform:rotate(270deg) translateY(-73px);animation-delay:1.65s}
-.gf-solaremperor .gf-ray:nth-child(11){height:20px;background:linear-gradient(rgba(255,220,80,.8),transparent);transform:rotate(315deg) translateY(-73px);animation-delay:1.93s;width:2px}
-.gf-solaremperor .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#ffe566;animation:seParticle 4.8s linear infinite;--gr:60px;--gd:0deg}
-.gf-solaremperor .gf-p:nth-child(12){background:#fff8c0;width:3px;height:3px;margin:-1.5px;animation-delay:-1.2s;--gd:90deg}
-.gf-solaremperor .gf-p:nth-child(13){background:#ffd700;animation-delay:-2.4s;--gd:180deg;width:5px;height:5px;margin:-2.5px}
-.gf-solaremperor .gf-p:nth-child(14){background:#ffcc33;width:3px;height:3px;margin:-1.5px;animation-delay:-3.6s;--gd:270deg}
-.gn-solaremperor{background:linear-gradient(90deg,#7a5500 0%,#cc9900 7%,#ffe566 14%,#fff8c0 22%,#ffffff 28%,#fffce0 34%,#ffd700 42%,#ffaa00 50%,#ffd700 58%,#fff8c0 66%,#ffffff 72%,#ffe566 80%,#cc9900 88%,#7a5500 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 2.2s linear infinite,seNameGlow 2s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
-[data-style="lite"] .gn-solaremperor,[data-theme="light"] .gn-solaremperor{background:linear-gradient(90deg,#5a3a00 0%,#8a6000 10%,#aa8000 20%,#887000 30%,#aa8800 40%,#997700 50%,#bb9000 60%,#887000 70%,#aa8000 80%,#8a6000 90%,#5a3a00 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 2.2s linear infinite,seNameGlowLight 2s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
-[data-style="lite"] .gf-solaremperor .gf-glow{opacity:.4}
+@keyframes seNameGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,.97)) drop-shadow(0 0 18px rgba(255,195,0,.68)) drop-shadow(0 0 38px rgba(255,170,0,.32))}50%{filter:drop-shadow(0 0 16px rgba(255,252,185,1)) drop-shadow(0 0 36px rgba(255,220,0,.98)) drop-shadow(0 0 72px rgba(255,175,0,.60)) drop-shadow(0 0 130px rgba(255,150,0,.32))}}
+@keyframes seNameGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(180,118,0,.92)) drop-shadow(0 0 12px rgba(148,90,0,.60))}50%{filter:drop-shadow(0 0 10px rgba(215,152,0,1)) drop-shadow(0 0 26px rgba(178,118,0,.85))}}
+/* ── Avatar base: deep celestial night ── */
+.gf-solaremperor{background:radial-gradient(circle at 44% 38%,#0c1428 0%,#060c1a 55%,#020509 100%)}
+/* ── Liquid gold premium border ring ── */
+.gf-solaremperor::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#9a6b04 0%,#ffd700 6%,#fffbe0 12%,#ffd700 18%,#cc8c00 26%,#ffe566 32%,#fff9d0 38%,#ffd700 44%,#e8b800 52%,#ffd700 58%,#fffbe0 64%,#ffd700 70%,#cc8c00 78%,#ffe566 84%,#ffd700 92%,#9a6b04 100%);box-shadow:0 0 0 1px rgba(255,215,0,.28),0 0 14px rgba(255,215,0,.28),0 0 32px rgba(255,195,0,.14);animation:seSweepRot 20s linear infinite}
+/* ── Outer heavenly bloom aura ── */
+.gf-solaremperor::after{content:'';position:absolute;inset:-26px;border-radius:50%;z-index:-4;background:radial-gradient(circle,transparent 43%,rgba(255,218,0,.1) 60%,rgba(255,190,0,.18) 76%,rgba(255,155,0,.08) 91%,transparent);pointer-events:none;animation:seOuterBloom 4.5s ease-in-out infinite}
+/* ── 1. Cosmic sky background ── */
+.gf-solaremperor .se-bg{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-7;background:radial-gradient(circle at 34% 30%,rgba(32,18,72,.72) 0%,transparent 50%),radial-gradient(circle at 70% 68%,rgba(14,28,62,.52) 0%,transparent 44%),radial-gradient(circle at 52% 52%,rgba(8,16,38,.9) 0%,rgba(4,9,20,.95) 60%,rgba(2,4,8,1) 100%)}
+/* ── 2a. Distant star layer (slow) ── */
+.gf-solaremperor .se-stars{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-6;background-image:radial-gradient(circle,rgba(255,255,255,.95) .65px,transparent .65px),radial-gradient(circle,rgba(255,215,0,.82) .55px,transparent .55px),radial-gradient(circle,rgba(255,255,255,.65) .42px,transparent .42px),radial-gradient(circle,rgba(255,235,100,.68) .58px,transparent .58px),radial-gradient(circle,rgba(255,255,255,.48) .35px,transparent .35px);background-size:20px 20px,16px 15px,9px 8px,26px 23px,6px 7px;background-position:2px 3px,9px 12px,4px 7px,17px 9px,1px 5px;animation:seStarsMove 22s linear infinite;opacity:.88}
+/* ── 2b. Near golden star layer (slightly faster) ── */
+.gf-solaremperor .se-stars2{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-5;background-image:radial-gradient(circle,rgba(255,228,80,.88) .5px,transparent .5px),radial-gradient(circle,rgba(255,255,255,.72) .38px,transparent .38px),radial-gradient(circle,rgba(255,210,60,.55) .45px,transparent .45px);background-size:30px 28px,18px 22px,12px 11px;background-position:6px 8px,11px 4px,3px 11px;animation:seStars2Move 14s linear infinite;opacity:.72}
+/* ── 3. Golden ring bloom (box-shadow) ── */
+.gf-solaremperor .se-ring{position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:-2;box-shadow:0 0 0 2px rgba(255,215,0,.75),0 0 10px rgba(255,215,0,.44),0 0 26px rgba(255,200,0,.28),0 0 56px rgba(255,172,0,.16);animation:seRingPulse 3.4s ease-in-out infinite}
+/* ── 4a. Light sweep (fast, bright) ── */
+.gf-solaremperor .se-sweep{position:absolute;inset:-14px;border-radius:50%;z-index:-1;pointer-events:none;background:conic-gradient(from 0deg,transparent 0deg,transparent 158deg,rgba(255,245,170,.06) 170deg,rgba(255,255,255,.52) 180deg,rgba(255,240,160,.08) 190deg,transparent 202deg,transparent 360deg);animation:seSweepRot 5.5s linear infinite}
+/* ── 4b. Counter-sweep (wider, dim) ── */
+.gf-solaremperor .se-sweep2{position:absolute;inset:-16px;border-radius:50%;z-index:-1;pointer-events:none;background:conic-gradient(from 90deg,transparent 0deg,transparent 170deg,rgba(255,220,100,.04) 178deg,rgba(255,240,180,.22) 185deg,transparent 194deg,transparent 360deg);animation:seSweepRotR 9s linear infinite}
+/* ── 5,6. Solar flare accents ── */
+.gf-solaremperor .se-flare{position:absolute;top:50%;left:50%;transform-origin:0 0;border-radius:2px;pointer-events:none;z-index:-1;animation:seFlareGlow 3s ease-in-out infinite}
+.gf-solaremperor .se-flare:nth-child(7){height:24px;width:3px;background:linear-gradient(rgba(255,248,140,1),rgba(255,220,0,.65),transparent);transform:rotate(52deg) translateY(-64px);animation-delay:0s}
+.gf-solaremperor .se-flare:nth-child(8){height:17px;width:2px;background:linear-gradient(rgba(255,240,120,.9),rgba(255,210,0,.5),transparent);transform:rotate(224deg) translateY(-62px);animation-delay:1.5s}
+/* ── 7. Divine floating crown — THE KING'S MARK ── */
+.gf-solaremperor .se-crown{position:absolute;top:-30px;left:50%;transform:translateX(-50%);width:28px;height:24px;z-index:30;pointer-events:none}
+.gf-solaremperor .se-crown::before{content:'👑';font-size:19px;line-height:1;display:block;text-align:center;animation:seCrownFloat 3.4s ease-in-out infinite,seCrownGlow 2.6s ease-in-out infinite}
+/* ── 8–11. Celestial sparkle stars ── */
+.gf-solaremperor .se-sp{position:absolute;pointer-events:none;z-index:2;border-radius:50%}
+.gf-solaremperor .se-sp:nth-child(10){width:3px;height:3px;top:10%;left:14%;background:rgba(255,255,255,.92);animation:seSpTwinkle 3.1s ease-in-out infinite}
+.gf-solaremperor .se-sp:nth-child(11){width:2px;height:2px;top:74%;left:80%;background:rgba(255,238,100,.95);animation:seSpTwinkle 4s ease-in-out infinite .85s}
+.gf-solaremperor .se-sp:nth-child(12){width:2px;height:2px;top:16%;left:76%;background:rgba(255,255,255,.88);animation:seSpTwinkle 2.6s ease-in-out infinite 1.7s}
+.gf-solaremperor .se-sp:nth-child(13){width:3px;height:3px;top:70%;left:12%;background:rgba(255,215,0,.9);animation:seSpTwinkle 3.5s ease-in-out infinite 2.55s}
+/* ── Name: royal sunlight shimmer ── */
+.gn-solaremperor{background:linear-gradient(90deg,#5a3c00 0%,#967000 5%,#ffd700 11%,#ffe980 17%,#fffce0 23%,#ffffff 28%,#ffe566 33%,#ffd700 39%,#ffcc33 45%,#fff8c0 51%,#ffffff 56%,#ffe566 62%,#ffd700 68%,#ffaa00 74%,#967000 82%,#5a3c00 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 3s linear infinite,seNameGlow 2.4s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+[data-style="lite"] .gn-solaremperor,[data-theme="light"] .gn-solaremperor{background:linear-gradient(90deg,#4a2e00 0%,#7a5000 10%,#a07000 20%,#7a5000 35%,#a07000 50%,#7a5000 65%,#a07000 80%,#7a5000 90%,#4a2e00 100%);background-size:400% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 3s linear infinite,seNameGlowLight 2.4s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+/* ── Lite/light mode overrides ── */
+[data-style="lite"] .gf-solaremperor::before{animation:none!important}
 [data-style="lite"] .gf-solaremperor::after{display:none}
-[data-style="lite"] .gf-solaremperor .gf-eclipse,[data-style="lite"] .gf-solaremperor .gf-corona{animation:none!important}
-[data-style="lite"] .gf-solaremperor .gf-ray,[data-style="lite"] .gf-solaremperor .gf-p{animation:none!important;opacity:.5}
+[data-style="lite"] .gf-solaremperor .se-bg{background:#06101e!important}
+[data-style="lite"] .gf-solaremperor .se-stars,[data-style="lite"] .gf-solaremperor .se-stars2{animation:none!important;opacity:.4}
+[data-style="lite"] .gf-solaremperor .se-ring{animation:none!important;box-shadow:0 0 0 2px rgba(255,215,0,.75)!important}
+[data-style="lite"] .gf-solaremperor .se-sweep,[data-style="lite"] .gf-solaremperor .se-sweep2{display:none}
+[data-style="lite"] .gf-solaremperor .se-flare,[data-style="lite"] .gf-solaremperor .se-sp{animation:none!important;opacity:.35}
+[data-style="lite"] .gf-solaremperor .se-crown::before{animation:none!important;filter:drop-shadow(0 0 5px rgba(255,215,0,.8))!important}
 /* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
 @keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes tgPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
@@ -1488,8 +1511,8 @@ const GACHA_FRAME_INNER = {
   ice: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   rainbow: '',
   robot: '<div class="gf-robot-gear">⚙️</div>',
-  solaremperor: '<div class="gf-glow"></div><div class="gf-eclipse"></div><div class="gf-corona"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
-  solar: '<div class="gf-glow"></div><div class="gf-eclipse"></div><div class="gf-corona"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-ray"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  solaremperor: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-crown"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
+  solar: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-crown"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
   thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
 // Backward-compat alias: old 'solar' key maps to new 'solaremperor'
@@ -2213,7 +2236,7 @@ function lbRenderBoard(data, animate = true) {
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0">
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
-          ${rank.id==='king'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
+          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
         </div>
         <div>
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${(p.super1000Titles||0)>0 ? ` <span class="lb-champion-crown">👑×${p.super1000Titles}</span>` : ''}</div>
@@ -3170,7 +3193,7 @@ function openPlayerProfile(playerId) {
         <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]}">
           ${getGachaFrameInner(p)}${getInitial(p.name)}
           <div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>
-          ${rank.id === 'king' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
+          ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
         </div>
         <div class="pp2-hero-text">
           <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>
