@@ -2327,6 +2327,7 @@ function openPlayerProfile(playerId) {
         <div class="pp2-av" style="background:${colors[1]};color:${colors[0]}">
           ${getInitial(p.name)}
           <div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>
+          ${rank.id === 'king' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
         </div>
         <div class="pp2-hero-text">
           <div class="pp2-name">${p.name}</div>
