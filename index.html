@@ -843,14 +843,60 @@ CREATE POLICY "allow all" ON tournament_matches FOR ALL USING (true) WITH CHECK 
   <div class="patch-modal" id="patchModalBox">
     <div class="patch-header">
       <div>
-        <div class="patch-ver-tag">🚀 VERSION 4.0 — 14 Final Features</div>
-        <div class="patch-title">The Big Update — Daily Quests, Avatar Builder, ELO x2 & more</div>
+        <div class="patch-ver-tag">🚀 VERSION 6.0 — Gacha Economy + Tournament System</div>
+        <div class="patch-title">Coins, Gacha Pull, Mailbox, Divisions, Tournament Bracket & more</div>
         <div class="patch-date">📅 พฤษภาคม 2569</div>
       </div>
       <button class="patch-close" onclick="closePatchNotes()">✕</button>
     </div>
     <div class="patch-divider"></div>
     <div class="patch-body">
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🪙 Coin & Gacha Economy (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🪙 <strong>Coin System</strong> — ทุกคนที่เล่นได้ 2 เหรียญต่อแมตช์ · Admin เสกเหรียญให้ผู้เล่นได้<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">ดูยอดเหรียญได้ในโปรไฟล์ของตัวเอง</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎰 <strong>Gacha Pull</strong> — ใช้ 2 เหรียญ สุ่ม 1 กล่อง โอกาสรับ:<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">70% ELO 5-15 · 20% Emoji โปรไฟล์ · 7% กรอบ Rainbow/Robot · 3% Ultra Rare (Dark frame / Light frame / Dark name / Light name)</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌈 <strong>กรอบ Rainbow</strong> — วงแหวน conic gradient หมุนไม่หยุด</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚙️ <strong>กรอบ Robot</strong> — โครเมียมเมทัลลิก + เฟืองหมุน ⚙️</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">📬 Mailbox System (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📬 <strong>กล่องจดหมาย</strong> — ทุกคนมีกล่องรับของจาก Admin · มี notification dot บนปุ่ม 📬 ใน nav<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">Admin ส่งได้: เหรียญ · ELO · Gacha Frame · Emoji โปรไฟล์</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>✅ <strong>Claim ของได้ทันที</strong> — กดรับ → ของเข้า account ทันที ไม่ต้อง refresh</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🏅 Divisions I/II/III (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🏅 <strong>Sub-tier ทุก Rank</strong> — Bronze III → Bronze II → Bronze I → Silver III → ... → Master I → King<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">แบ่ง ELO range ของแต่ละ rank ออกเป็น 3 ส่วนเท่าๆ กัน</span></div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🏆 Tournament Bracket (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🏆 <strong>Match Tier System</strong> — Admin สร้างสายแข่ง Regular / Super 500 / Super 1000<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">เลือกผู้เล่น 4-6 คน → แบ่งกลุ่ม A/B อัตโนมัติ → บันทึกผลรอบกลุ่ม → Top 2 ต่อกลุ่ม → รอบ Final</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🏅 <strong>Race to Grand Final</strong> — Top 4 ELO ของเดือนได้ badge พิเศษใน Leaderboard</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">⚡ Match Feedback (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>😤 <strong>Pity System</strong> — แพ้ 5 ติด → รับประกัน +5 🪙 ทันที + badge แจ้งเตือน</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🩸 <strong>First Blood</strong> — ชนะแมตช์แรกของวัน → +5 🪙 โบนัส</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚠️ <strong>Tilt Warning</strong> — แพ้ 3 ติดจะมีเตือนให้พักก่อน</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">📊 Stats Upgrades (v6.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>↑↓ <strong>Form Indicator</strong> — ฟอร์ม 5 แมตช์ล่าสุด แสดงข้าง rank ใน Leaderboard (↑ ร้อน / ↓ เย็น / → ทรงตัว)</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📅 <strong>Best Day of Week</strong> — วันไหนชนะบ่อยสุด แสดงในโปรไฟล์</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-change">📦 Technical (v6.0)</div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>🗄️ <strong>DB Schema ใหม่</strong> — เพิ่ม <code style="font-family:monospace;font-size:0.8em">coins</code>, <code style="font-family:monospace;font-size:0.8em">gacha_emoji</code>, <code style="font-family:monospace;font-size:0.8em">consecutive_losses</code> · สร้างตาราง <code style="font-family:monospace;font-size:0.8em">mailbox</code>, <code style="font-family:monospace;font-size:0.8em">tournaments</code>, <code style="font-family:monospace;font-size:0.8em">tournament_matches</code></div></div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>📦 <strong>+742 บรรทัด</strong> โค้ดใหม่ใน single-file HTML</div></div>
+      </div>
+
+      <div style="border-top:1px solid var(--glass-border);margin:18px 0 6px"></div>
 
       <div class="patch-section">
         <div class="patch-sec-title t-new">🎯 Daily & Engagement (v4.0)</div>
@@ -2504,7 +2550,7 @@ document.addEventListener('mousemove', e => {
   liqCg.style.top = e.clientY + 'px';
 });
 
-const CURRENT_VERSION = '4.0';
+const CURRENT_VERSION = '6.0';
 
 function showPatchNotes() {
   const bg = document.getElementById('patchModal');
