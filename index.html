@@ -1423,7 +1423,10 @@ function lbRenderBoard(data, animate = true) {
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
-        <div class="lb-rav" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
+        <div style="position:relative;flex-shrink:0">
+          <div class="lb-rav" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${av.content}</div>
+          ${rank.id==='king'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
+        </div>
         <div>
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${rank.label}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
