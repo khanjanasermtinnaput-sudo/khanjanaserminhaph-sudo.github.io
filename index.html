@@ -244,17 +244,13 @@ body.x2-active .toast-wrap{bottom:120px}
 @keyframes gNameIceShimmer{0%{background-position:-250% center}100%{background-position:250% center}}
 @keyframes gNameIceGlow{0%,100%{filter:drop-shadow(0 0 4px rgba(0,200,255,.8)) drop-shadow(0 0 10px rgba(0,150,220,.4))}50%{filter:drop-shadow(0 0 10px rgba(100,240,255,1)) drop-shadow(0 0 22px rgba(0,180,255,.7)) drop-shadow(0 0 38px rgba(0,120,200,.4))}}
 .gn-ice{background:linear-gradient(90deg,#0088cc 0%,#00ccff 20%,#aaeeff 40%,#ffffff 50%,#aaeeff 60%,#00ccff 80%,#0088cc 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameIceShimmer 3.5s linear infinite,gNameIceGlow 2s ease-in-out infinite}
-/* lite mode: disable all gacha fx */
-[data-style="lite"] .gf-void::before,[data-style="lite"] .gf-void::after,
-[data-style="lite"] .gf-halo::before,[data-style="lite"] .gf-halo::after,
-[data-style="lite"] .gf-blaze::before,[data-style="lite"] .gf-blaze::after,
-[data-style="lite"] .gf-ice::before,[data-style="lite"] .gf-ice::after,
-[data-style="lite"] .gf-void .gf-glow,[data-style="lite"] .gf-void .gf-crackle,
-[data-style="lite"] .gf-halo .gf-glow,[data-style="lite"] .gf-halo .gf-aura,
-[data-style="lite"] .gf-blaze .gf-glow,[data-style="lite"] .gf-ice .gf-glow,
-[data-style="lite"] .gf-void .gf-p,[data-style="lite"] .gf-halo .gf-p,
-[data-style="lite"] .gf-blaze .gf-p,[data-style="lite"] .gf-ice .gf-p{display:none!important}
-[data-style="lite"] .gn-void,[data-style="lite"] .gn-halo,[data-style="lite"] .gn-blaze,[data-style="lite"] .gn-ice{animation:none!important;-webkit-text-fill-color:var(--text)!important;background:none!important;filter:none!important}
+/* lite/light mode: keep frame animations, fix name gradient colors for light bg */
+@keyframes gNameVoidGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(120,0,180,.9)) drop-shadow(0 0 10px rgba(80,0,140,.5))}50%{filter:drop-shadow(0 0 10px rgba(160,0,220,1)) drop-shadow(0 0 22px rgba(120,0,180,.7))}}
+@keyframes gNameHaloGlowLight{0%,100%{filter:drop-shadow(0 0 4px rgba(150,100,0,.8)) drop-shadow(0 0 10px rgba(120,80,0,.4))}50%{filter:drop-shadow(0 0 8px rgba(180,130,0,1)) drop-shadow(0 0 18px rgba(150,100,0,.7))}}
+@keyframes gNameIceGlowLight{0%,100%{filter:drop-shadow(0 0 4px rgba(0,100,180,.8)) drop-shadow(0 0 10px rgba(0,80,150,.4))}50%{filter:drop-shadow(0 0 8px rgba(0,120,200,1)) drop-shadow(0 0 18px rgba(0,100,170,.7))}}
+[data-style="lite"] .gn-void,[data-theme="light"] .gn-void{background:linear-gradient(135deg,#8800cc 0%,#550099 25%,#cc0055 55%,#330066 100%);background-size:200% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameVoidGlitch 5s ease-in-out infinite,gNameVoidFlicker 5s ease-in-out infinite,gNameVoidGlowLight 2s ease-in-out infinite}
+[data-style="lite"] .gn-halo,[data-theme="light"] .gn-halo{background:linear-gradient(90deg,#7a5500 0%,#aa7700 15%,#cc9900 30%,#997700 45%,#bb8800 50%,#997700 55%,#cc9900 70%,#aa7700 85%,#7a5500 100%);background-size:300% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameHaloShimmer 3s linear infinite,gNameHaloGlowLight 2s ease-in-out infinite}
+[data-style="lite"] .gn-ice,[data-theme="light"] .gn-ice{background:linear-gradient(90deg,#005599 0%,#0077bb 20%,#0099cc 40%,#006699 50%,#0099cc 60%,#0077bb 80%,#005599 100%);background-size:250% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:gNameIceShimmer 3.5s linear infinite,gNameIceGlowLight 2s ease-in-out infinite}
 /* ══════ KING SOLAR CROWN FRAME (Unique Rank) ══════ */
 @keyframes solarSpin{to{transform:rotate(360deg)}}
 @keyframes solarPulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.15);opacity:1}}
