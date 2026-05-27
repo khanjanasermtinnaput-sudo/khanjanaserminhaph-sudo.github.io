@@ -668,7 +668,51 @@ body.x2-active .toast-wrap{bottom:120px}
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE pending_matches ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (true);</pre>
+CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (true);
+
+-- New columns for v4 features
+ALTER TABLE players ADD COLUMN IF NOT EXISTS coins integer DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_emoji text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS consecutive_losses integer DEFAULT 0;
+
+-- Mailbox table
+CREATE TABLE IF NOT EXISTS mailbox (
+  id bigserial PRIMARY KEY,
+  player_id integer,
+  item_type text,
+  item_value text,
+  message text,
+  claimed boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE mailbox ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON mailbox FOR ALL USING (true) WITH CHECK (true);
+
+-- Tournament tables
+CREATE TABLE IF NOT EXISTS tournaments (
+  id bigserial PRIMARY KEY,
+  name text,
+  tier text,
+  status text DEFAULT 'active',
+  groups jsonb DEFAULT '[]',
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON tournaments FOR ALL USING (true) WITH CHECK (true);
+
+CREATE TABLE IF NOT EXISTS tournament_matches (
+  id bigserial PRIMARY KEY,
+  tournament_id bigint,
+  group_letter text,
+  player_a integer,
+  player_b integer,
+  score_a integer,
+  score_b integer,
+  winner_id integer,
+  played_at timestamptz DEFAULT now()
+);
+ALTER TABLE tournament_matches ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "allow all" ON tournament_matches FOR ALL USING (true) WITH CHECK (true);</pre>
       <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:auto" onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent).then(()=>toast('คัดลอก SQL แล้ว','success'))">📋 คัดลอก SQL</button>
     </div>
     <div class="card"><div class="card-title">👥 จัดการผู้เล่น</div><div id="adminPlayerList"></div></div>
@@ -1175,17 +1219,19 @@ const GACHA_FRAME_INNER = {
   halo: '<div class="gf-glow"></div><div class="gf-aura"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   blaze: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   ice: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  rainbow: '',
+  robot: '<div class="gf-robot-gear">⚙️</div>',
 };
 // Returns extra class for the avatar element e.g. "gf-void"
 function getGachaFrameClass(player) {
   const f = player && player.gachaFrame;
-  if (!f || !GACHA_FRAME_INNER[f]) return '';
+  if (!f || !(f in GACHA_FRAME_INNER)) return '';
   return 'gf-' + f;
 }
 // Returns inner HTML to inject inside the avatar element for particles/glow
 function getGachaFrameInner(player) {
   const f = player && player.gachaFrame;
-  return (f && GACHA_FRAME_INNER[f]) ? GACHA_FRAME_INNER[f] : '';
+  return (f && (f in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[f] : '';
 }
 // Returns extra class for the name element e.g. "gn-void"
 function getGachaNameClass(player) {
@@ -1335,7 +1381,7 @@ function normalizePlayer(p) {
   if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
   let hofShared = null;
   if (hofEntry) { try { hofShared = JSON.parse(hofEntry.slice(HOF_PFX.length)); } catch(e) {} }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: p.gacha_frame || null, gachaName: p.gacha_name || null };
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: p.gacha_frame || null, gachaName: p.gacha_name || null, coins: p.coins || 0, gachaEmoji: p.gacha_emoji || null, consecutiveLosses: p.consecutive_losses || 0 };
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
@@ -4393,7 +4439,699 @@ renderProfile = async function() {
     pc.appendChild(btn);
   }
 };
+
+// ═══════════════════════════════════════════════════════════
+// ── FEATURE PACK v4: Divisions, Coins, Gacha, Mailbox,   ──
+// ── Form, Best Day, Pity, First Blood, Tilt, Grand Final,──
+// ── Tournament Bracket                                    ──
+// ═══════════════════════════════════════════════════════════
+
+// ── 1. DIVISIONS I/II/III ─────────────────────────────────
+function getRankLabel(pts, playerId) {
+  const base = getRank(pts, playerId);
+  if (base.id === 'king') return '👑 King';
+  const divs = {
+    bronze:   [[0,33,'III'],[34,66,'II'],[67,100,'I']],
+    silver:   [[101,166,'III'],[167,233,'II'],[234,300,'I']],
+    gold:     [[301,367,'III'],[368,433,'II'],[434,500,'I']],
+    platinum: [[501,600,'III'],[601,700,'II'],[701,800,'I']],
+    diamond:  [[801,1033,'III'],[1034,1266,'II'],[1267,1499,'I']],
+    master:   [[1500,1999,'III'],[2000,2499,'II'],[2500,2999,'I']],
+  };
+  const icon = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'💠', master:'🔥' };
+  const name = { bronze:'Bronze', silver:'Silver', gold:'Gold', platinum:'Platinum', diamond:'Diamond', master:'Master' };
+  const ranges = divs[base.id];
+  if (!ranges) return base.label;
+  for (const [lo, hi, div] of ranges) {
+    if (pts >= lo && pts <= hi) return `${icon[base.id]} ${name[base.id]} ${div}`;
+  }
+  return base.label;
+}
+
+// ── 2. COIN SYSTEM ────────────────────────────────────────
+async function dbAddCoins(playerId, amount) {
+  try {
+    const pl = db.players.find(x => x.id === playerId);
+    if (!pl) return;
+    const newCoins = Math.max(0, (pl.coins || 0) + amount);
+    await dbUpdatePlayer(playerId, { coins: newCoins });
+    pl.coins = newCoins;
+  } catch(e) { console.warn('dbAddCoins failed:', e.message); }
+}
+
+async function awardMatchCoins(allPlayerIds) {
+  for (const pid of allPlayerIds) {
+    try { await dbAddCoins(pid, 2); } catch(e) {}
+  }
+}
+
+// ── 3. GACHA PULL SYSTEM ──────────────────────────────────
+const GACHA_EMOJIS = ['🏸','🔥','⚡','🌟','💥','🎯','🦅','🌊','🎪','⚔️','🛡️','🎮'];
+
+function openGachaPull() {
+  if (!currentUser) return;
+  const overlay = document.getElementById('gachaPullOverlay');
+  if (!overlay) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const coins = pl ? (pl.coins || 0) : 0;
+  document.getElementById('gachaPullBalance').textContent = `💰 เหรียญของคุณ: ${coins} 🪙`;
+  document.getElementById('gachaPullResult').innerHTML = '<div class="text-muted" style="font-size:0.82rem">กด Pull เพื่อลุ้น!</div>';
+  const btn = document.getElementById('gachaPullBtn');
+  if (btn) btn.disabled = coins < 2;
+  overlay.classList.add('show');
+}
+
+function closeGachaPull(e) {
+  if (e && e.target !== document.getElementById('gachaPullOverlay')) return;
+  document.getElementById('gachaPullOverlay').classList.remove('show');
+}
+
+async function doGachaPull() {
+  if (!currentUser) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  if (!pl || (pl.coins || 0) < 2) { toast('เหรียญไม่พอ (ต้องการ 2🪙)', 'error'); return; }
+  const btn = document.getElementById('gachaPullBtn');
+  if (btn) btn.disabled = true;
+  await dbAddCoins(currentUser.id, -2);
+  await loadPlayers();
+  const plUpdated = db.players.find(x => x.id === currentUser.id);
+  const roll = Math.random() * 100;
+  let result = null;
+  if (roll < 3) {
+    const ultraRolls = ['void_frame','halo_frame','blaze_name','ice_name'];
+    const pick = ultraRolls[Math.floor(Math.random() * 4)];
+    const parts = pick.split('_');
+    const val = parts[0], col = parts[1];
+    const updateData = {};
+    if (col === 'frame') updateData.gacha_frame = val;
+    else updateData.gacha_name = val;
+    try {
+      await dbUpdatePlayer(currentUser.id, updateData);
+      await loadPlayers();
+      closeGachaPull();
+      showGachaReveal(currentUser.name, col === 'frame' ? val : null, col === 'name' ? val : null);
+    } catch(e) { toast('บันทึก Gacha ไม่ได้: ' + e.message, 'error'); }
+    result = { type: 'ultra', text: `✨ ULTRA RARE! ${col === 'frame' ? val + ' Frame' : val + ' Name Effect'}` };
+  } else if (roll < 10) {
+    const frame = Math.random() < 0.5 ? 'rainbow' : 'robot';
+    try {
+      await dbUpdatePlayer(currentUser.id, { gacha_frame: frame });
+      await loadPlayers();
+    } catch(e) {}
+    result = { type: 'frame', text: `🎨 Regular Frame: ${frame === 'rainbow' ? '🌈 Rainbow' : '⚙️ Robot'}!`, frame };
+  } else if (roll < 30) {
+    const emoji = GACHA_EMOJIS[Math.floor(Math.random() * GACHA_EMOJIS.length)];
+    try {
+      await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji });
+      await loadPlayers();
+      const sv = getCustomAvatar(currentUser.id);
+      sv.emoji = emoji;
+      localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+    } catch(e) {}
+    result = { type: 'emoji', text: `${emoji} Emoji Avatar ได้แล้ว!`, emoji };
+  } else {
+    const boost = 5 + Math.floor(Math.random() * 11);
+    try {
+      const basePts = plUpdated ? plUpdated.pts : pl.pts;
+      await dbUpdatePlayer(currentUser.id, { pts: basePts + boost });
+      await loadPlayers();
+    } catch(e) {}
+    result = { type: 'elo', text: `📈 ELO Boost! +${boost} คะแนน`, boost };
+  }
+  const resultEl = document.getElementById('gachaPullResult');
+  if (resultEl && result) {
+    const icons = { ultra: '⭐', frame: '🖼️', emoji: result.emoji || '😎', elo: '📈' };
+    resultEl.innerHTML = `<div class="gacha-pull-result">${icons[result.type]}</div>
+      <div class="gacha-pull-value" style="color:var(--neon)">${result.text}</div>`;
+  }
+  const plFinal = db.players.find(x => x.id === currentUser.id);
+  const newCoins = plFinal ? (plFinal.coins || 0) : 0;
+  document.getElementById('gachaPullBalance').textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
+  if (btn) btn.disabled = newCoins < 2;
+}
+
+// ── 4. MAILBOX SYSTEM ─────────────────────────────────────
+async function dbGetMailbox(playerId) {
+  try { return await supaFetch(`mailbox?player_id=eq.${playerId}&claimed=eq.false&order=created_at.desc`); } catch(e) { return []; }
+}
+async function dbSendMail(playerId, itemType, itemValue, message) {
+  await supaFetch('mailbox', { method: 'POST', body: JSON.stringify({ player_id: playerId, item_type: itemType, item_value: itemValue, message: message || '' }), prefer: 'return=minimal' });
+}
+async function dbClaimMail(mailId) {
+  await supaFetch(`mailbox?id=eq.${mailId}`, { method: 'PATCH', body: JSON.stringify({ claimed: true }) });
+}
+
+async function checkMailboxBadge() {
+  if (!currentUser) return;
+  const btn = document.getElementById('mailboxNavBtn');
+  const dot = document.getElementById('mailboxDot');
+  if (!btn) return;
+  try {
+    const items = await dbGetMailbox(currentUser.id);
+    const hasItems = items && items.length > 0;
+    btn.style.display = hasItems ? '' : 'none';
+    if (dot) dot.classList.toggle('show', hasItems);
+  } catch(e) { btn.style.display = 'none'; }
+}
+
+function openMailbox() {
+  const overlay = document.getElementById('mailboxOverlay');
+  if (!overlay) return;
+  overlay.classList.add('show');
+  renderMailboxList();
+}
+
+function closeMailbox(e) {
+  if (e && e.target !== document.getElementById('mailboxOverlay')) return;
+  const overlay = document.getElementById('mailboxOverlay');
+  if (overlay) overlay.classList.remove('show');
+}
+
+async function renderMailboxList() {
+  const list = document.getElementById('mailboxList');
+  if (!list || !currentUser) return;
+  list.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">⏳ กำลังโหลด...</div>';
+  try {
+    const items = await dbGetMailbox(currentUser.id);
+    if (!items || items.length === 0) {
+      list.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">ไม่มีไอเทมในกล่องของขวัญ</div>';
+      return;
+    }
+    const typeIcon = { coins: '🪙', elo: '📈', gacha_frame: '🖼️', gacha_emoji: '😎' };
+    list.innerHTML = items.map(item => {
+      const icon = typeIcon[item.item_type] || '🎁';
+      const label = item.item_type === 'coins' ? `+${item.item_value} 🪙`
+        : item.item_type === 'elo' ? `+${item.item_value} ELO`
+        : item.item_type === 'gacha_frame' ? `Frame: ${item.item_value}`
+        : item.item_type === 'gacha_emoji' ? `Emoji: ${item.item_value}`
+        : item.item_value;
+      return `<div class="mailbox-item" id="mail_${item.id}">
+        <div class="mailbox-item-icon">${icon}</div>
+        <div class="mailbox-item-body">
+          <div class="mailbox-item-title">${label}</div>
+          <div class="mailbox-item-msg">${item.message || ''}</div>
+        </div>
+        <button class="mailbox-item-claim" onclick="claimMailItem(${item.id},'${item.item_type}','${String(item.item_value).replace(/'/g,'')}')">รับ</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    list.innerHTML = `<div class="text-muted" style="text-align:center;padding:20px">โหลดไม่ได้: ${e.message}</div>`;
+  }
+}
+
+async function claimMailItem(mailId, itemType, itemValue) {
+  if (!currentUser) return;
+  const btn = document.querySelector(`#mail_${mailId} .mailbox-item-claim`);
+  if (btn) btn.disabled = true;
+  try {
+    await dbClaimMail(mailId);
+    const pl = db.players.find(x => x.id === currentUser.id);
+    if (pl) {
+      if (itemType === 'coins') {
+        await dbAddCoins(currentUser.id, parseInt(itemValue) || 0);
+        toast(`🪙 รับ +${itemValue} เหรียญแล้ว!`, 'success');
+      } else if (itemType === 'elo') {
+        await dbUpdatePlayer(currentUser.id, { pts: (pl.pts || 0) + (parseInt(itemValue) || 0) });
+        toast(`📈 รับ +${itemValue} ELO แล้ว!`, 'success');
+      } else if (itemType === 'gacha_frame') {
+        await dbUpdatePlayer(currentUser.id, { gacha_frame: itemValue });
+        toast(`🖼️ รับ Frame: ${itemValue} แล้ว!`, 'success');
+      } else if (itemType === 'gacha_emoji') {
+        await dbUpdatePlayer(currentUser.id, { gacha_emoji: itemValue });
+        const sv = getCustomAvatar(currentUser.id);
+        sv.emoji = itemValue;
+        localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+        toast(`${itemValue} รับ Emoji Avatar แล้ว!`, 'success');
+      }
+    }
+    await loadPlayers();
+    renderMailboxList();
+    checkMailboxBadge();
+  } catch(e) {
+    toast('รับไม่ได้: ' + e.message, 'error');
+    if (btn) btn.disabled = false;
+  }
+}
+
+// ── 5. FORM INDICATOR ─────────────────────────────────────
+function getFormIndicator(playerId) {
+  const myMatches = db.matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId));
+  const last5 = myMatches.slice(0, 5);
+  if (last5.length < 3) return { arrow: '→', cls: 'neutral' };
+  let wins = 0, losses = 0;
+  last5.forEach(m => {
+    const inA = m.teamA.some(x => x.id === playerId);
+    const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+    win ? wins++ : losses++;
+  });
+  if (wins >= 3) return { arrow: '↑', cls: 'up' };
+  if (losses >= 3) return { arrow: '↓', cls: 'down' };
+  return { arrow: '→', cls: 'neutral' };
+}
+
+// ── 6. BEST DAY OF WEEK ───────────────────────────────────
+function getBestDayOfWeek(playerId) {
+  const thDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
+  const myMatches = db.matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId));
+  const wins = myMatches.filter(m => {
+    const inA = m.teamA.some(x => x.id === playerId);
+    return (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+  });
+  if (!wins.length) return null;
+  const counts = [0,0,0,0,0,0,0];
+  wins.forEach(m => { counts[new Date(m.date).getDay()]++; });
+  const maxDay = counts.indexOf(Math.max(...counts));
+  return thDays[maxDay];
+}
+
+// ── 7 & 9. PITY SYSTEM + TILT WARNING ────────────────────
+async function checkPitySystem(playerId, isWin) {
+  try {
+    const pl = db.players.find(x => x.id === playerId);
+    if (!pl) return false;
+    const newConsecLosses = isWin ? 0 : (pl.consecutiveLosses || 0) + 1;
+    await dbUpdatePlayer(playerId, { consecutive_losses: newConsecLosses });
+    pl.consecutiveLosses = newConsecLosses;
+    if (!isWin && newConsecLosses >= 3 && currentUser && playerId === currentUser.id) {
+      setTimeout(() => toast('⚠️ Tilt Warning! แพ้ 3 ติดแล้ว พักก่อนนะ!', 'error'), 1500);
+    }
+    if (!isWin && newConsecLosses >= 5) {
+      await dbAddCoins(playerId, 5);
+      if (currentUser && playerId === currentUser.id) {
+        setTimeout(() => toast('😤 Pity! แพ้ 5 ติด +5 🪙', 'success'), 2000);
+        return true;
+      }
+    }
+    return false;
+  } catch(e) { console.warn('checkPitySystem error:', e.message); return false; }
+}
+
+// ── 8. FIRST BLOOD ────────────────────────────────────────
+async function checkFirstBlood(playerId) {
+  try {
+    const today = new Date().toISOString().slice(0,10);
+    const todayWins = db.matches.filter(m => {
+      if (!m.date) return false;
+      const d = new Date(m.date).toISOString().slice(0,10);
+      if (d !== today) return false;
+      const inA = m.teamA.some(x => x.id === playerId);
+      return (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+    });
+    if (todayWins.length === 0) {
+      await dbAddCoins(playerId, 5);
+      if (currentUser && playerId === currentUser.id) {
+        setTimeout(() => toast('🩸 First Blood! ชนะแมตช์แรกวันนี้ +5 🪙', 'success'), 1000);
+      }
+    }
+  } catch(e) { console.warn('checkFirstBlood error:', e.message); }
+}
+
+// ── 10. RACE TO GRAND FINAL ───────────────────────────────
+function getTop4GrandFinal() {
+  return [...db.players].sort((a,b) => b.pts - a.pts).slice(0, 4).map(p => p.id);
+}
+function isLastWeekOfMonth() {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  return now.getDate() >= lastDay - 6;
+}
+function getGrandFinalBadge(playerId) {
+  const top4 = getTop4GrandFinal();
+  if (!top4.includes(playerId)) return '';
+  return isLastWeekOfMonth()
+    ? '<span class="gf-badge">🏆 Grand Final</span>'
+    : '<span class="gf-badge">🏆 Top 4</span>';
+}
+
+// ── 11. TOURNAMENT BRACKET ────────────────────────────────
+async function dbGetTournaments() {
+  try { return await supaFetch('tournaments?order=created_at.desc'); } catch(e) { return []; }
+}
+async function dbCreateTournament(name, tier, groups) {
+  const rows = await supaFetch('tournaments', { method: 'POST', body: JSON.stringify({ name, tier, groups: JSON.stringify(groups) }) });
+  return rows[0];
+}
+async function dbGetTournamentMatches(tournamentId) {
+  try { return await supaFetch(`tournament_matches?tournament_id=eq.${tournamentId}&order=played_at.asc`); } catch(e) { return []; }
+}
+async function dbAddTournamentMatch(tournamentId, groupLetter, playerA, playerB, scoreA, scoreB, winnerId) {
+  await supaFetch('tournament_matches', { method: 'POST', body: JSON.stringify({ tournament_id: tournamentId, group_letter: groupLetter, player_a: playerA, player_b: playerB, score_a: scoreA, score_b: scoreB, winner_id: winnerId }), prefer: 'return=minimal' });
+}
+
+async function renderTournamentSection() {
+  const container = document.getElementById('tournamentAdminSection');
+  if (!container) return;
+  let html = `<div style="margin-bottom:12px">
+    <div style="font-size:0.83rem;color:var(--muted);margin-bottom:8px">สร้าง Tournament ใหม่</div>
+    <input class="inp" id="tournamentName" placeholder="ชื่อทัวร์นาเมนต์" style="margin-bottom:8px">
+    <select class="inp" id="tournamentTier" style="margin-bottom:8px">
+      <option value="Regular">Regular</option>
+      <option value="Super 500">Super 500</option>
+      <option value="Super 1000">Super 1000</option>
+    </select>
+    <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">เลือกผู้เล่น 4-6 คน:</div>
+    <div id="tournamentPlayerSelect" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${db.players.map(p => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer"><input type="checkbox" value="${p.id}" id="tp_${p.id}"> ${p.name}</label>`).join('')}
+    </div>
+    <button class="btn btn-primary btn-sm" style="width:auto" onclick="createTournament()">🏆 สร้าง Tournament</button>
+  </div>`;
+  try {
+    const tournaments = await dbGetTournaments();
+    if (tournaments.length) {
+      html += `<div class="divider"></div><div style="font-size:0.83rem;font-weight:600;margin-bottom:8px">🏆 Tournaments</div>`;
+      for (const t of tournaments) {
+        let groups = [];
+        try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+        const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
+        html += `<div class="tournament-group" style="margin-bottom:16px">
+          <div class="tournament-group-title">${tierBadge} ${t.name} <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span></div>
+          ${await renderTournamentBracket(t, groups)}
+        </div>`;
+      }
+    }
+  } catch(e) {}
+  container.innerHTML = html;
+}
+
+async function renderTournamentBracket(tournament, groups) {
+  let html = '';
+  const tMatches = await dbGetTournamentMatches(tournament.id);
+  for (const grp of groups) {
+    const grpLetter = grp.letter;
+    const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
+    const standings = grpPlayers.map(p => {
+      const pw = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length;
+      const pl = tMatches.filter(m => m.group_letter === grpLetter && (m.player_a === p.id || m.player_b === p.id) && m.winner_id !== p.id).length;
+      return { p, w: pw, l: pl };
+    }).sort((a,b) => b.w - a.w);
+    html += `<div style="margin-bottom:10px">
+      <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter}</div>
+      <table class="tournament-table">
+        <thead><tr><th>ผู้เล่น</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
+        <tbody>${standings.map(s => `<tr><td>${s.p.name}</td><td style="color:var(--neon)">${s.w}</td><td style="color:var(--red)">${s.l}</td><td>${s.w*2 - s.l}</td></tr>`).join('')}</tbody>
+      </table>
+      <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ใน Group ${grpLetter}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
+          ${grpPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+        </select>
+        <span style="font-size:0.8rem">vs</span>
+        <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
+          ${grpPlayers.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+        </select>
+        <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+        <span>-</span>
+        <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem" onclick="recordTournamentMatch(${tournament.id},'${grpLetter}')">✅</button>
+      </div>
+    </div>`;
+  }
+  const top2PerGroup = [];
+  for (const grp of groups) {
+    const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
+    const standings = grpPlayers.map(p => ({
+      p, w: tMatches.filter(m => m.group_letter === grp.letter && m.winner_id === p.id).length
+    })).sort((a,b) => b.w - a.w);
+    if (standings[0]) top2PerGroup.push({ player: standings[0].p, group: grp.letter, rank: 1 });
+    if (standings[1]) top2PerGroup.push({ player: standings[1].p, group: grp.letter, rank: 2 });
+  }
+  if (top2PerGroup.length >= 4) {
+    html += `<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,215,0,0.3);border-radius:10px;background:rgba(255,215,0,0.04)">
+      <div style="font-weight:600;font-size:0.82rem;color:var(--gold);margin-bottom:6px">🏆 Race to Grand Final</div>
+      <div style="font-size:0.78rem;color:var(--muted)">
+        Semi: ${top2PerGroup[0]?.player.name} (A1) vs ${top2PerGroup[3]?.player.name} (B2)<br>
+        Semi: ${top2PerGroup[1]?.player.name} (A2) vs ${top2PerGroup[2]?.player.name} (B1)
+      </div>
+    </div>`;
+  }
+  return html;
+}
+
+async function createTournament() {
+  const name = (document.getElementById('tournamentName')?.value || '').trim();
+  const tier = document.getElementById('tournamentTier')?.value || 'Regular';
+  if (!name) return toast('กรุณากรอกชื่อทัวร์นาเมนต์', 'error');
+  const checked = Array.from(document.querySelectorAll('#tournamentPlayerSelect input:checked')).map(x => parseInt(x.value));
+  if (checked.length < 4 || checked.length > 6) return toast('เลือกผู้เล่น 4-6 คน', 'error');
+  const half = Math.ceil(checked.length / 2);
+  const groups = [
+    { letter: 'A', playerIds: checked.slice(0, half) },
+    { letter: 'B', playerIds: checked.slice(half) },
+  ];
+  try {
+    toast('กำลังสร้าง...', 'info');
+    await dbCreateTournament(name, tier, groups);
+    toast('สร้าง Tournament แล้ว! 🏆', 'success');
+    renderTournamentSection();
+  } catch(e) { toast('สร้างไม่ได้: ' + e.message, 'error'); }
+}
+
+async function recordTournamentMatch(tournamentId, groupLetter) {
+  const pa = parseInt(document.getElementById(`tm_pa_${tournamentId}_${groupLetter}`)?.value);
+  const pb = parseInt(document.getElementById(`tm_pb_${tournamentId}_${groupLetter}`)?.value);
+  const sa = parseInt(document.getElementById(`tm_sa_${tournamentId}_${groupLetter}`)?.value);
+  const sb = parseInt(document.getElementById(`tm_sb_${tournamentId}_${groupLetter}`)?.value);
+  if (!pa || !pb || pa === pb) return toast('เลือกผู้เล่น 2 คนที่แตกต่างกัน', 'error');
+  if (isNaN(sa) || isNaN(sb)) return toast('กรุณากรอกสกอร์', 'error');
+  try {
+    await dbAddTournamentMatch(tournamentId, groupLetter, pa, pb, sa, sb, sa > sb ? pa : pb);
+    toast('บันทึก Tournament Match แล้ว!', 'success');
+    renderTournamentSection();
+  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
+}
+
+// ── COIN AWARDS IN SAVE MATCH ─────────────────────────────
+const _saveMatchForCoins = saveMatch;
+saveMatch = async function() {
+  let matchSnap2 = null;
+  if (currentMatch) {
+    const wt = currentMatch._winTeam || (currentMatch.scoreA > currentMatch.scoreB ? 'A' : 'B');
+    matchSnap2 = {
+      allIds: [...currentMatch.teamA, ...currentMatch.teamB].map(p => p.id),
+      winnersIds: currentMatch['team' + wt].map(p => p.id),
+      losersIds: currentMatch['team' + (wt === 'A' ? 'B' : 'A')].map(p => p.id),
+    };
+  }
+  await _saveMatchForCoins();
+  if (matchSnap2 && isAdminUser()) {
+    try { await awardMatchCoins(matchSnap2.allIds); } catch(e) {}
+    for (const wid of matchSnap2.winnersIds) {
+      try { await checkFirstBlood(wid); } catch(e) {}
+      try { await checkPitySystem(wid, true); } catch(e) {}
+    }
+    for (const lid of matchSnap2.losersIds) {
+      try { await checkPitySystem(lid, false); } catch(e) {}
+    }
+    try { await loadPlayers(); } catch(e) {}
+  }
+};
+
+// Patch approvePending to also award coins
+const _approvePendingForCoins = approvePending;
+approvePending = async function(pendingId) {
+  let pendingSnap = null;
+  try {
+    const rows = await dbGetPending();
+    const r = rows.find(x => x.id === pendingId);
+    if (r) {
+      const winners = r.win_team === 'A' ? r.team_a : r.team_b;
+      const losers  = r.win_team === 'A' ? r.team_b : r.team_a;
+      pendingSnap = {
+        allIds: [...(r.team_a||[]), ...(r.team_b||[])].map(p => p.id),
+        winnersIds: (winners||[]).map(p => p.id),
+        losersIds: (losers||[]).map(p => p.id),
+      };
+    }
+  } catch(e) {}
+  await _approvePendingForCoins(pendingId);
+  if (pendingSnap) {
+    try { await awardMatchCoins(pendingSnap.allIds); } catch(e) {}
+    for (const wid of pendingSnap.winnersIds) {
+      try { await checkFirstBlood(wid); } catch(e) {}
+      try { await checkPitySystem(wid, true); } catch(e) {}
+    }
+    for (const lid of pendingSnap.losersIds) {
+      try { await checkPitySystem(lid, false); } catch(e) {}
+    }
+    try { await loadPlayers(); } catch(e) {}
+  }
+};
+
+// ── PATCH lbRenderBoard for Form + Grand Final badges ─────
+const _lbRenderBoardV4 = lbRenderBoard;
+lbRenderBoard = function(data, animate) {
+  _lbRenderBoardV4(data, animate);
+  if (!data || !data.length) return;
+  const items = document.querySelectorAll('#lbBoardList .lb-br');
+  items.forEach((row, i) => {
+    const p = data[i];
+    if (!p) return;
+    const rankBadgeEl = row.querySelector('.lb-rh');
+    if (rankBadgeEl) {
+      if (!rankBadgeEl.querySelector('.form-badge')) {
+        const fi = getFormIndicator(p.id);
+        rankBadgeEl.insertAdjacentHTML('beforeend', `<span class="form-badge ${fi.cls}">${fi.arrow}</span>`);
+      }
+      if (!rankBadgeEl.querySelector('.gf-badge')) {
+        const gfBadge = getGrandFinalBadge(p.id);
+        if (gfBadge) rankBadgeEl.insertAdjacentHTML('beforeend', gfBadge);
+      }
+    }
+  });
+};
+
+// ── PATCH renderAdmin for Coin Give + Tournament section ──
+const _renderAdminV4 = renderAdmin;
+renderAdmin = async function() {
+  await _renderAdminV4();
+  if (!isAdminUser()) return;
+  const main = document.querySelector('#adminSection main');
+  if (!main) return;
+  // Coin Give section
+  if (!document.getElementById('adminCoinSection')) {
+    const div = document.createElement('div');
+    div.id = 'adminCoinSection';
+    div.className = 'card';
+    div.innerHTML = `<div class="card-title">🪙 ให้เหรียญผู้เล่น</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <select class="inp" id="coinGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
+          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('')}
+        </select>
+        <input class="inp" type="number" id="coinGiveAmount" placeholder="จำนวน" min="1" style="flex:1;min-width:80px;font-size:0.82rem">
+        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveCoins()">ให้เหรียญ</button>
+      </div>
+      <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">หรือส่งผ่าน Mailbox:</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:4px">
+        <select class="inp" id="mailGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
+          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+        </select>
+        <select class="inp" id="mailGiveType" style="flex:1;min-width:100px;font-size:0.82rem">
+          <option value="coins">🪙 Coins</option>
+          <option value="elo">📈 ELO</option>
+          <option value="gacha_frame">🖼️ Frame</option>
+          <option value="gacha_emoji">😎 Emoji</option>
+        </select>
+        <input class="inp" id="mailGiveValue" placeholder="ค่า" style="flex:1;min-width:70px;font-size:0.82rem">
+        <input class="inp" id="mailGiveMsg" placeholder="ข้อความ (optional)" style="flex:2;min-width:120px;font-size:0.82rem">
+        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminSendMail()">📬 ส่ง</button>
+      </div>`;
+    main.insertBefore(div, main.firstChild);
+  } else {
+    const sel = document.getElementById('coinGivePlayer');
+    const msel = document.getElementById('mailGivePlayer');
+    if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('');
+    if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  }
+  // Tournament section
+  if (!document.getElementById('tournamentAdminSection')) {
+    const tdiv = document.createElement('div');
+    tdiv.className = 'card';
+    tdiv.innerHTML = `<div class="card-title">🏆 Tournament</div><div id="tournamentAdminSection"></div>`;
+    main.appendChild(tdiv);
+    renderTournamentSection();
+  }
+};
+
+async function adminGiveCoins() {
+  const pid = parseInt(document.getElementById('coinGivePlayer')?.value);
+  const amount = parseInt(document.getElementById('coinGiveAmount')?.value);
+  if (!pid || isNaN(amount) || amount <= 0) return toast('กรุณาเลือกผู้เล่นและจำนวน', 'error');
+  try {
+    await dbAddCoins(pid, amount);
+    await loadPlayers();
+    toast(`🪙 ให้ ${amount} เหรียญแล้ว!`, 'success');
+    renderAdmin();
+  } catch(e) { toast('ให้เหรียญไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminSendMail() {
+  const pid = parseInt(document.getElementById('mailGivePlayer')?.value);
+  const type = document.getElementById('mailGiveType')?.value;
+  const val = (document.getElementById('mailGiveValue')?.value || '').trim();
+  const msg = (document.getElementById('mailGiveMsg')?.value || '').trim();
+  if (!pid || !type || !val) return toast('กรุณากรอกข้อมูลให้ครบ', 'error');
+  try {
+    await dbSendMail(pid, type, val, msg);
+    toast('📬 ส่งไอเทมแล้ว!', 'success');
+    document.getElementById('mailGiveValue').value = '';
+    document.getElementById('mailGiveMsg').value = '';
+  } catch(e) { toast('ส่งไม่ได้: ' + e.message, 'error'); }
+}
+
+// ── PATCH openPlayerProfile for Best Day + Coins + Gacha ─
+const _openPlayerProfileV4 = openPlayerProfile;
+openPlayerProfile = function(playerId) {
+  _openPlayerProfileV4(playerId);
+  setTimeout(() => {
+    const sheet = document.getElementById('ppSheet2');
+    if (!sheet) return;
+    const p = db.players.find(x => x.id === playerId);
+    if (!p) return;
+    const statsEl = sheet.querySelector('.pp2-stats');
+    if (statsEl && !statsEl.querySelector('.pp2-stat-coins')) {
+      const bestDay = getBestDayOfWeek(playerId);
+      const coinDiv = document.createElement('div');
+      coinDiv.className = 'pp2-stat pp2-stat-coins';
+      coinDiv.innerHTML = `<div class="pp2-stat-n" style="color:var(--gold)">${p.coins || 0}🪙</div><div class="pp2-stat-l">เหรียญ</div>`;
+      statsEl.appendChild(coinDiv);
+      if (bestDay) {
+        const dayDiv = document.createElement('div');
+        dayDiv.className = 'pp2-stat';
+        dayDiv.innerHTML = `<div class="pp2-stat-n" style="font-size:0.85rem;color:var(--neon2)">${bestDay}</div><div class="pp2-stat-l">วันชนะบ่อยสุด</div>`;
+        statsEl.appendChild(dayDiv);
+      }
+    }
+    if (currentUser && currentUser.id === playerId) {
+      const body = sheet.querySelector('.pp2-body');
+      if (body && !document.getElementById('gachaPullBtnProfile')) {
+        const btnDiv = document.createElement('div');
+        btnDiv.style.cssText = 'margin:10px 0';
+        btnDiv.innerHTML = `<button id="gachaPullBtnProfile" class="btn btn-primary btn-sm" style="width:100%" onclick="openGachaPull()">🎰 Gacha Pull (2🪙)</button>`;
+        body.insertBefore(btnDiv, body.firstChild);
+      }
+    }
+  }, 80);
+};
+
+// ── Check mailbox badge after login + loadAll ─────────────
+const _origLoginV4 = login;
+login = async function() {
+  await _origLoginV4();
+  if (currentUser) setTimeout(checkMailboxBadge, 800);
+};
+const _origLoadAllV4 = loadAll;
+loadAll = async function() {
+  await _origLoadAllV4();
+  if (currentUser) checkMailboxBadge().catch(()=>{});
+};
 </script>
+
+<!-- ===== MAILBOX OVERLAY ===== -->
+<div id="mailboxOverlay" onclick="closeMailbox(event)">
+  <div class="mailbox-sheet" onclick="event.stopPropagation()">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-size:1.1rem;font-weight:700">📬 กล่องของขวัญ</div>
+      <button class="btn btn-ghost btn-sm" style="width:auto;padding:4px 10px" onclick="closeMailbox()">✕</button>
+    </div>
+    <div id="mailboxList"><div class="text-muted" style="text-align:center;padding:20px">⏳ กำลังโหลด...</div></div>
+  </div>
+</div>
+
+<!-- ===== GACHA PULL OVERLAY ===== -->
+<div id="gachaPullOverlay" onclick="closeGachaPull(event)">
+  <div class="gacha-pull-card" onclick="event.stopPropagation()">
+    <div class="gacha-pull-label">GACHA PULL</div>
+    <div style="margin:8px 0;font-size:0.8rem;color:var(--muted)">ต้องใช้ <strong style="color:var(--gold)">2 🪙</strong> ต่อ 1 ครั้ง</div>
+    <div id="gachaPullBalance" style="font-size:0.82rem;margin-bottom:12px;color:var(--neon)"></div>
+    <div id="gachaPullResult" style="min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center">
+      <div class="text-muted" style="font-size:0.82rem">กด Pull เพื่อลุ้น!</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="closeGachaPull()">ปิด</button>
+      <button class="btn btn-primary btn-sm" style="flex:1" id="gachaPullBtn" onclick="doGachaPull()">🎰 Pull! (2🪙)</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== ACHIEVEMENT UNLOCK OVERLAY (CINEMATIC) ===== -->
 <div id="achOverlay" onclick="closeAchievement()">
