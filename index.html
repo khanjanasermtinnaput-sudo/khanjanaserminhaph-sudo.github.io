@@ -681,6 +681,20 @@ body.x2-active .toast-wrap{bottom:120px}
 <div id="profileSection" class="section">
   <main>
     <div class="card" id="profileCard"></div>
+    <div class="card" id="gachaProfileCard" style="border-color:rgba(168,85,247,0.35);background:rgba(168,85,247,0.04)">
+      <div class="card-title" style="color:#c084fc">🎰 Gacha & เหรียญ</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:1.1rem;font-weight:700">🪙 <span id="profileCoinBalance">0</span> เหรียญ</div>
+        <div style="font-size:0.75rem;color:var(--muted)">2 เหรียญ = 1 pull</div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none" onclick="openGachaPull()">🎰 Gacha Pull (2🪙)</button>
+      <div style="margin-top:10px;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:10px;font-size:0.72rem;color:var(--muted);line-height:1.8">
+        <span style="color:#ffd700">70%</span> ELO 5-15 &nbsp;·&nbsp;
+        <span style="color:#60a5fa">20%</span> Emoji โปรไฟล์ &nbsp;·&nbsp;
+        <span style="color:#34d399">7%</span> กรอบ Rainbow/Robot &nbsp;·&nbsp;
+        <span style="color:#c084fc">3%</span> ✨ Ultra Rare
+      </div>
+    </div>
     <div class="card">
       <div class="card-title">🏆 Personal Records</div>
       <div id="personalRecordsContent"><div class="text-muted" style="text-align:center;padding:12px;font-size:.82rem">⏳ กำลังโหลด...</div></div>
@@ -703,30 +717,24 @@ body.x2-active .toast-wrap{bottom:120px}
     <div class="card" id="pendingCard" style="border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.04)"><div class="card-title" style="color:var(--gold)">⏳ รอ Admin ยืนยัน <span id="pendingBadge" class="hidden" style="background:var(--red);color:#fff;border-radius:50px;font-size:0.72rem;padding:2px 8px;font-family:Sarabun">0</span></div><div id="pendingList"><div class="text-muted" style="text-align:center;padding:16px;font-size:0.83rem">ไม่มีรายการรอยืนยัน</div></div></div>
     <div class="card"><div class="card-title">⚙️ Admin Panel</div><div class="admin-grid" id="adminStats"></div></div>
     <div class="card" style="border-color:rgba(0,217,245,0.3);background:rgba(0,217,245,0.04)">
-      <div class="card-title" style="color:var(--neon2)">🗄️ Supabase Setup — สร้างตาราง pending_matches</div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:10px">ถ้ายังไม่มีตาราง pending_matches ระบบ Admin ยืนยันจะไม่ทำงาน — รัน SQL นี้ใน Supabase → SQL Editor</div>
-      <pre style="background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--neon);overflow-x:auto;white-space:pre-wrap;line-height:1.6">CREATE TABLE IF NOT EXISTS pending_matches (
-  id bigserial PRIMARY KEY,
-  type text,
-  team_a jsonb,
-  team_b jsonb,
-  score_a int,
-  score_b int,
-  win_team text,
-  pts_gain int,
-  pts_loss int,
-  submitted_by bigint,
-  created_at timestamptz DEFAULT now()
-);
+      <div class="card-title" style="color:var(--neon2)">🗄️ Supabase Setup — SQL</div>
+
+      <div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">✅ รันแล้ว (ไม่ต้องรันซ้ำ)</div>
+      <pre style="background:rgba(0,0,0,0.15);border:1px solid var(--glass-border);border-radius:8px;padding:10px;font-size:0.68rem;color:var(--muted);overflow-x:auto;white-space:pre-wrap;line-height:1.6;opacity:0.6">-- pending_matches (รันไปแล้ว)
+CREATE TABLE IF NOT EXISTS pending_matches (...);
 ALTER TABLE pending_matches ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (true);
+-- gacha_frame, gacha_name (รันไปแล้ว)
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
 
--- New columns for v4 features
+      <div style="font-size:0.78rem;font-weight:700;color:var(--neon);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v6.0 — รันเฉพาะนี้เท่านั้น</div>
+      <pre id="newSqlPre" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,245,160,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--neon);overflow-x:auto;white-space:pre-wrap;line-height:1.6">-- เพิ่ม column ใหม่ใน players
 ALTER TABLE players ADD COLUMN IF NOT EXISTS coins integer DEFAULT 0;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_emoji text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS consecutive_losses integer DEFAULT 0;
 
--- Mailbox table
+-- กล่องจดหมาย
 CREATE TABLE IF NOT EXISTS mailbox (
   id bigserial PRIMARY KEY,
   player_id integer,
@@ -737,9 +745,13 @@ CREATE TABLE IF NOT EXISTS mailbox (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE mailbox ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON mailbox FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='mailbox' AND policyname='allow all') THEN
+    EXECUTE 'CREATE POLICY "allow all" ON mailbox FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
 
--- Tournament tables
+-- Tournament
 CREATE TABLE IF NOT EXISTS tournaments (
   id bigserial PRIMARY KEY,
   name text,
@@ -749,7 +761,11 @@ CREATE TABLE IF NOT EXISTS tournaments (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON tournaments FOR ALL USING (true) WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tournaments' AND policyname='allow all') THEN
+    EXECUTE 'CREATE POLICY "allow all" ON tournaments FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS tournament_matches (
   id bigserial PRIMARY KEY,
@@ -763,8 +779,12 @@ CREATE TABLE IF NOT EXISTS tournament_matches (
   played_at timestamptz DEFAULT now()
 );
 ALTER TABLE tournament_matches ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON tournament_matches FOR ALL USING (true) WITH CHECK (true);</pre>
-      <button class="btn btn-ghost btn-sm" style="margin-top:8px;width:auto" onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent).then(()=>toast('คัดลอก SQL แล้ว','success'))">📋 คัดลอก SQL</button>
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tournament_matches' AND policyname='allow all') THEN
+    EXECUTE 'CREATE POLICY "allow all" ON tournament_matches FOR ALL USING (true) WITH CHECK (true)';
+  END IF;
+END $$;</pre>
+      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:auto" onclick="navigator.clipboard.writeText(document.getElementById('newSqlPre').textContent).then(()=>toast('คัดลอก SQL ใหม่แล้ว ✅','success'))">📋 คัดลอก SQL ใหม่</button>
     </div>
     <div class="card"><div class="card-title">👥 จัดการผู้เล่น</div><div id="adminPlayerList"></div></div>
     <div class="card">
@@ -4535,6 +4555,15 @@ renderProfile = async function() {
     btn.textContent='🎨 เปลี่ยน Avatar'; btn.onclick=openAvatarBuilder;
     pc.appendChild(btn);
   }
+  // Update coin balance in profile gacha card
+  const coinEl = document.getElementById('profileCoinBalance');
+  if (coinEl) {
+    const me = db.players.find(x => x.id === currentUser.id);
+    coinEl.textContent = me ? (me.coins || 0) : 0;
+  }
+  // Hide gacha card if not logged in
+  const gcCard = document.getElementById('gachaProfileCard');
+  if (gcCard) gcCard.style.display = currentUser ? '' : 'none';
 };
 
 // ═══════════════════════════════════════════════════════════
