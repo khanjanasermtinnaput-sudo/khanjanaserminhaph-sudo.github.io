@@ -480,18 +480,32 @@ async function executeDeclareChampion(tournamentId) {
       await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
     } catch(e) {}
 
-    // 7. Participation reward: half of winner's total coins to all non-winners
-    const participationCoins = Math.max(1, Math.floor(totalCoins / 2));
-    const allParticipants = getAllParticipantIds(groups, matchType);
-    const nonWinners = allParticipants.filter(pid => !winnerPlayerIds.includes(pid));
-    for (const pid of nonWinners) {
-      try {
-        await dbAddCoins(pid, participationCoins);
-        const pl = db.players.find(x => x.id === pid);
-        if (pl) await dbSendMail(pid, 'coins', String(participationCoins),
-          `🎖️ รางวัลชมเชย ${tierName}! ขอบคุณที่เข้าร่วม +${participationCoins} 🪙`);
-      } catch(e) {}
-    }
+    // 7. Runner-up reward: half of winner's coins to Grand Final loser only
+    let runnerUpNames = '';
+    try {
+      const tmsAll = await dbGetTournamentMatches(tournamentId);
+      const gfMatch = tmsAll.find(m => m.group_letter === 'GF');
+      if (gfMatch) {
+        const loserAnchor = gfMatch.winner_id === gfMatch.player_a ? gfMatch.player_b : gfMatch.player_a;
+        let loserIds = [];
+        if (matchType === '2v2') {
+          const loserTeam = getTeamByAnchor(groups, loserAnchor);
+          loserIds = loserTeam?.playerIds || [loserAnchor];
+        } else {
+          loserIds = [loserAnchor];
+        }
+        const participationCoins = Math.max(1, Math.floor(totalCoins / 2));
+        for (const pid of loserIds) {
+          await dbAddCoins(pid, participationCoins);
+          const pl = db.players.find(x => x.id === pid);
+          if (pl) {
+            runnerUpNames += (runnerUpNames ? ' & ' : '') + pl.name;
+            await dbSendMail(pid, 'coins', String(participationCoins),
+              `🥈 รองแชมป์ ${tierName}! รางวัล +${participationCoins} 🪙`);
+          }
+        }
+      }
+    } catch(e) {}
 
     // 8. Reload players so profile + leaderboard reflect awards immediately
     await loadPlayers();
@@ -499,8 +513,8 @@ async function executeDeclareChampion(tournamentId) {
 
     const winnerNames = winnerPlayerIds.map(pid => db.players.find(x => x.id === pid)?.name || '?').join(' & ');
     const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
-    const partMsg = nonWinners.length > 0 ? ` · ผู้เข้าร่วม ${nonWinners.length} คน ได้รับ +${participationCoins} 🪙` : '';
-    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}${partMsg}`, 'success');
+    const runnerMsg = runnerUpNames ? ` · รองแชมป์ ${runnerUpNames} ได้รับ +${Math.max(1,Math.floor(totalCoins/2))} 🪙` : '';
+    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}${runnerMsg}`, 'success');
 
     renderTournamentSection();
 
