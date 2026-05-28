@@ -248,10 +248,11 @@ const TOUR_COIN_REWARDS = { 'Regular': 100, 'Super 500': 500, 'Super 1000': 1000
 
 // System achievement templates (auto-awarded, stored as customAch)
 const TOUR_ACH_DEFS = {
-  regular:  { id:'sys_tour_regular',  icon:'🏆', title:'Tournament Champion',  desc:'ชนะ Regular Tournament',     frame:'bronze' },
-  super500: { id:'sys_tour_s500',     icon:'🥈', title:'Super 500 Champion',    desc:'ชนะ Super 500 Tournament',   frame:'silver' },
-  super1000:{ id:'sys_tour_s1000',    icon:'👑', title:'Super 1000 Champion',   desc:'ชนะ Super 1000 Tournament',  frame:'gold'   },
-  doubles:  { id:'sys_tour_doubles',  icon:'⚔️', title:'Doubles Champion',      desc:'ชนะ Tournament โหมด 2v2',   frame:'gold'   },
+  regular:    { id:'sys_tour_regular',  icon:'🏆', title:'Tournament Champion',    desc:'ชนะ Regular Tournament',        frame:'bronze' },
+  super500:   { id:'sys_tour_s500',     icon:'🥈', title:'Super 500 Champion',      desc:'ชนะ Super 500 Tournament',      frame:'silver' },
+  super1000:  { id:'sys_tour_s1000',    icon:'👑', title:'Super 1000 Champion',     desc:'ชนะ Super 1000 Tournament',     frame:'gold'   },
+  doubles:    { id:'sys_tour_doubles',  icon:'⚔️', title:'Doubles Champion',        desc:'ชนะ Tournament โหมด 2v2',      frame:'gold'   },
+  grandfinal: { id:'sys_tour_gf_ss1',  icon:'🏆', title:'Grand Final SS1',         desc:'แชมป์ Grand Final Season 1',    frame:'gold'   },
 };
 
 // ── [NEW] Get Super 1000 title count from player ──
@@ -288,15 +289,23 @@ async function awardTournamentAchievement(playerIds, achDef) {
   }
 }
 
-// ── [NEW] Show "ประกาศแชมป์" confirmation modal ──
-function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
+// ── Show "ประกาศแชมป์" confirmation modal (auto-selects GF winner) ──
+async function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
   document.getElementById('tChampModal')?.remove();
   const realGroups = getTournamentGroups(groups);
+
+  // Try to detect GF winner for auto-selection
+  let gfWinnerId = null;
+  try {
+    const tms = await dbGetTournamentMatches(tournamentId);
+    const gfMatch = tms.find(m => m.group_letter === 'GF');
+    if (gfMatch) gfWinnerId = gfMatch.winner_id;
+  } catch(e) {}
+
   const modal = document.createElement('div');
   modal.id = 'tChampModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
 
-  // Build winner options
   let winnerOpts = '';
   if (matchType === '2v2') {
     for (const grp of realGroups) {
@@ -317,15 +326,19 @@ function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
 
   const coins = TOUR_COIN_REWARDS[tierName] || 100;
   const tierColor = tierName === 'Super 1000' ? '#ffd700' : tierName === 'Super 500' ? '#c8c8c8' : '#cd7f32';
+  const gfBadge = gfWinnerId
+    ? `<div style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:5px 10px;margin-bottom:10px;color:var(--gold)">🏆 ตรวจพบผล Grand Final — เลือกอัตโนมัติแล้ว</div>`
+    : '';
 
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
       <div style="font-size:2rem;margin-bottom:6px">👑</div>
       <div style="font-size:1rem;font-weight:700;margin-bottom:4px">ประกาศแชมป์</div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:14px">
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">
         <span style="color:${tierColor};font-weight:700">${tierName}</span> · รางวัล
         <span style="color:#ffd700;font-weight:700">+${coins} 🪙</span> ต่อคน
       </div>
+      ${gfBadge}
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;text-align:left">เลือกผู้ชนะ:</div>
       <select class="inp" id="tChampWinnerSel" style="margin-bottom:14px;font-size:0.82rem">${winnerOpts}</select>
       <div style="display:flex;gap:10px">
@@ -338,6 +351,14 @@ function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Auto-select GF winner after modal renders
+  if (gfWinnerId) {
+    setTimeout(() => {
+      const sel = document.getElementById('tChampWinnerSel');
+      if (sel) sel.value = String(gfWinnerId);
+    }, 30);
+  }
 }
 
 // ── [NEW] Execute champion declaration: award coins + achievements ──
@@ -395,7 +416,15 @@ async function executeDeclareChampion(tournamentId, tierName, matchType, groups)
       await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles);
     }
 
-    // 5. Super 1000: increment title counter
+    // 5. Award Grand Final SS1 achievement if GF match was played
+    try {
+      const tms = await dbGetTournamentMatches(tournamentId);
+      if (tms.some(m => m.group_letter === 'GF')) {
+        await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.grandfinal);
+      }
+    } catch(e) {}
+
+    // 6. Super 1000: increment title counter
     if (tierName === 'Super 1000') {
       for (const pid of winnerPlayerIds) await incrementS1000Titles(pid);
     }
@@ -687,14 +716,53 @@ async function renderTournamentBracket(tournament, groups) {
     }).filter(Boolean);
 
     if (groupWinners.length >= 2) {
-      let matchLines = '';
-      if (groupWinners.length === 2) {
-        matchLines = `<div class="gf-match">🏆 <span class="gf-winner">${groupWinners[0].label}</span> <span class="gf-vs">vs</span> <span class="gf-winner">${groupWinners[1].label}</span> <span style="font-size:0.7rem;color:var(--muted)">— Grand Final</span></div>`;
+      // Check if GF match already recorded (group_letter = 'GF')
+      const gfMatch = tMatches.find(m => m.group_letter === 'GF');
+
+      let gfContent = '';
+      if (gfMatch) {
+        // ── GF already played: show result ──
+        const winEntry  = groupWinners.find(w => w.id === gfMatch.winner_id);
+        const loseEntry = groupWinners.find(w => w.id !== gfMatch.winner_id);
+        const winLabel  = winEntry?.label  || db.players.find(p => p.id === gfMatch.winner_id)?.name || '?';
+        const loseLabel = loseEntry?.label || '?';
+        const sa = gfMatch.score_a, sb = gfMatch.score_b;
+        gfContent = `
+          <div class="gf-result">
+            <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">ผลการแข่งขัน</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center">
+              <span style="font-size:1.2rem">🏆</span>
+              <span class="gf-winner" style="font-size:1rem">${winLabel}</span>
+              <span style="font-family:'Rajdhani';font-size:1.1rem;font-weight:700;color:var(--gold)">${sa} – ${sb}</span>
+              <span style="font-size:0.82rem;color:var(--muted)">${loseLabel}</span>
+            </div>
+            <div style="margin-top:6px;font-size:0.7rem;color:var(--neon);font-weight:600">✅ Grand Final เสร็จสิ้น · กด "ประกาศแชมป์" เพื่อมอบรางวัล + ฉายา Grand Final SS1</div>
+          </div>`;
       } else {
-        matchLines = `<div class="gf-match">⚔️ <span class="gf-winner">${groupWinners[0].label}</span> <span class="gf-vs">vs</span> <span style="color:var(--text)">${(groupWinners[3]||groupWinners[1]).label}</span> <span style="font-size:0.7rem;color:var(--muted)">Semi 1</span></div>`;
-        if (groupWinners[1] && groupWinners[2]) matchLines += `<div class="gf-match">⚔️ <span class="gf-winner">${groupWinners[1].label}</span> <span class="gf-vs">vs</span> <span style="color:var(--text)">${groupWinners[2].label}</span> <span style="font-size:0.7rem;color:var(--muted)">Semi 2</span></div>`;
+        // ── GF not played yet: show matchup + score inputs ──
+        const allOpts = groupWinners.map(w => `<option value="${w.id}">${w.label}</option>`).join('');
+        const gfA = groupWinners[0], gfB = groupWinners[1];
+        gfContent = `
+          <div class="gf-match" style="margin-bottom:10px">
+            🏆 <span class="gf-winner">${gfA.label}</span>
+            <span class="gf-vs">vs</span>
+            <span class="gf-winner">${gfB.label}</span>
+            <span style="font-size:0.7rem;color:var(--muted)">— Grand Final</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">⌨️ บันทึกผล Grand Final</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <select class="inp" id="tm_pa_${tournament.id}_GF" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${allOpts}</select>
+            <span style="font-size:0.8rem">vs</span>
+            <select class="inp" id="tm_pb_${tournament.id}_GF" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${allOpts}</select>
+            <input class="inp" type="number" id="tm_sa_${tournament.id}_GF" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+            <span>-</span>
+            <input class="inp" type="number" id="tm_sb_${tournament.id}_GF" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+            <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700"
+              onclick="recordTournamentMatch(${tournament.id},'GF','${matchType}')">🏆 บันทึก GF</button>
+          </div>`;
       }
-      html += `<div class="gf-bracket"><div class="gf-title">🏆 Grand Final</div>${matchLines}</div>`;
+
+      html += `<div class="gf-bracket"><div class="gf-title">🏆 Grand Final</div>${gfContent}</div>`;
     }
   } else if (realGroups.length === 1) {
     const st = calculateGroupStandings(realGroups[0], tMatches, matchType);
