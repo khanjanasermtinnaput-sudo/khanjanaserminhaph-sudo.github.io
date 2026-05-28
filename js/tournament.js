@@ -1,3 +1,6 @@
+// ── Global store: tournament data keyed by id (avoids JSON-in-onclick quoting bugs) ──
+const _tourStore = {};
+
 // ── 5. FORM INDICATOR ─────────────────────────────────────
 function getFormIndicator(playerId) {
   const myMatches = db.matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId));
@@ -289,9 +292,12 @@ async function awardTournamentAchievement(playerIds, achDef) {
   }
 }
 
-// ── Show "ประกาศแชมป์" confirmation modal (auto-selects GF winner) ──
-async function confirmDeclareChampion(tournamentId, tierName, matchType, groups) {
+// ── Show "ประกาศแชมป์" confirmation modal — reads data from _tourStore ──
+async function confirmDeclareChampion(tournamentId) {
   document.getElementById('tChampModal')?.remove();
+  const stored = _tourStore[tournamentId];
+  if (!stored) return toast('ไม่พบข้อมูล Tournament', 'error');
+  const { groups, matchType, tier: tierName } = stored;
   const realGroups = getTournamentGroups(groups);
 
   // Try to detect GF winner for auto-selection
@@ -302,17 +308,13 @@ async function confirmDeclareChampion(tournamentId, tierName, matchType, groups)
     if (gfMatch) gfWinnerId = gfMatch.winner_id;
   } catch(e) {}
 
-  const modal = document.createElement('div');
-  modal.id = 'tChampModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
-
   let winnerOpts = '';
   if (matchType === '2v2') {
     for (const grp of realGroups) {
       if (!grp.teams) continue;
       for (const team of grp.teams) {
         const label = getTeamDisplayName(team, db.players);
-        winnerOpts += `<option value="${team.playerIds[0]}" data-grp="${grp.letter}">${label} (Group ${grp.letter})</option>`;
+        winnerOpts += `<option value="${team.playerIds[0]}">${label} (Group ${grp.letter})</option>`;
       }
     }
   } else {
@@ -330,6 +332,9 @@ async function confirmDeclareChampion(tournamentId, tierName, matchType, groups)
     ? `<div style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:5px 10px;margin-bottom:10px;color:var(--gold)">🏆 ตรวจพบผล Grand Final — เลือกอัตโนมัติแล้ว</div>`
     : '';
 
+  const modal = document.createElement('div');
+  modal.id = 'tChampModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
       <div style="font-size:2rem;margin-bottom:6px">👑</div>
@@ -345,14 +350,12 @@ async function confirmDeclareChampion(tournamentId, tierName, matchType, groups)
         <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.82rem"
           onclick="document.getElementById('tChampModal').remove()">ปิด</button>
         <button class="btn" style="flex:1;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-size:0.82rem"
-          onclick="executeDeclareChampion(${tournamentId},'${tierName}','${matchType}',${JSON.stringify(groups).replace(/'/g,'&#39;')})">
-          👑 ยืนยัน</button>
+          onclick="executeDeclareChampion(${tournamentId})">👑 ยืนยัน</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 
-  // Auto-select GF winner after modal renders
   if (gfWinnerId) {
     setTimeout(() => {
       const sel = document.getElementById('tChampWinnerSel');
@@ -361,17 +364,20 @@ async function confirmDeclareChampion(tournamentId, tierName, matchType, groups)
   }
 }
 
-// ── [NEW] Execute champion declaration: award coins + achievements ──
-async function executeDeclareChampion(tournamentId, tierName, matchType, groups) {
+// ── Execute champion declaration — reads data from _tourStore ──
+async function executeDeclareChampion(tournamentId) {
   const winnerAnchorId = parseInt(document.getElementById('tChampWinnerSel')?.value);
   document.getElementById('tChampModal')?.remove();
   if (!winnerAnchorId) return toast('กรุณาเลือกผู้ชนะ', 'error');
+
+  const stored = _tourStore[tournamentId];
+  if (!stored) return toast('ไม่พบข้อมูล Tournament', 'error');
+  const { groups, matchType, tier: tierName } = stored;
 
   const coins = TOUR_COIN_REWARDS[tierName] || 100;
   let winnerPlayerIds = [];
 
   if (matchType === '2v2') {
-    // Find full team from anchor
     const team = getTeamByAnchor(groups, winnerAnchorId);
     winnerPlayerIds = team?.playerIds || [winnerAnchorId];
   } else {
@@ -667,17 +673,13 @@ async function renderTournamentSection() {
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
+        // Store full data so onclick passes only id (avoids JSON double-quote breaking HTML attribute)
+        _tourStore[t.id] = { groups, matchType, tier: t.tier, name: t.name };
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
-        // Escape single quotes in tournament name for inline onclick
         const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        const isCompleted = t.status === 'completed';
-        // [NEW] Champion button shown only for active tournaments
-        const champBtn = isCompleted
-          ? `<span style="font-size:0.72rem;color:var(--neon);font-weight:700">✅ จบแล้ว</span>`
-          : `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
-               onclick="confirmDeclareChampion(${t.id},'${t.tier}','${matchType}',${JSON.stringify(groups).replace(/\\/g,'\\\\').replace(/'/g,"\\'")})"
-             >👑 ประกาศแชมป์</button>`;
-        const rewardBtn = isCompleted ? '' : `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>`;
+        const champBtn = `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
+               onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>`;
+        const rewardBtn = `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>`;
         html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
           <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px"
             onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
