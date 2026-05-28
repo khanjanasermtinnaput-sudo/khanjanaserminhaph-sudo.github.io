@@ -406,17 +406,20 @@ async function _populateChampModal(tournamentId, modal) {
 
 // ── Execute champion declaration ──
 async function executeDeclareChampion(tournamentId) {
-  const winnerAnchorId = parseInt(document.getElementById('tChampWinnerSel')?.value);
+  const sel = document.getElementById('tChampWinnerSel');
+  const winnerAnchorId = sel ? parseInt(sel.value) : NaN;
   document.getElementById('tChampModal')?.remove();
-  if (!winnerAnchorId || isNaN(winnerAnchorId)) return alert('กรุณาเลือกผู้ชนะ');
+  if (!winnerAnchorId || isNaN(winnerAnchorId)) { alert('กรุณาเลือกผู้ชนะ'); return; }
 
-  const stored = await _resolveTourData(tournamentId);
+  let stored = _tourStore[tournamentId];
+  if (!stored) {
+    try { stored = await _resolveTourData(tournamentId); } catch(e) {}
+  }
   if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
   const { groups, matchType, tier: tierName } = stored;
 
   const coins = TOUR_COIN_REWARDS[tierName] || 100;
   let winnerPlayerIds = [];
-
   if (matchType === '2v2') {
     const team = getTeamByAnchor(groups, winnerAnchorId);
     winnerPlayerIds = team?.playerIds || [winnerAnchorId];
@@ -429,96 +432,77 @@ async function executeDeclareChampion(tournamentId) {
   const bonusPts   = savedRewards.bonusPts   || 0;
   const totalCoins = coins + bonusCoins;
 
-  try {
-    toast('กำลังมอบรางวัล...', 'info');
+  toast('กำลังมอบรางวัล...', 'info');
 
-    // 1. Award coins (base + bonus) to all winners
-    for (const pid of winnerPlayerIds) {
-      await dbAddCoins(pid, totalCoins);
+  // 1. Coins to winners (each step isolated — one failure won't abort the rest)
+  for (const pid of winnerPlayerIds) {
+    try { await dbAddCoins(pid, totalCoins); } catch(e) {}
+    try {
       const pl = db.players.find(x => x.id === pid);
-      const coinMsg = bonusCoins > 0 ? `${coins} + Bonus ${bonusCoins}` : String(coins);
       if (pl) await dbSendMail(pid, 'coins', String(totalCoins),
-        `🏆 ${tierName} Champion! รางวัล +${coinMsg} 🪙`);
-    }
+        `🏆 ${tierName} Champion! +${bonusCoins > 0 ? coins + '+Bonus' + bonusCoins : totalCoins} 🪙`);
+    } catch(e) {}
+  }
 
-    // 2. Award bonus ELO pts if configured
-    if (bonusPts > 0) {
-      for (const pid of winnerPlayerIds) {
+  // 2. Bonus ELO pts
+  if (bonusPts > 0) {
+    for (const pid of winnerPlayerIds) {
+      try {
         const pl = db.players.find(x => x.id === pid);
-        if (pl) {
-          const newPts = (pl.pts || 0) + bonusPts;
-          await dbUpdatePlayer(pid, { pts: newPts });
-          pl.pts = newPts;
-        }
-      }
+        if (pl) { const np = (pl.pts||0)+bonusPts; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
+      } catch(e) {}
     }
+  }
 
-    // 3. Award tournament achievement badge
-    const achKey = tierName === 'Super 1000' ? 'super1000' : tierName === 'Super 500' ? 'super500' : 'regular';
-    await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS[achKey]);
+  // 3. Achievements
+  const achKey = tierName === 'Super 1000' ? 'super1000' : tierName === 'Super 500' ? 'super500' : 'regular';
+  try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS[achKey]); } catch(e) {}
+  if (matchType === '2v2') {
+    try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles); } catch(e) {}
+  }
 
-    // 4. Award Doubles achievement if 2v2
-    if (matchType === '2v2') {
-      await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles);
+  // 4. GF achievement + runner-up reward (single fetch)
+  try {
+    const tms = await dbGetTournamentMatches(tournamentId);
+    if (tms.some(m => m.group_letter === 'GF')) {
+      try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.grandfinal); } catch(e) {}
     }
-
-    // 5. Award Grand Final SS1 achievement if GF match was played
-    try {
-      const tms = await dbGetTournamentMatches(tournamentId);
-      if (tms.some(m => m.group_letter === 'GF')) {
-        await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.grandfinal);
-      }
-    } catch(e) {}
-
-    // 6. Super 1000: increment title counter
-    if (tierName === 'Super 1000') {
-      for (const pid of winnerPlayerIds) await incrementS1000Titles(pid);
-    }
-
-    // 6. Mark tournament as completed
-    try {
-      await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
-    } catch(e) {}
-
-    // 7. Runner-up reward: half of winner's coins to Grand Final loser only
-    let runnerUpNames = '';
-    try {
-      const tmsAll = await dbGetTournamentMatches(tournamentId);
-      const gfMatch = tmsAll.find(m => m.group_letter === 'GF');
-      if (gfMatch) {
-        const loserAnchor = gfMatch.winner_id === gfMatch.player_a ? gfMatch.player_b : gfMatch.player_a;
-        let loserIds = [];
-        if (matchType === '2v2') {
-          const loserTeam = getTeamByAnchor(groups, loserAnchor);
-          loserIds = loserTeam?.playerIds || [loserAnchor];
-        } else {
-          loserIds = [loserAnchor];
-        }
-        const participationCoins = Math.max(1, Math.floor(totalCoins / 2));
-        for (const pid of loserIds) {
-          await dbAddCoins(pid, participationCoins);
+    const gfMatch = tms.find(m => m.group_letter === 'GF');
+    if (gfMatch) {
+      const loserAnchor = gfMatch.winner_id === gfMatch.player_a ? gfMatch.player_b : gfMatch.player_a;
+      const loserIds = matchType === '2v2'
+        ? (getTeamByAnchor(groups, loserAnchor)?.playerIds || [loserAnchor])
+        : [loserAnchor];
+      const runnerCoins = Math.max(1, Math.floor(totalCoins / 2));
+      for (const pid of loserIds) {
+        try { await dbAddCoins(pid, runnerCoins); } catch(e) {}
+        try {
           const pl = db.players.find(x => x.id === pid);
-          if (pl) {
-            runnerUpNames += (runnerUpNames ? ' & ' : '') + pl.name;
-            await dbSendMail(pid, 'coins', String(participationCoins),
-              `🥈 รองแชมป์ ${tierName}! รางวัล +${participationCoins} 🪙`);
-          }
-        }
+          if (pl) await dbSendMail(pid, 'coins', String(runnerCoins),
+            `🥈 รองแชมป์ ${tierName}! +${runnerCoins} 🪙`);
+        } catch(e) {}
       }
-    } catch(e) {}
+    }
+  } catch(e) {}
 
-    // 8. Reload players so profile + leaderboard reflect awards immediately
-    await loadPlayers();
-    if (typeof renderLeaderboard === 'function') renderLeaderboard();
+  // 5. Super 1000 title counter
+  if (tierName === 'Super 1000') {
+    for (const pid of winnerPlayerIds) { try { await incrementS1000Titles(pid); } catch(e) {} }
+  }
 
-    const winnerNames = winnerPlayerIds.map(pid => db.players.find(x => x.id === pid)?.name || '?').join(' & ');
-    const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
-    const runnerMsg = runnerUpNames ? ` · รองแชมป์ ${runnerUpNames} ได้รับ +${Math.max(1,Math.floor(totalCoins/2))} 🪙` : '';
-    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}${runnerMsg}`, 'success');
+  // 6. Remove tournament from DB (no status column needed — just delete)
+  try { await dbDeleteTournament(tournamentId); } catch(e) {}
+  delete _tourStore[tournamentId];
 
-    renderTournamentSection();
+  // 7. Reload + refresh UI
+  try { await loadPlayers(); } catch(e) {}
+  try { if (typeof renderLeaderboard === 'function') renderLeaderboard(); } catch(e) {}
 
-  } catch(e) { toast('มอบรางวัลไม่ได้: ' + e.message, 'error'); }
+  const winnerNames = winnerPlayerIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+  const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
+  toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
+
+  renderTournamentSection();
 }
 
 // ── Helper: collect all participant player IDs from groups ──
