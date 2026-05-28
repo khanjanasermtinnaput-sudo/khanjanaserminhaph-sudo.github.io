@@ -114,6 +114,26 @@ async function dbDeleteTournament(tournamentId) {
   await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'DELETE', prefer: 'return=minimal' });
 }
 
+// ── Fetch a single tournament by ID ──
+async function dbGetTournamentById(id) {
+  try {
+    const rows = await supaFetch(`tournaments?id=eq.${id}`);
+    return rows && rows[0] ? rows[0] : null;
+  } catch(e) { return null; }
+}
+
+// ── Resolve stored tournament data (store first, DB fallback) ──
+async function _resolveTourData(tournamentId) {
+  if (_tourStore[tournamentId]) return _tourStore[tournamentId];
+  const t = await dbGetTournamentById(tournamentId);
+  if (!t) return null;
+  let groups = [];
+  try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+  const stored = { groups, matchType: getTournamentMatchType(groups), tier: t.tier, name: t.name };
+  _tourStore[tournamentId] = stored;
+  return stored;
+}
+
 // ── [NEW] Read match type from groups array (_meta sentinel) ──
 function getTournamentMatchType(groups) {
   if (!Array.isArray(groups)) return '1v1';
@@ -292,11 +312,11 @@ async function awardTournamentAchievement(playerIds, achDef) {
   }
 }
 
-// ── Show "ประกาศแชมป์" confirmation modal — reads data from _tourStore ──
+// ── Show "ประกาศแชมป์" confirmation modal ──
 async function confirmDeclareChampion(tournamentId) {
   document.getElementById('tChampModal')?.remove();
-  const stored = _tourStore[tournamentId];
-  if (!stored) return toast('ไม่พบข้อมูล Tournament', 'error');
+  const stored = await _resolveTourData(tournamentId);
+  if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
   const { groups, matchType, tier: tierName } = stored;
   const realGroups = getTournamentGroups(groups);
 
@@ -364,14 +384,14 @@ async function confirmDeclareChampion(tournamentId) {
   }
 }
 
-// ── Execute champion declaration — reads data from _tourStore ──
+// ── Execute champion declaration ──
 async function executeDeclareChampion(tournamentId) {
   const winnerAnchorId = parseInt(document.getElementById('tChampWinnerSel')?.value);
   document.getElementById('tChampModal')?.remove();
-  if (!winnerAnchorId) return toast('กรุณาเลือกผู้ชนะ', 'error');
+  if (!winnerAnchorId || isNaN(winnerAnchorId)) return alert('กรุณาเลือกผู้ชนะ');
 
-  const stored = _tourStore[tournamentId];
-  if (!stored) return toast('ไม่พบข้อมูล Tournament', 'error');
+  const stored = await _resolveTourData(tournamentId);
+  if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
   const { groups, matchType, tier: tierName } = stored;
 
   const coins = TOUR_COIN_REWARDS[tierName] || 100;
