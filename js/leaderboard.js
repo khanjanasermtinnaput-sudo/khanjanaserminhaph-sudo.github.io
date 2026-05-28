@@ -771,15 +771,20 @@ async function rejectPending(pendingId) {
 
 async function clearPlayerHistory(id) {
   const p = db.players.find(x=>x.id===id); if (!p) return;
-  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ต: W/L → 0, คะแนน → 50\nและลบแมตช์ทั้งหมดที่มีผู้เล่นคนนี้`)) return;
+  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ต: W/L → 0, คะแนน → 50\nลบแมตช์ทั้งหมด และลบ Achievement Tournament ทั้งหมด`)) return;
   try {
     toast('กำลังล้างประวัติ...', 'info');
-    await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0 });
+    // Clear tournament achievements from customAch
+    const cleanedAch = (p.customAch || []).filter(a => !String(a.id).startsWith('sys_tour_'));
+    p.customAch = cleanedAch;
+    p.super1000Titles = 0;
+    const ptStr = buildPlayerPrimeTitles(p, { awards: cleanedAch, s1000: 0 });
+    await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0, prime_titles: ptStr });
     await dbDeleteMatchesByPlayer(id);
     await loadAll();
     closeModal('editPlayerModal');
     renderAdmin();
-    toast(`🗑️ ล้างประวัติ ${p.name} แล้ว (รวมแมตช์ทั้งหมด)`, 'success');
+    toast(`🗑️ ล้างประวัติ ${p.name} แล้ว (รวมแมตช์ + Achievement Tournament)`, 'success');
   } catch(e) { toast('ล้างไม่ได้: ' + e.message, 'error'); }
 }
 
