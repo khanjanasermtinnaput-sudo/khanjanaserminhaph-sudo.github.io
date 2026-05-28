@@ -802,20 +802,17 @@ async function rejectPending(pendingId) {
 
 async function clearPlayerHistory(id) {
   const p = db.players.find(x=>x.id===id); if (!p) return;
-  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ต: W/L → 0, คะแนน → 50\nลบแมตช์ทั้งหมด และลบ Achievement Tournament ทั้งหมด`)) return;
+  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ต: W/L → 0, คะแนน → 50 · ลบแมตช์ทั้งหมด\n✅ Achievement และการตั้งค่าการแสดงใน Leaderboard จะยังคงอยู่`)) return;
   try {
     toast('กำลังล้างประวัติ...', 'info');
-    // Clear tournament achievements from customAch
-    const cleanedAch = (p.customAch || []).filter(a => !String(a.id).startsWith('sys_tour_'));
-    p.customAch = cleanedAch;
-    p.super1000Titles = 0;
-    const ptStr = buildPlayerPrimeTitles(p, { awards: cleanedAch, s1000: 0 });
+    // เก็บ achievements (customAch, pinnedAchs) และการตั้งค่าทั้งหมดไว้ ไม่ลบออก
+    const ptStr = buildPlayerPrimeTitles(p);
     await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0, prime_titles: ptStr });
     await dbDeleteMatchesByPlayer(id);
     await loadAll();
     closeModal('editPlayerModal');
     renderAdmin();
-    toast(`🗑️ ล้างประวัติ ${p.name} แล้ว (รวมแมตช์ + Achievement Tournament)`, 'success');
+    toast(`🗑️ ล้างประวัติ ${p.name} แล้ว — Achievement ยังคงอยู่ครบ`, 'success');
   } catch(e) { toast('ล้างไม่ได้: ' + e.message, 'error'); }
 }
 
