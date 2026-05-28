@@ -141,6 +141,61 @@ function getTeamDisplayName(team, players) {
   return team.playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(' + ');
 }
 
+// ── calculateGroupStandings: full standings with h2h, scoreDiff ──
+function calculateGroupStandings(grp, tMatches, matchType) {
+  const grpLetter = grp.letter;
+  const grpMatches = tMatches.filter(m => m.group_letter === grpLetter);
+
+  let entries;
+  if (matchType === '2v2' && grp.teams) {
+    entries = grp.teams.map(team => ({
+      id: team.playerIds[0],
+      label: getTeamDisplayName(team, db.players),
+      team,
+      wins: 0, losses: 0, points: 0,
+      scoreFor: 0, scoreAgainst: 0, scoreDiff: 0
+    }));
+  } else {
+    entries = (grp.playerIds || [])
+      .map(id => db.players.find(p => p.id === id))
+      .filter(Boolean)
+      .map(p => ({
+        id: p.id, label: p.name,
+        wins: 0, losses: 0, points: 0,
+        scoreFor: 0, scoreAgainst: 0, scoreDiff: 0
+      }));
+  }
+
+  for (const m of grpMatches) {
+    const eA = entries.find(e => e.id === m.player_a);
+    const eB = entries.find(e => e.id === m.player_b);
+    if (!eA || !eB) continue;
+    const sa = Number(m.score_a) || 0, sb = Number(m.score_b) || 0;
+    eA.scoreFor += sa; eA.scoreAgainst += sb;
+    eB.scoreFor += sb; eB.scoreAgainst += sa;
+    if (m.winner_id === eA.id) { eA.wins++; eA.points += 2; eB.losses++; }
+    else { eB.wins++; eB.points += 2; eA.losses++; }
+  }
+  entries.forEach(e => { e.scoreDiff = e.scoreFor - e.scoreAgainst; });
+
+  // Sort: wins DESC → points DESC → h2h → scoreDiff
+  entries.sort((a, b) => {
+    if (b.wins !== a.wins) return b.wins - a.wins;
+    if (b.points !== a.points) return b.points - a.points;
+    // head-to-head
+    const h2h = grpMatches.find(m =>
+      (m.player_a === a.id && m.player_b === b.id) ||
+      (m.player_a === b.id && m.player_b === a.id)
+    );
+    if (h2h) {
+      if (h2h.winner_id === b.id) return 1;
+      if (h2h.winner_id === a.id) return -1;
+    }
+    return b.scoreDiff - a.scoreDiff;
+  });
+  return entries;
+}
+
 // ── [NEW] Render Singles / Doubles badge ──
 function renderModeBadge(matchType) {
   return matchType === '2v2'
@@ -302,48 +357,159 @@ async function executeDeclareChampion(tournamentId, tierName, matchType, groups)
     winnerPlayerIds = [winnerAnchorId];
   }
 
+  const savedRewards = getTournamentRewards(tournamentId) || {};
+  const bonusCoins = savedRewards.bonusCoins || 0;
+  const bonusPts   = savedRewards.bonusPts   || 0;
+  const totalCoins = coins + bonusCoins;
+
   try {
     toast('กำลังมอบรางวัล...', 'info');
 
-    // 1. Award coins to all winners
+    // 1. Award coins (base + bonus) to all winners
     for (const pid of winnerPlayerIds) {
-      await dbAddCoins(pid, coins);
+      await dbAddCoins(pid, totalCoins);
       const pl = db.players.find(x => x.id === pid);
-      if (pl) await dbSendMail(pid, 'coins', String(coins),
-        `🏆 ${tierName} Champion! รางวัล +${coins} 🪙`);
+      const coinMsg = bonusCoins > 0 ? `${coins} + Bonus ${bonusCoins}` : String(coins);
+      if (pl) await dbSendMail(pid, 'coins', String(totalCoins),
+        `🏆 ${tierName} Champion! รางวัล +${coinMsg} 🪙`);
     }
 
-    // 2. Award tournament achievement badge
+    // 2. Award bonus ELO pts if configured
+    if (bonusPts > 0) {
+      for (const pid of winnerPlayerIds) {
+        const pl = db.players.find(x => x.id === pid);
+        if (pl) {
+          const newPts = (pl.pts || 0) + bonusPts;
+          await dbUpdatePlayer(pid, { pts: newPts });
+          pl.pts = newPts;
+        }
+      }
+    }
+
+    // 3. Award tournament achievement badge
     const achKey = tierName === 'Super 1000' ? 'super1000' : tierName === 'Super 500' ? 'super500' : 'regular';
     await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS[achKey]);
 
-    // 3. Award Doubles achievement if 2v2
+    // 4. Award Doubles achievement if 2v2
     if (matchType === '2v2') {
       await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles);
     }
 
-    // 4. Super 1000: increment title counter (for champion profile)
+    // 5. Super 1000: increment title counter
     if (tierName === 'Super 1000') {
-      for (const pid of winnerPlayerIds) {
-        await incrementS1000Titles(pid);
-      }
+      for (const pid of winnerPlayerIds) await incrementS1000Titles(pid);
     }
 
-    // 5. Mark tournament as completed in DB
+    // 6. Mark tournament as completed
     try {
       await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
-    } catch(e) { /* status update is best-effort */ }
+    } catch(e) {}
 
-    // 6. Reload players so profile and LB reflect new data
+    // 7. Reload players
     await loadPlayers();
 
-    // 7. Show winner names in toast
     const winnerNames = winnerPlayerIds.map(pid => db.players.find(x => x.id === pid)?.name || '?').join(' & ');
-    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${coins} 🪙 each`, 'success');
+    const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
+    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
 
     renderTournamentSection();
 
   } catch(e) { toast('มอบรางวัลไม่ได้: ' + e.message, 'error'); }
+}
+
+// ════════════════════════════════════════════════════════════
+// TOURNAMENT REWARD MANAGER
+// ════════════════════════════════════════════════════════════
+
+function getTournamentRewards(tournamentId) {
+  try {
+    const raw = localStorage.getItem(`t_rewards_${tournamentId}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function saveTournamentRewards(tournamentId, rewards) {
+  localStorage.setItem(`t_rewards_${tournamentId}`, JSON.stringify(rewards));
+}
+
+function openRewardManager(tournamentId, tierName) {
+  document.getElementById('tRewardModal')?.remove();
+  const saved = getTournamentRewards(tournamentId) || {};
+  const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
+  const bonusCoins = saved.bonusCoins || 0;
+  const bonusPts   = saved.bonusPts   || 0;
+  const hasCup     = saved.hasCup     || false;
+  const hasMvp     = saved.hasMvp     || false;
+  const customNote = saved.customNote || '';
+
+  const modal = document.createElement('div');
+  modal.id = 'tRewardModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:22px 18px;max-width:360px;width:92%;box-shadow:0 0 60px rgba(255,215,0,.1)">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:4px">🎁 จัดการรางวัล</div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">Tournament · <span style="color:var(--gold)">${tierName}</span> · รางวัลพื้นฐาน <span style="color:var(--gold);font-weight:700">+${tierCoins} 🪙</span></div>
+
+      <div class="reward-mgr-row">
+        <div class="reward-mgr-label">💰 Bonus เหรียญ</div>
+        <input class="inp" type="number" id="rm_bonusCoins" value="${bonusCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
+        <span style="font-size:0.75rem;color:var(--muted)">🪙</span>
+      </div>
+      <div class="reward-mgr-row">
+        <div class="reward-mgr-label">⭐ Bonus Pts</div>
+        <input class="inp" type="number" id="rm_bonusPts" value="${bonusPts}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
+        <span style="font-size:0.75rem;color:var(--muted)">pts</span>
+      </div>
+      <div class="reward-mgr-row">
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer">
+          <input type="checkbox" id="rm_hasCup" ${hasCup ? 'checked' : ''}> 🏆 ถ้วยรางวัล
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;margin-left:16px">
+          <input type="checkbox" id="rm_hasMvp" ${hasMvp ? 'checked' : ''}> 🌟 MVP Award
+        </label>
+      </div>
+      <div class="reward-mgr-row" style="flex-direction:column;align-items:flex-start">
+        <div class="reward-mgr-label" style="width:auto;margin-bottom:4px">📝 Custom Note</div>
+        <input class="inp" type="text" id="rm_customNote" value="${customNote.replace(/"/g,'&quot;')}" placeholder="เช่น เสื้อทีม, สปอนเซอร์..." style="width:100%;font-size:0.8rem">
+      </div>
+
+      <div style="display:flex;gap:8px;margin-top:14px">
+        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.8rem"
+          onclick="document.getElementById('tRewardModal').remove()">ปิด</button>
+        <button class="btn btn-primary" style="flex:1;font-size:0.8rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
+          onclick="_saveRewardsFromModal(${tournamentId})">💾 บันทึก</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+function _saveRewardsFromModal(tournamentId) {
+  const rewards = {
+    bonusCoins:  parseInt(document.getElementById('rm_bonusCoins')?.value) || 0,
+    bonusPts:    parseInt(document.getElementById('rm_bonusPts')?.value)   || 0,
+    hasCup:      document.getElementById('rm_hasCup')?.checked   || false,
+    hasMvp:      document.getElementById('rm_hasMvp')?.checked   || false,
+    customNote:  (document.getElementById('rm_customNote')?.value || '').trim(),
+  };
+  saveTournamentRewards(tournamentId, rewards);
+  document.getElementById('tRewardModal')?.remove();
+  toast('บันทึกรางวัลแล้ว ✅', 'success');
+  renderTournamentSection();
+}
+
+function renderRewardCards(tournamentId, tierName) {
+  const saved = getTournamentRewards(tournamentId);
+  if (!saved) return '';
+  const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
+  const totalCoins = tierCoins + (saved.bonusCoins || 0);
+  let cards = '';
+  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">รางวัลพื้นฐาน ${tierCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''}</div></div></div>`;
+  if (saved.bonusPts > 0) cards += `<div class="reward-card"><div class="reward-icon">⭐</div><div class="reward-info"><div class="reward-title">+${saved.bonusPts} ELO Points</div><div class="reward-desc">Bonus rank points สำหรับแชมป์</div></div></div>`;
+  if (saved.hasCup) cards += `<div class="reward-card"><div class="reward-icon">🏆</div><div class="reward-info"><div class="reward-title">ถ้วยรางวัล</div><div class="reward-desc">Trophy สำหรับแชมป์</div></div></div>`;
+  if (saved.hasMvp) cards += `<div class="reward-card"><div class="reward-icon">🌟</div><div class="reward-info"><div class="reward-title">MVP Award</div><div class="reward-desc">Most Valuable Player of the Tournament</div></div></div>`;
+  if (saved.customNote) cards += `<div class="reward-card"><div class="reward-icon">📝</div><div class="reward-info"><div class="reward-title">Special Prize</div><div class="reward-desc">${saved.customNote}</div></div></div>`;
+  return cards ? `<div style="margin-top:10px">${cards}</div>` : '';
 }
 
 // ── [NEW] Toggle Group B section in 2v2 create form ──
@@ -451,17 +617,17 @@ async function renderTournamentSection() {
           : `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
                onclick="confirmDeclareChampion(${t.id},'${t.tier}','${matchType}',${JSON.stringify(groups).replace(/\\/g,'\\\\').replace(/'/g,"\\'")})"
              >👑 ประกาศแชมป์</button>`;
+        const rewardBtn = isCompleted ? '' : `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>`;
         html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
-          <!-- [NEW] Cancel button — top-right of each tournament card -->
           <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px"
             onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
           <div class="tournament-group-title" style="padding-right:90px">
             ${tierBadge} ${t.name} ${renderModeBadge(matchType)}
             <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span>
           </div>
+          ${renderRewardCards(t.id, t.tier)}
           ${await renderTournamentBracket(t, groups)}
-          <!-- [NEW] Declare champion button at bottom of bracket -->
-          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:flex-end">${champBtn}</div>
+          <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:flex-end">${rewardBtn}${champBtn}</div>
         </div>`;
       }
     }
@@ -469,136 +635,74 @@ async function renderTournamentSection() {
   container.innerHTML = html;
 }
 
-// ── renderTournamentBracket (updated: handles 1v1 AND 2v2, all stages) ──
+// ── renderTournamentBracket (v2: calculateGroupStandings + Grand Final / single-group logic) ──
 async function renderTournamentBracket(tournament, groups) {
   let html = '';
   const tMatches = await dbGetTournamentMatches(tournament.id);
   const matchType = getTournamentMatchType(groups);
-  const realGroups = getTournamentGroups(groups); // skip _meta
+  const realGroups = getTournamentGroups(groups);
 
   for (const grp of realGroups) {
     const grpLetter = grp.letter;
+    const standings = calculateGroupStandings(grp, tMatches, matchType);
+    const isDoubles = matchType === '2v2' && grp.teams;
+    const colHeader = isDoubles ? 'ทีม' : 'ผู้เล่น';
+    const modeBadge = isDoubles ? `<span class="t-mode-badge t-mode-doubles" style="font-size:0.64rem">Doubles</span>` : '';
 
-    if (matchType === '2v2' && grp.teams) {
-      // ══ 2v2 group standings ══
-      const standings = grp.teams.map(team => {
-        const anchor = team.playerIds[0];
-        const w = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === anchor).length;
-        const l = tMatches.filter(m => m.group_letter === grpLetter
-          && (m.player_a === anchor || m.player_b === anchor) && m.winner_id !== anchor).length;
-        return { team, anchor, w, l };
-      }).sort((a,b) => b.w - a.w);
+    const rows = standings.map((s, idx) => {
+      const rankEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx+1}.`;
+      const topStyle = idx === 0 && s.wins > 0 ? ' style="background:rgba(255,215,0,0.05)"' : '';
+      return `<tr${topStyle}><td style="font-weight:600">${rankEmoji} ${s.label}</td><td style="color:var(--neon)">${s.wins}</td><td style="color:var(--red)">${s.losses}</td><td style="color:var(--gold)">${s.points}</td><td style="font-size:0.72rem;color:var(--muted)">${s.scoreFor}-${s.scoreAgainst}</td></tr>`;
+    }).join('');
 
-      // Team options for match-recording selects
-      const teamOpts = grp.teams.map(team =>
-        `<option value="${team.playerIds[0]}">${getTeamDisplayName(team, db.players)}</option>`
-      ).join('');
+    const playerOpts = isDoubles
+      ? (grp.teams || []).map(t => `<option value="${t.playerIds[0]}">${getTeamDisplayName(t, db.players)}</option>`).join('')
+      : (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
 
-      html += `<div style="margin-bottom:12px">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">
-          Group ${grpLetter} <span class="t-mode-badge t-mode-doubles" style="font-size:0.64rem">Doubles</span>
-        </div>
-        <table class="tournament-table">
-          <thead><tr><th>ทีม</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
-          <tbody>${standings.map(s => `<tr>
-            <td style="font-weight:600">${getTeamDisplayName(s.team, db.players)}</td>
-            <td style="color:var(--neon)">${s.w}</td>
-            <td style="color:var(--red)">${s.l}</td>
-            <td>${s.w * 2 - s.l}</td>
-          </tr>`).join('')}</tbody>
-        </table>
-        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}"
-            style="flex:1;min-width:110px;font-size:0.76rem;padding:6px 8px">${teamOpts}</select>
-          <span style="font-size:0.8rem">vs</span>
-          <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}"
-            style="flex:1;min-width:110px;font-size:0.76rem;padding:6px 8px">${teamOpts}</select>
-          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}"
-            placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <span>-</span>
-          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}"
-            placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
-            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','2v2')">✅</button>
-        </div>
-      </div>`;
-
-    } else {
-      // ══ 1v1 group standings (original logic, backward-compatible) ══
-      const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
-      const standings = grpPlayers.map(p => {
-        const pw = tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length;
-        const pl = tMatches.filter(m => m.group_letter === grpLetter
-          && (m.player_a === p.id || m.player_b === p.id) && m.winner_id !== p.id).length;
-        return { p, w: pw, l: pl };
-      }).sort((a,b) => b.w - a.w);
-      html += `<div style="margin-bottom:10px">
-        <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter}</div>
-        <table class="tournament-table">
-          <thead><tr><th>ผู้เล่น</th><th>W</th><th>L</th><th>คะแนน</th></tr></thead>
-          <tbody>${standings.map(s => `<tr>
-            <td>${s.p.name}</td>
-            <td style="color:var(--neon)">${s.w}</td>
-            <td style="color:var(--red)">${s.l}</td>
-            <td>${s.w * 2 - s.l}</td>
-          </tr>`).join('')}</tbody>
-        </table>
-        <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ใน Group ${grpLetter}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-          <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}"
-            style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
-            ${grpPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-          </select>
-          <span style="font-size:0.8rem">vs</span>
-          <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}"
-            style="flex:1;min-width:80px;font-size:0.76rem;padding:6px 8px">
-            ${grpPlayers.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-          </select>
-          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}"
-            placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <span>-</span>
-          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}"
-            placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
-            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','1v1')">✅</button>
-        </div>
-      </div>`;
-    }
-  }
-
-  // ── Race to Grand Final (works for both modes) ──
-  const top2PerGroup = [];
-  for (const grp of realGroups) {
-    const grpLetter = grp.letter;
-    if (matchType === '2v2' && grp.teams) {
-      const ranked = grp.teams.map(team => ({
-        label: getTeamDisplayName(team, db.players),
-        w: tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === team.playerIds[0]).length
-      })).sort((a,b) => b.w - a.w);
-      if (ranked[0]) top2PerGroup.push({ label: ranked[0].label, group: grpLetter, rank: 1 });
-      if (ranked[1]) top2PerGroup.push({ label: ranked[1].label, group: grpLetter, rank: 2 });
-    } else {
-      const grpPlayers = (grp.playerIds || []).map(id => db.players.find(p => p.id === id)).filter(Boolean);
-      const ranked = grpPlayers.map(p => ({
-        label: p.name,
-        w: tMatches.filter(m => m.group_letter === grpLetter && m.winner_id === p.id).length
-      })).sort((a,b) => b.w - a.w);
-      if (ranked[0]) top2PerGroup.push({ label: ranked[0].label, group: grpLetter, rank: 1 });
-      if (ranked[1]) top2PerGroup.push({ label: ranked[1].label, group: grpLetter, rank: 2 });
-    }
-  }
-  if (top2PerGroup.length >= 4) {
-    html += `<div style="margin-top:10px;padding:10px;border:1px solid rgba(255,215,0,0.3);border-radius:10px;background:rgba(255,215,0,0.04)">
-      <div style="font-weight:600;font-size:0.82rem;color:var(--gold);margin-bottom:6px">🏆 Race to Grand Final</div>
-      <div style="font-size:0.78rem;color:var(--muted)">
-        Semi: <strong>${top2PerGroup[0]?.label}</strong> (${top2PerGroup[0]?.group}1)
-        vs <strong>${top2PerGroup[3]?.label}</strong> (${top2PerGroup[3]?.group}2)<br>
-        Semi: <strong>${top2PerGroup[1]?.label}</strong> (${top2PerGroup[1]?.group}2)
-        vs <strong>${top2PerGroup[2]?.label}</strong> (${top2PerGroup[2]?.group}1)
+    html += `<div style="margin-bottom:12px">
+      <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter} ${modeBadge}</div>
+      <table class="tournament-table">
+        <thead><tr><th>${colHeader}</th><th>W</th><th>L</th><th>Pts</th><th>Score</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
+        <span style="font-size:0.8rem">vs</span>
+        <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
+        <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+        <span>-</span>
+        <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
+          onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅</button>
       </div>
     </div>`;
   }
+
+  // ── Grand Final (multi-group) or single-group champion banner ──
+  if (realGroups.length >= 2) {
+    const groupWinners = realGroups.map(grp => {
+      const st = calculateGroupStandings(grp, tMatches, matchType);
+      return st[0] || null;
+    }).filter(Boolean);
+
+    if (groupWinners.length >= 2) {
+      let matchLines = '';
+      if (groupWinners.length === 2) {
+        matchLines = `<div class="gf-match">🏆 <span class="gf-winner">${groupWinners[0].label}</span> <span class="gf-vs">vs</span> <span class="gf-winner">${groupWinners[1].label}</span> <span style="font-size:0.7rem;color:var(--muted)">— Grand Final</span></div>`;
+      } else {
+        matchLines = `<div class="gf-match">⚔️ <span class="gf-winner">${groupWinners[0].label}</span> <span class="gf-vs">vs</span> <span style="color:var(--text)">${(groupWinners[3]||groupWinners[1]).label}</span> <span style="font-size:0.7rem;color:var(--muted)">Semi 1</span></div>`;
+        if (groupWinners[1] && groupWinners[2]) matchLines += `<div class="gf-match">⚔️ <span class="gf-winner">${groupWinners[1].label}</span> <span class="gf-vs">vs</span> <span style="color:var(--text)">${groupWinners[2].label}</span> <span style="font-size:0.7rem;color:var(--muted)">Semi 2</span></div>`;
+      }
+      html += `<div class="gf-bracket"><div class="gf-title">🏆 Grand Final</div>${matchLines}</div>`;
+    }
+  } else if (realGroups.length === 1) {
+    const st = calculateGroupStandings(realGroups[0], tMatches, matchType);
+    if (st[0] && st[0].wins > 0) {
+      html += `<div class="champ-decided-banner"><div class="champ-decided-label">🏆 Champion decided by Group Ranking</div><div class="champ-decided-name">👑 ${st[0].label}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${st[0].wins}W · ${st[0].losses}L · ${st[0].points} pts</div></div>`;
+    }
+  }
+
   return html;
 }
 

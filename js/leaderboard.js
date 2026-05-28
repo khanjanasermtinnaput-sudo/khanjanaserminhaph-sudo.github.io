@@ -121,7 +121,10 @@ function lbRenderBoard(data, animate = true) {
     bl.appendChild(row);
     const isLite = document.documentElement.getAttribute('data-style') === 'lite';
     if (animate && !isLite) {
-      setTimeout(() => row.classList.add('lbvis'), i * 60 + 80);
+      setTimeout(() => {
+        row.classList.add('lbvis');
+        if (isKingThrone) { row.style.opacity = '1'; row.style.transform = 'none'; }
+      }, i * 60 + 80);
     } else {
       row.classList.add('lbvis');
       row.style.opacity = '1'; row.style.transform = 'none';

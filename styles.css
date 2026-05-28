@@ -474,3 +474,36 @@ body.x2-active .toast-wrap{bottom:120px}
 /* ── Avatar Builder preview: allow frame glow to overflow ── */
 #avatarBuilderModal .modal{overflow:visible}
 #avPreviewWrap{padding:18px 0 4px}
+
+/* ── King throne: combined animation so lbRowIn (opacity) also runs ── */
+.lb-br.lbvis.lb-king-throne{animation:lbRowIn .58s cubic-bezier(.34,1.56,.64,1) forwards,lbKingThroneGlow 2.8s ease-in-out .65s infinite!important}
+[data-style="lite"] .lb-br.lb-king-throne{opacity:1!important;transform:none!important}
+
+/* ── Tournament reward cards ── */
+.reward-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.3);margin-bottom:8px;position:relative;overflow:hidden;animation:rewardGlow 3s ease-in-out infinite}
+@keyframes rewardGlow{0%,100%{box-shadow:0 0 8px rgba(255,215,0,0.15)}50%{box-shadow:0 0 20px rgba(255,215,0,0.35),0 0 40px rgba(255,215,0,0.1)}}
+.reward-icon{font-size:1.8rem;flex-shrink:0;width:40px;text-align:center}
+.reward-info{flex:1;min-width:0}
+.reward-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;color:var(--gold)}
+.reward-desc{font-size:0.74rem;color:var(--muted);margin-top:2px}
+
+/* ── Grand Final bracket section ── */
+.gf-bracket{background:linear-gradient(135deg,rgba(255,215,0,0.06),rgba(255,165,0,0.04));border:1px solid rgba(255,215,0,0.3);border-radius:12px;padding:12px;margin-top:10px}
+.gf-title{font-family:'Rajdhani',sans-serif;font-size:0.9rem;font-weight:700;color:var(--gold);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.gf-match{display:flex;align-items:center;gap:8px;font-size:0.8rem;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.04);margin-bottom:4px;flex-wrap:wrap}
+.gf-winner{color:var(--gold);font-weight:700}
+.gf-vs{color:var(--muted);font-size:0.72rem}
+
+/* ── Single-group champion-decided banner ── */
+.champ-decided-banner{text-align:center;padding:12px;background:linear-gradient(135deg,rgba(255,215,0,0.08),rgba(255,165,0,0.06));border:1px solid rgba(255,215,0,0.35);border-radius:10px;margin-top:8px}
+.champ-decided-label{font-size:0.7rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px}
+.champ-decided-name{font-family:'Rajdhani',sans-serif;font-size:1.4rem;font-weight:700;color:var(--gold);text-shadow:0 0 20px rgba(255,215,0,0.3)}
+
+/* ── Reward manager modal ── */
+.reward-mgr-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.reward-mgr-label{font-size:0.78rem;color:var(--muted);width:80px;flex-shrink:0}
+
+/* ── Lite mode overrides for new elements ── */
+[data-style="lite"] .reward-card,[data-style="lite"] .gf-bracket{animation:none!important;box-shadow:none!important;border:1px solid var(--border)!important}
+[data-style="lite"] .reward-title{color:var(--gold)!important}
+[data-style="lite"] .champ-decided-name{text-shadow:none!important}
