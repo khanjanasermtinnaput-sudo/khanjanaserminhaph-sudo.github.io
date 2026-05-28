@@ -805,23 +805,47 @@ async function clearPlayerHistory(id) {
   if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ตทุกอย่าง: W/L, คะแนน, แมตช์ และ Achievement ทั้งหมด`)) return;
   try {
     toast('กำลังล้างประวัติ...', 'info');
-    p.customAch = [];
-    p.super1000Titles = 0;
-    p.pinnedAchs = null;
-    const ptStr = buildPlayerPrimeTitles(p, { awards: [], s1000: 0, pinnedAchs: null });
-    // ล้างทั้ง 3 แหล่งที่ normalizePlayer อ่าน achievements: prime_titles, custom_ach, localStorage
-    await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0, prime_titles: ptStr, custom_ach: '[]' });
-    // ล้าง localStorage cache ด้วย
-    try {
-      const CACH_LS = 'badminton_cach_awards';
-      const ls = JSON.parse(localStorage.getItem(CACH_LS) || '{}');
-      delete ls[id];
-      localStorage.setItem(CACH_LS, JSON.stringify(ls));
-    } catch(e) {}
+
+    // 1. ล้าง DB ทั้ง prime_titles และ custom_ach ให้ว่างเปล่าสมบูรณ์
+    await dbUpdatePlayer(id, {
+      pts: 50,
+      wins: 0,
+      losses: 0,
+      prime_titles: '[]',
+      custom_ach: '[]'
+    });
+
+    // 2. ล้าง localStorage ทุก key ที่เก็บ badge/achievement ของผู้เล่นนี้
+    ['badminton_cach_awards', 'badminton_ach_' + id].forEach(key => {
+      try {
+        if (key === 'badminton_cach_awards') {
+          const obj = JSON.parse(localStorage.getItem(key) || '{}');
+          delete obj[id];
+          localStorage.setItem(key, JSON.stringify(obj));
+        } else {
+          localStorage.removeItem(key);
+        }
+      } catch(e) {}
+    });
+
+    // 3. ล้าง in-memory state ทันที
+    const idx = db.players.findIndex(x => x.id === id);
+    if (idx !== -1) {
+      db.players[idx].customAch = [];
+      db.players[idx].super1000Titles = 0;
+      db.players[idx].pinnedAchs = null;
+      db.players[idx].primeTitles = [];
+      db.players[idx].pts = 50;
+      db.players[idx].wins = 0;
+      db.players[idx].losses = 0;
+    }
+
+    // 4. ลบแมตช์ แล้ว reload ทุกอย่างใหม่
     await dbDeleteMatchesByPlayer(id);
     await loadAll();
     closeModal('editPlayerModal');
     renderAdmin();
+    renderLeaderboard();
     toast(`🗑️ ล้างประวัติ ${p.name} แล้ว (รวมทุก Achievement)`, 'success');
   } catch(e) { toast('ล้างไม่ได้: ' + e.message, 'error'); }
 }
