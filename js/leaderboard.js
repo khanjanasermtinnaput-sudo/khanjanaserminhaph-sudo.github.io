@@ -805,12 +805,19 @@ async function clearPlayerHistory(id) {
   if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ตทุกอย่าง: W/L, คะแนน, แมตช์ และ Achievement ทั้งหมด`)) return;
   try {
     toast('กำลังล้างประวัติ...', 'info');
-    // ล้างทุกอย่างรวม achievement, pinnedAchs และ super1000Titles
     p.customAch = [];
     p.super1000Titles = 0;
     p.pinnedAchs = null;
     const ptStr = buildPlayerPrimeTitles(p, { awards: [], s1000: 0, pinnedAchs: null });
-    await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0, prime_titles: ptStr });
+    // ล้างทั้ง 3 แหล่งที่ normalizePlayer อ่าน achievements: prime_titles, custom_ach, localStorage
+    await dbUpdatePlayer(id, { pts: 50, wins: 0, losses: 0, prime_titles: ptStr, custom_ach: '[]' });
+    // ล้าง localStorage cache ด้วย
+    try {
+      const CACH_LS = 'badminton_cach_awards';
+      const ls = JSON.parse(localStorage.getItem(CACH_LS) || '{}');
+      delete ls[id];
+      localStorage.setItem(CACH_LS, JSON.stringify(ls));
+    } catch(e) {}
     await dbDeleteMatchesByPlayer(id);
     await loadAll();
     closeModal('editPlayerModal');
