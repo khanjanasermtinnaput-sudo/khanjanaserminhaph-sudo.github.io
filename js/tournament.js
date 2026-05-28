@@ -434,16 +434,46 @@ async function executeDeclareChampion(tournamentId, tierName, matchType, groups)
       await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed' }) });
     } catch(e) {}
 
-    // 7. Reload players
+    // 7. Participation reward: half of winner's total coins to all non-winners
+    const participationCoins = Math.max(1, Math.floor(totalCoins / 2));
+    const allParticipants = getAllParticipantIds(groups, matchType);
+    const nonWinners = allParticipants.filter(pid => !winnerPlayerIds.includes(pid));
+    for (const pid of nonWinners) {
+      try {
+        await dbAddCoins(pid, participationCoins);
+        const pl = db.players.find(x => x.id === pid);
+        if (pl) await dbSendMail(pid, 'coins', String(participationCoins),
+          `🎖️ รางวัลชมเชย ${tierName}! ขอบคุณที่เข้าร่วม +${participationCoins} 🪙`);
+      } catch(e) {}
+    }
+
+    // 8. Reload players so profile + leaderboard reflect awards immediately
     await loadPlayers();
+    if (typeof renderLeaderboard === 'function') renderLeaderboard();
 
     const winnerNames = winnerPlayerIds.map(pid => db.players.find(x => x.id === pid)?.name || '?').join(' & ');
     const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
-    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
+    const partMsg = nonWinners.length > 0 ? ` · ผู้เข้าร่วม ${nonWinners.length} คน ได้รับ +${participationCoins} 🪙` : '';
+    toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}${partMsg}`, 'success');
 
     renderTournamentSection();
 
   } catch(e) { toast('มอบรางวัลไม่ได้: ' + e.message, 'error'); }
+}
+
+// ── Helper: collect all participant player IDs from groups ──
+function getAllParticipantIds(groups, matchType) {
+  const ids = new Set();
+  for (const grp of getTournamentGroups(groups)) {
+    if (matchType === '2v2' && grp.teams) {
+      for (const team of grp.teams) {
+        for (const pid of (team.playerIds || [])) ids.add(pid);
+      }
+    } else {
+      for (const pid of (grp.playerIds || [])) ids.add(pid);
+    }
+  }
+  return [...ids];
 }
 
 // ════════════════════════════════════════════════════════════
@@ -630,9 +660,10 @@ async function renderTournamentSection() {
 
   try {
     const tournaments = await dbGetTournaments();
-    if (tournaments.length) {
+    const activeTournaments = tournaments.filter(t => t.status !== 'completed');
+    if (activeTournaments.length) {
       html += `<div class="divider"></div><div style="font-size:0.83rem;font-weight:600;margin-bottom:8px">🏆 Tournaments</div>`;
-      for (const t of tournaments) {
+      for (const t of activeTournaments) {
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
