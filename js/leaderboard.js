@@ -77,34 +77,37 @@ function lbFilterBoard(q) {
   lbRenderBoard(filtered, false);
 }
 
+// badge ที่ซ่อนใน Leaderboard (แต่ยังแสดงในหน้า Profile ได้ปกติ)
+const LB_HIDDEN_BADGE_IDS = ['sys_tour_s1000', 'sys_tour_doubles', 'sys_tour_s500', 'sys_tour_regular'];
+
 // คืน HTML badge สำหรับแถวใน Leaderboard ตามที่ผู้เล่นตั้งค่าไว้
 function getPlayerLBBadges(p) {
-  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (ใช้ customAch เดิม), array = ตั้งค่าแล้ว
+  const pinnedAchs = p.pinnedAchs;
   if (pinnedAchs === null || pinnedAchs === undefined) {
-    // พฤติกรรมเดิม: แสดงเฉพาะ customAch
-    return (p.customAch || []).map(a =>
-      `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
-    ).join('');
+    // ซ่อน tournament badges ใน leaderboard
+    return (p.customAch || [])
+      .filter(a => !LB_HIDDEN_BADGE_IDS.includes(a.id))
+      .map(a => `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`)
+      .join('');
   }
-  // ตั้งค่าแล้ว: รวม built-in + customAch แล้วกรองเฉพาะ pinned
+  // ตั้งค่าแล้ว: รวม built-in + customAch แล้วกรองเฉพาะ pinned (และไม่เอา tournament badges)
   const allDefs = (typeof ACHIEVEMENTS_DEF !== 'undefined' && typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined')
     ? [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF] : [];
   const seenIds = new Set();
   const allAchs = [];
-  // Built-in ที่ unlock แล้ว
   allDefs.forEach(a => {
     if (seenIds.has(a.id)) return;
     try { if (a.check(p, db.players, db.matches)) { allAchs.push({ id: a.id, icon: a.icon, title: a.title, color: a.color, frame: null }); seenIds.add(a.id); } } catch(e) {}
   });
-  // customAch (admin-awarded)
   (p.customAch || []).forEach(a => {
     if (seenIds.has(a.id)) return;
     allAchs.push({ id: a.id, icon: a.icon || '🏆', title: a.title, frame: a.frame || 'gold' });
     seenIds.add(a.id);
   });
-  return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
-    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
-  ).join('');
+  return allAchs
+    .filter(a => pinnedAchs.includes(a.id) && !LB_HIDDEN_BADGE_IDS.includes(a.id))
+    .map(a => `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`)
+    .join('');
 }
 
 function lbRenderBoard(data, animate = true) {
