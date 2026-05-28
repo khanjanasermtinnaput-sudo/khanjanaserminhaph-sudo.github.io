@@ -312,51 +312,72 @@ async function awardTournamentAchievement(playerIds, achDef) {
   }
 }
 
-// ── Show "ประกาศแชมป์" confirmation modal ──
-async function confirmDeclareChampion(tournamentId) {
+// ── Show "ประกาศแชมป์" confirmation modal (sync show → async populate) ──
+function confirmDeclareChampion(tournamentId) {
   document.getElementById('tChampModal')?.remove();
-  const stored = await _resolveTourData(tournamentId);
-  if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
-  const { groups, matchType, tier: tierName } = stored;
-  const realGroups = getTournamentGroups(groups);
 
-  // Try to detect GF winner for auto-selection
-  let gfWinnerId = null;
-  try {
-    const tms = await dbGetTournamentMatches(tournamentId);
-    const gfMatch = tms.find(m => m.group_letter === 'GF');
-    if (gfMatch) gfWinnerId = gfMatch.winner_id;
-  } catch(e) {}
-
-  let winnerOpts = '';
-  if (matchType === '2v2') {
-    for (const grp of realGroups) {
-      if (!grp.teams) continue;
-      for (const team of grp.teams) {
-        const label = getTeamDisplayName(team, db.players);
-        winnerOpts += `<option value="${team.playerIds[0]}">${label} (Group ${grp.letter})</option>`;
-      }
-    }
-  } else {
-    for (const grp of realGroups) {
-      for (const pid of (grp.playerIds || [])) {
-        const pl = db.players.find(x => x.id === pid);
-        if (pl) winnerOpts += `<option value="${pl.id}">${pl.name} (Group ${grp.letter})</option>`;
-      }
-    }
-  }
-
-  const coins = TOUR_COIN_REWARDS[tierName] || 100;
-  const tierColor = tierName === 'Super 1000' ? '#ffd700' : tierName === 'Super 500' ? '#c8c8c8' : '#cd7f32';
-  const gfBadge = gfWinnerId
-    ? `<div style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:5px 10px;margin-bottom:10px;color:var(--gold)">🏆 ตรวจพบผล Grand Final — เลือกอัตโนมัติแล้ว</div>`
-    : '';
-
+  // Show modal immediately (synchronous) so user gets instant feedback
   const modal = document.createElement('div');
   modal.id = 'tChampModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
   modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
+    <div id="tChampInner" style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
+      <div style="font-size:1.5rem;margin-bottom:8px">⏳</div>
+      <div style="font-size:0.85rem;color:var(--muted)">กำลังโหลดข้อมูล...</div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+
+  // Async: load data and populate modal content
+  _populateChampModal(tournamentId, modal);
+}
+
+async function _populateChampModal(tournamentId, modal) {
+  try {
+    const stored = await _resolveTourData(tournamentId);
+    if (!stored) {
+      document.getElementById('tChampModal')?.remove();
+      alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')');
+      return;
+    }
+    const { groups, matchType, tier: tierName } = stored;
+    const realGroups = getTournamentGroups(groups);
+
+    let gfWinnerId = null;
+    try {
+      const tms = await dbGetTournamentMatches(tournamentId);
+      const gfMatch = tms.find(m => m.group_letter === 'GF');
+      if (gfMatch) gfWinnerId = gfMatch.winner_id;
+    } catch(e) {}
+
+    let winnerOpts = '';
+    if (matchType === '2v2') {
+      for (const grp of realGroups) {
+        if (!grp.teams) continue;
+        for (const team of grp.teams) {
+          const label = getTeamDisplayName(team, db.players);
+          winnerOpts += `<option value="${team.playerIds[0]}">${label} (Group ${grp.letter})</option>`;
+        }
+      }
+    } else {
+      for (const grp of realGroups) {
+        for (const pid of (grp.playerIds || [])) {
+          const pl = db.players.find(x => x.id === pid);
+          if (pl) winnerOpts += `<option value="${pl.id}">${pl.name} (Group ${grp.letter})</option>`;
+        }
+      }
+    }
+    if (!winnerOpts) winnerOpts = '<option value="">— ไม่มีผู้เล่น —</option>';
+
+    const coins = TOUR_COIN_REWARDS[tierName] || 100;
+    const tierColor = tierName === 'Super 1000' ? '#ffd700' : tierName === 'Super 500' ? '#c8c8c8' : '#cd7f32';
+    const gfBadge = gfWinnerId
+      ? `<div style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:5px 10px;margin-bottom:10px;color:var(--gold)">🏆 ตรวจพบผล Grand Final — เลือกอัตโนมัติแล้ว</div>`
+      : '';
+
+    const inner = document.getElementById('tChampInner');
+    if (!inner) return;
+    inner.innerHTML = `
       <div style="font-size:2rem;margin-bottom:6px">👑</div>
       <div style="font-size:1rem;font-weight:700;margin-bottom:4px">ประกาศแชมป์</div>
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">
@@ -371,16 +392,15 @@ async function confirmDeclareChampion(tournamentId) {
           onclick="document.getElementById('tChampModal').remove()">ปิด</button>
         <button class="btn" style="flex:1;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-size:0.82rem"
           onclick="executeDeclareChampion(${tournamentId})">👑 ยืนยัน</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+      </div>`;
 
-  if (gfWinnerId) {
-    setTimeout(() => {
+    if (gfWinnerId) {
       const sel = document.getElementById('tChampWinnerSel');
       if (sel) sel.value = String(gfWinnerId);
-    }, 30);
+    }
+  } catch(e) {
+    document.getElementById('tChampModal')?.remove();
+    alert('Error: ' + e.message);
   }
 }
 
