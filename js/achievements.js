@@ -243,28 +243,105 @@ function renderAchievements(playerId) {
   const p = db.players.find(x => x.id === playerId);
   if (!p) return;
 
+  const isSelf = currentUser && currentUser.id === playerId;
   const key = `badminton_ach_${playerId}`;
   let seen = {};
   try { seen = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
-  const achievements = ACHIEVEMENTS_DEF.map(ach => ({
+
+  // รวม built-in + tournament definitions
+  const allDefs = [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF];
+  const builtInAchs = allDefs.map(ach => ({
     ...ach,
     unlocked: ach.check(p, db.players, db.matches),
-    unlockedAt: seen[ach.id]
+    unlockedAt: seen[ach.id],
+    source: 'system'
   }));
 
-  container.innerHTML = achievements.map(ach => `
-    <div class="ach-list-item ${ach.unlocked ? 'unlocked' : ''}">
-      <div class="ach-list-icon ${ach.unlocked ? '' : 'locked'}">${ach.icon}</div>
-      <div class="ach-list-info">
-        <div class="ach-list-name ${ach.unlocked ? '' : 'locked-name'}" style="${ach.unlocked ? `color:${ach.color}` : ''}">${ach.title}</div>
-        <div class="ach-list-desc">${ach.desc}</div>
+  // customAch ที่ admin สร้างให้ (ทุกคนในระบบเห็นได้)
+  const customAchs = (p.customAch || []).map(a => ({
+    id: a.id,
+    icon: a.icon || '🏆',
+    title: a.title,
+    desc: a.desc || 'รางวัลจากแอดมิน',
+    color: a.frame === 'gold' ? '#ffd700' : a.frame === 'silver' ? '#c0c0c0' : '#cd7f32',
+    glow: 'rgba(255,215,0,0.3)',
+    unlocked: true,
+    source: 'custom'
+  }));
+
+  // รวมกัน dedup ตาม id
+  const seenIds = new Set();
+  const achievements = [...builtInAchs, ...customAchs].filter(a => {
+    if (seenIds.has(a.id)) return false;
+    seenIds.add(a.id);
+    return true;
+  });
+
+  // pinnedAchs: null = ยังไม่ตั้งค่า (default แสดงทั้งหมดที่ unlock), array = ตั้งค่าแล้ว
+  const pinnedAchs = p.pinnedAchs;
+  const isPinned = (id) => {
+    if (pinnedAchs === null || pinnedAchs === undefined) return true;
+    return pinnedAchs.includes(id);
+  };
+
+  const hasUnlocked = achievements.some(a => a.unlocked);
+
+  container.innerHTML = `
+    ${isSelf && hasUnlocked ? `
+      <div style="padding:6px 2px 10px;font-size:0.74rem;color:var(--muted);display:flex;align-items:center;gap:6px;">
+        <span>📌</span>
+        <span>เลือก achievement ที่ต้องการแสดงในหน้า Leaderboard (ทุกคนในระบบเห็นได้)</span>
       </div>
-      <div>${ach.unlocked
-        ? `<div class="ach-list-date">✅ ได้แล้ว</div>`
-        : `<div class="ach-list-lock">🔒</div>`
-      }</div>
-    </div>
-  `).join('');
+    ` : ''}
+    ${achievements.map(ach => `
+      <div class="ach-list-item ${ach.unlocked ? 'unlocked' : ''}">
+        <div class="ach-list-icon ${ach.unlocked ? '' : 'locked'}">${ach.icon}</div>
+        <div class="ach-list-info" style="flex:1;min-width:0">
+          <div class="ach-list-name ${ach.unlocked ? '' : 'locked-name'}" style="${ach.unlocked ? `color:${ach.color}` : ''}">${ach.title}</div>
+          <div class="ach-list-desc">${ach.desc}</div>
+        </div>
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
+          ${ach.unlocked
+            ? (isSelf
+                ? `<label style="display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;user-select:none">
+                     <input type="checkbox" class="ach-pin-chk" data-achid="${ach.id}" ${isPinned(ach.id) ? 'checked' : ''} style="accent-color:var(--neon);width:15px;height:15px;cursor:pointer">
+                     <span style="font-size:0.6rem;color:var(--muted);white-space:nowrap">LB</span>
+                   </label>`
+                : `<div class="ach-list-date">✅</div>`)
+            : `<div class="ach-list-lock">🔒</div>`
+          }
+        </div>
+      </div>
+    `).join('')}
+    ${isSelf && hasUnlocked ? `
+      <div style="margin-top:12px;padding-bottom:4px">
+        <button onclick="saveAchPins(${playerId})" style="width:100%;padding:11px 16px;border-radius:12px;border:1.5px solid var(--neon);background:rgba(0,245,160,0.08);color:var(--neon);font-family:inherit;font-size:0.85rem;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:0.03em" onmouseover="this.style.background='rgba(0,245,160,0.18)'" onmouseout="this.style.background='rgba(0,245,160,0.08)'">
+          💾 บันทึกการตั้งค่าการแสดงใน Leaderboard
+        </button>
+      </div>
+    ` : ''}
+  `;
+}
+
+async function saveAchPins(playerId) {
+  const checkboxes = document.querySelectorAll('#achListContainer .ach-pin-chk');
+  const pinnedIds = [];
+  checkboxes.forEach(chk => { if (chk.checked) pinnedIds.push(chk.dataset.achid); });
+
+  const p = db.players.find(x => x.id === playerId);
+  if (!p) return;
+
+  p.pinnedAchs = pinnedIds;
+  if (currentUser && currentUser.id === playerId) currentUser.pinnedAchs = pinnedIds;
+
+  try {
+    const ptStr = buildPlayerPrimeTitles(p, { pinnedAchs: pinnedIds });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast('✅ บันทึกการตั้งค่าแล้ว — ทุกคนจะเห็น achievement ที่เลือกในหน้า Leaderboard', 'success');
+    await loadPlayers();
+  } catch(e) {
+    toast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
+  }
 }
 
 // ============================================================
@@ -367,17 +444,23 @@ openPlayerProfile = function(playerId) {
       body.appendChild(nemDiv);
     }
 
-    // Achievements mini in profile sheet
+    // Achievements mini in profile sheet (built-in + tournament + customAch — ทุกคนเห็นได้)
     const p = db.players.find(x => x.id === playerId);
     if (p) {
-      const key = `badminton_ach_${playerId}`;
-      let seen = {};
-      try { seen = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
-      const unlockedAchs = ACHIEVEMENTS_DEF.filter(ach => ach.check(p, db.players, db.matches));
-      if (unlockedAchs.length > 0) {
+      const allDefs = [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF];
+      const unlockedBuiltIn = allDefs.filter(ach => { try { return ach.check(p, db.players, db.matches); } catch(e) { return false; } });
+      const customAchs = (p.customAch || []).map(a => ({
+        id: a.id, icon: a.icon || '🏆', title: a.title,
+        color: a.frame === 'gold' ? '#ffd700' : a.frame === 'silver' ? '#c0c0c0' : '#cd7f32'
+      }));
+      const seenIds = new Set();
+      const allUnlocked = [...unlockedBuiltIn, ...customAchs].filter(a => {
+        if (seenIds.has(a.id)) return false; seenIds.add(a.id); return true;
+      });
+      if (allUnlocked.length > 0) {
         const achDiv = document.createElement('div');
         achDiv.innerHTML = `<div class="pp2-sec">🏅 Achievements</div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;">${unlockedAchs.map(a =>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;">${allUnlocked.map(a =>
             `<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:50px;background:rgba(255,255,255,0.06);border:1px solid ${a.color}33;font-size:0.75rem;color:${a.color}">${a.icon} ${a.title}</div>`
           ).join('')}</div>`;
         body.appendChild(achDiv);

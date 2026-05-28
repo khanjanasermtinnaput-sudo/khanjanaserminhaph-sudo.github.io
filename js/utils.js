@@ -267,13 +267,15 @@ function normalizePlayer(p) {
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
   const HOF_PFX = '__hof:';
-  const S1000_PFX = '__s1000:'; // [NEW] Super 1000 champion title count
+  const S1000_PFX = '__s1000:';
+  const ACHPINS_PFX = '__achpins:';
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
   const cachEntry    = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
   const catalogEntry = pt.find(t => typeof t === 'string' && t.startsWith(CATALOG_PFX));
   const hofEntry     = pt.find(t => typeof t === 'string' && t.startsWith(HOF_PFX));
-  const s1000Entry   = pt.find(t => typeof t === 'string' && t.startsWith(S1000_PFX)); // [NEW]
-  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX))));
+  const s1000Entry   = pt.find(t => typeof t === 'string' && t.startsWith(S1000_PFX));
+  const achpinsEntry = pt.find(t => typeof t === 'string' && t.startsWith(ACHPINS_PFX));
+  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX) || t.startsWith(ACHPINS_PFX))));
   let ca = [];
   if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
   if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
@@ -282,9 +284,11 @@ function normalizePlayer(p) {
   if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
   let hofShared = null;
   if (hofEntry) { try { hofShared = JSON.parse(hofEntry.slice(HOF_PFX.length)); } catch(e) {} }
-  // [NEW] Parse Super 1000 title count from prime_titles
   let super1000Titles = 0;
   if (s1000Entry) { try { super1000Titles = Math.max(0, parseInt(s1000Entry.slice(S1000_PFX.length)) || 0); } catch(e) {} }
+  // null = no setting (show all customAch by default); array = specific pinned IDs
+  let pinnedAchs = null;
+  if (achpinsEntry) { try { pinnedAchs = JSON.parse(achpinsEntry.slice(ACHPINS_PFX.length)); } catch(e) {} }
   // ── localStorage gacha fallback (ถ้า DB column ยังไม่มี) ──
   let _lsGacha = {};
   try { _lsGacha = JSON.parse(localStorage.getItem('bmt_gacha_' + p.id) || '{}'); } catch(e) {}
@@ -292,7 +296,7 @@ function normalizePlayer(p) {
   const _gName  = p.gacha_name  || _lsGacha.gacha_name  || null;
   const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles }; // [NEW] super1000Titles added
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs };
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
@@ -301,7 +305,8 @@ function buildPlayerPrimeTitles(player, opts) {
   const CACH_PFX = '__cach:';
   const CATALOG_PFX = '__catalog:';
   const HOF_PFX = '__hof:';
-  const S1000_PFX = '__s1000:'; // [NEW] Super 1000 champion count
+  const S1000_PFX = '__s1000:';
+  const ACHPINS_PFX = '__achpins:';
   const pt = [...(player.primeTitles || [])];
   const awards = opts.awards !== undefined ? opts.awards : (player.customAch || []);
   if (awards && awards.length > 0) pt.push(CACH_PFX + JSON.stringify(awards));
@@ -309,9 +314,11 @@ function buildPlayerPrimeTitles(player, opts) {
   if (catalog && catalog.length > 0) pt.push(CATALOG_PFX + JSON.stringify(catalog));
   const hof = opts.hof !== undefined ? opts.hof : player._hofShared;
   if (hof && hof.length > 0) pt.push(HOF_PFX + JSON.stringify(hof));
-  // [NEW] Encode Super 1000 title count
   const s1000 = opts.s1000 !== undefined ? opts.s1000 : (player.super1000Titles || 0);
   if (s1000 > 0) pt.push(S1000_PFX + s1000);
+  // Encode pinned achievement IDs for leaderboard display
+  const pinnedAchs = opts.pinnedAchs !== undefined ? opts.pinnedAchs : player.pinnedAchs;
+  if (pinnedAchs !== null && pinnedAchs !== undefined) pt.push(ACHPINS_PFX + JSON.stringify(pinnedAchs));
   return JSON.stringify(pt);
 }
 // ── HALL OF FAME ─────────────────────────────────────────────

@@ -3,7 +3,8 @@ async function renderLeaderboard() {
     await loadAll();
     checkSelfRankUpFromDB();
     checkKingChange();
-    const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
+    // ผู้เล่นที่ถูกล้างประวัติ (wins=0 และ losses=0) จะไม่แสดงในหน้านี้
+    const sorted = [...db.players].filter(p => p.wins > 0 || p.losses > 0).sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
 
     // ── STAT CARDS ──
@@ -76,6 +77,36 @@ function lbFilterBoard(q) {
   lbRenderBoard(filtered, false);
 }
 
+// คืน HTML badge สำหรับแถวใน Leaderboard ตามที่ผู้เล่นตั้งค่าไว้
+function getPlayerLBBadges(p) {
+  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (ใช้ customAch เดิม), array = ตั้งค่าแล้ว
+  if (pinnedAchs === null || pinnedAchs === undefined) {
+    // พฤติกรรมเดิม: แสดงเฉพาะ customAch
+    return (p.customAch || []).map(a =>
+      `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
+    ).join('');
+  }
+  // ตั้งค่าแล้ว: รวม built-in + customAch แล้วกรองเฉพาะ pinned
+  const allDefs = (typeof ACHIEVEMENTS_DEF !== 'undefined' && typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined')
+    ? [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF] : [];
+  const seenIds = new Set();
+  const allAchs = [];
+  // Built-in ที่ unlock แล้ว
+  allDefs.forEach(a => {
+    if (seenIds.has(a.id)) return;
+    try { if (a.check(p, db.players, db.matches)) { allAchs.push({ id: a.id, icon: a.icon, title: a.title, color: a.color, frame: null }); seenIds.add(a.id); } } catch(e) {}
+  });
+  // customAch (admin-awarded)
+  (p.customAch || []).forEach(a => {
+    if (seenIds.has(a.id)) return;
+    allAchs.push({ id: a.id, icon: a.icon || '🏆', title: a.title, frame: a.frame || 'gold' });
+    seenIds.add(a.id);
+  });
+  return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
+    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
+  ).join('');
+}
+
 function lbRenderBoard(data, animate = true) {
   const bl = document.getElementById('lbBoardList');
   bl.innerHTML = '';
@@ -106,7 +137,7 @@ function lbRenderBoard(data, animate = true) {
         </div>
         <div>
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${(p.super1000Titles||0)>0 ? ` <span class="lb-champion-crown">👑×${p.super1000Titles}</span>` : ''}</div>
-          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${getRankLabel(p.pts,p.id)}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
+          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${getRankLabel(p.pts,p.id)}</span>${getPlayerLBBadges(p)}</div>
         </div>
       </div>
       <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>${t('pts_col')}</small></div>
