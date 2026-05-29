@@ -1073,6 +1073,7 @@ function _hofRenderList() {
     const mTag = hof.match_type==='2v2'
       ? '<span style="font-size:0.58rem;background:rgba(0,217,245,0.12);border:1px solid rgba(0,217,245,0.3);color:var(--neon2);border-radius:20px;padding:1px 5px">2v2</span>'
       : '<span style="font-size:0.58rem;background:rgba(0,245,160,0.09);border:1px solid rgba(0,245,160,0.22);color:var(--neon);border-radius:20px;padding:1px 5px">1v1</span>';
+    const safeName = (r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return `<div onclick="_hofOpenDetail(${r.id})" style="border:1px solid ${tierBd(r.tier)};border-radius:14px;background:${tierBg(r.tier)};padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
         <div style="display:flex;align-items:center;gap:6px">
@@ -1080,7 +1081,10 @@ function _hofRenderList() {
           <span style="font-weight:700;font-size:0.88rem">${r.name}</span>
           ${mTag}
         </div>
-        <span style="font-size:0.62rem;color:var(--muted)">${date}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:0.62rem;color:var(--muted)">${date}</span>
+          ${isAdminUser() ? `<button onclick="event.stopPropagation();confirmDeleteHofTournament(${r.id},'${safeName}')" title="ลบประวัติ" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;line-height:1">🗑️</button>` : ''}
+        </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
         <span style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 8px">🏆 ${hof.champion_name||'?'}</span>
