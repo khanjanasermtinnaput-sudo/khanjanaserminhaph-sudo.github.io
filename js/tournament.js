@@ -244,6 +244,30 @@ function renderModeBadge(matchType) {
     : `<span class="t-mode-badge t-mode-singles">🏸 Singles</span>`;
 }
 
+// ── Best-of-3 helpers ──────────────────────────────────────────────────────────
+function _renderBo3Input(prefix) {
+  return `<div style="margin-top:6px">
+    ${[1,2,3].map(g => `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+      <span style="font-size:0.62rem;color:var(--muted);width:36px;flex-shrink:0">เกม ${g}</span>
+      <input class="inp" type="number" id="${prefix}_g${g}a" placeholder="-" style="width:46px;font-size:0.75rem;padding:4px 5px;text-align:center" min="0">
+      <span style="color:var(--muted);font-size:0.8rem">-</span>
+      <input class="inp" type="number" id="${prefix}_g${g}b" placeholder="-" style="width:46px;font-size:0.75rem;padding:4px 5px;text-align:center" min="0">
+    </div>`).join('')}
+  </div>`;
+}
+
+function _readBo3(prefix) {
+  let wA = 0, wB = 0;
+  for (let g = 1; g <= 3; g++) {
+    const a = parseInt(document.getElementById(`${prefix}_g${g}a`)?.value);
+    const b = parseInt(document.getElementById(`${prefix}_g${g}b`)?.value);
+    if (!isNaN(a) && !isNaN(b) && (a + b > 0)) {
+      if (a > b) wA++; else if (b > a) wB++;
+    }
+  }
+  return { wA, wB };
+}
+
 // ── [NEW] Show confirm-cancel modal ──
 function confirmCancelTournament(tournamentId, tournamentName) {
   document.getElementById('tCancelModal')?.remove();
@@ -774,14 +798,13 @@ function _get2v2Teams() {
 }
 
 async function recordFixture(tournamentId, groupLetter, anchorA, anchorB) {
-  const fid = `f_${tournamentId}_${groupLetter}_${anchorA}_${anchorB}`;
-  const sa = parseInt(document.getElementById(`${fid}_sa`)?.value);
-  const sb = parseInt(document.getElementById(`${fid}_sb`)?.value);
-  if (isNaN(sa) || isNaN(sb)) return toast('กรุณากรอกสกอร์', 'error');
-  if (sa === sb) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
-  const winnerId = sa > sb ? anchorA : anchorB;
+  const prefix = `f_${tournamentId}_${groupLetter}_${anchorA}_${anchorB}`;
+  const { wA, wB } = _readBo3(prefix);
+  if (wA + wB === 0) return toast('กรอกคะแนนอย่างน้อย 1 เกม', 'error');
+  if (wA === wB) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
+  const winnerId = wA > wB ? anchorA : anchorB;
   try {
-    await dbAddTournamentMatch(tournamentId, groupLetter, anchorA, anchorB, sa, sb, winnerId);
+    await dbAddTournamentMatch(tournamentId, groupLetter, anchorA, anchorB, wA, wB, winnerId);
     toast('บันทึกแมตช์แล้ว ✅', 'success');
     renderTournamentSection();
   } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
@@ -1061,7 +1084,7 @@ async function renderTournamentSection() {
           const pct = totalSlots ? Math.round(filled/totalSlots*100) : 0;
           const unitLabel = is2v2Reg ? 'ทีม' : 'คน';
           const perLabel = is2v2Reg ? `${cfg.teamsPerGroup} ทีม/กลุ่ม` : `${cfg.playersPerGroup} คน/กลุ่ม`;
-          const canStart = is2v2Reg ? filled >= 2 : filled >= 4;
+          const canStart = filled === totalSlots && totalSlots >= 2;
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
@@ -1124,13 +1147,13 @@ function _renderKnockoutStage(tournament, tMatches, stageId, stageLabel, leftEnt
     content = `<div class="gf-match" style="margin-bottom:10px">
         <span class="gf-winner">${leftEntry.label}</span><span class="gf-vs">vs</span><span class="gf-winner">${rightEntry.label}</span>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
         <select class="inp" id="tm_pa_${tournament.id}_${stageId}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${opts}</select>
         <span style="font-size:0.8rem">vs</span>
         <select class="inp" id="tm_pb_${tournament.id}_${stageId}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${opts}</select>
-        <input class="inp" type="number" id="tm_sa_${tournament.id}_${stageId}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-        <span>-</span>
-        <input class="inp" type="number" id="tm_sb_${tournament.id}_${stageId}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+      </div>
+      ${_renderBo3Input(`tm_${tournament.id}_${stageId}`)}
+      <div style="margin-top:6px">
         <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700"
           onclick="recordTournamentMatch(${tournament.id},'${stageId}','${matchType}')">🏆 บันทึก</button>
       </div>`;
@@ -1212,13 +1235,9 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
               <div style="font-size:0.73rem;color:var(--muted);margin-bottom:5px">
                 <span style="color:var(--text)">${lA}: ${dA}</span> <span>vs</span> <span style="color:var(--text)">${lB}: ${dB}</span>
               </div>
-              <div style="display:flex;gap:5px;align-items:center">
-                <input class="inp" type="number" id="${fid}_sa" placeholder="${lA}" style="width:52px;font-size:0.76rem;padding:5px 6px" min="0">
-                <span style="color:var(--muted)">-</span>
-                <input class="inp" type="number" id="${fid}_sb" placeholder="${lB}" style="width:52px;font-size:0.76rem;padding:5px 6px" min="0">
-                <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;padding:4px 10px"
-                  onclick="recordFixture(${tournament.id},'${grpLetter}',${aA},${aB})">✅</button>
-              </div>
+              ${_renderBo3Input(fid)}
+              <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;padding:4px 10px;margin-top:5px"
+                onclick="recordFixture(${tournament.id},'${grpLetter}',${aA},${aB})">✅ บันทึก</button>
             </div>`;
           }
         }
@@ -1228,16 +1247,14 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
       // Singles: original free-entry form
       const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
       recordSection = `<div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
           <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
           <span style="font-size:0.8rem">vs</span>
           <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
-          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <span>-</span>
-          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
-            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅</button>
-        </div>`;
+        </div>
+        ${_renderBo3Input(`tm_${tournament.id}_${grpLetter}`)}
+        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;margin-top:6px"
+          onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅ บันทึก</button>`;
     }
     } // end !readOnly
 
@@ -1331,12 +1348,13 @@ async function createTournament() {
 async function recordTournamentMatch(tournamentId, groupLetter, matchType) {
   const pa = parseInt(document.getElementById(`tm_pa_${tournamentId}_${groupLetter}`)?.value);
   const pb = parseInt(document.getElementById(`tm_pb_${tournamentId}_${groupLetter}`)?.value);
-  const sa = parseInt(document.getElementById(`tm_sa_${tournamentId}_${groupLetter}`)?.value);
-  const sb = parseInt(document.getElementById(`tm_sb_${tournamentId}_${groupLetter}`)?.value);
   const mType = matchType || '1v1';
   if (!pa || !pb || pa === pb) return toast('เลือก' + (mType === '2v2' ? 'ทีม' : 'ผู้เล่น') + ' 2 ฝ่ายที่ต่างกัน', 'error');
-  if (isNaN(sa) || isNaN(sb)) return toast('กรุณากรอกสกอร์', 'error');
-  const winnerId = sa > sb ? pa : pb;
+  const { wA, wB } = _readBo3(`tm_${tournamentId}_${groupLetter}`);
+  if (wA + wB === 0) return toast('กรอกคะแนนอย่างน้อย 1 เกม', 'error');
+  if (wA === wB) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
+  const sa = wA, sb = wB;
+  const winnerId = wA > wB ? pa : pb;
   try {
     await dbAddTournamentMatch(tournamentId, groupLetter, pa, pb, sa, sb, winnerId);
 
@@ -1675,7 +1693,7 @@ async function renderTournamentTab() {
           }
           html += _renderRegSlotTable(cfg, t.id, isAdmin);
           if (isAdmin) {
-            const canStart = is2v2Reg ? filled >= 2 : filled >= 4;
+            const canStart = filled === totalSlots && totalSlots >= 2;
             html += `<button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>`;
           }
 
