@@ -443,10 +443,13 @@ async function _grantKingCosmetic(king) {
 }
 
 // ── SOLAR EMPEROR ASCENSION CINEMATIC ────────────────────────
-function showSolarEmperorAscension(playerName, isFirst) {
+function showSolarEmperorAscension(playerName, isFirst, opts = {}) {
   // Remove stale instance if any
   const old = document.getElementById('seAscension');
   if (old) old.remove();
+  const seTitle = opts.title || (isFirst ? 'FIRST ASCENSION' : 'SOLAR EMPEROR');
+  const seSub   = opts.sub   || (isFirst ? 'เจ้าแห่งสนาม · ขึ้นสู่บัลลังก์ Solar Emperor' : 'กลับสู่บัลลังก์อีกครั้ง · King of Badminton');
+  const seCrown = opts.crown || '👑';
 
   const el = document.createElement('div');
   el.id = 'seAscension';
@@ -476,10 +479,10 @@ function showSolarEmperorAscension(playerName, isFirst) {
     <div class="sea-ring" id="seaRing2" style="width:320px;height:320px;margin:-160px;border-color:rgba(255,215,0,0.4)"></div>
     <div class="sea-rays" id="seaRays"></div>
     <div class="sea-card">
-      <div class="sea-crown" id="seaCrown">👑</div>
-      <div class="sea-title" id="seaTitle">${isFirst ? 'FIRST ASCENSION' : 'SOLAR EMPEROR'}</div>
+      <div class="sea-crown" id="seaCrown">${seCrown}</div>
+      <div class="sea-title" id="seaTitle">${seTitle}</div>
       <div class="sea-name" id="seaName">${playerName}</div>
-      <div class="sea-sub" id="seaSub">${isFirst ? 'เจ้าแห่งสนาม · ขึ้นสู่บัลลังก์ Solar Emperor' : 'กลับสู่บัลลังก์อีกครั้ง · King of Badminton'}</div>
+      <div class="sea-sub" id="seaSub">${seSub}</div>
     </div>
     <div class="sea-hint" id="seaHint">แตะเพื่อปิด</div>
   `;

@@ -325,8 +325,11 @@ function _refGameOver(a, b) {
 
 function openReferee(tid, group, idA, idB, matchType) {
   if (!idA || !idB || idA === idB) return toast('เลือก 2 ฝ่ายที่ต่างกัน', 'error');
+  // Best-of-3 (ชนะ 2 เกม) เฉพาะ Super 1000 · tier อื่นตัดสินเกมเดียว
+  const tier = _tourStore[tid]?.tier;
+  const winsNeeded = tier === 'Super 1000' ? 2 : 1;
   _ref = {
-    tid, group, idA, idB, matchType,
+    tid, group, idA, idB, matchType, winsNeeded,
     labelA: _refLabel(tid, idA, matchType),
     labelB: _refLabel(tid, idB, matchType),
     games: [],     // committed games: {a, b}
@@ -360,8 +363,9 @@ function _refClose() { _ref = null; document.getElementById('refModal')?.remove(
 
 async function _refFinish() {
   if (!_ref) return;
+  const need = _ref.winsNeeded || 2;
   const { wA, wB } = _refGamesWon();
-  if (wA < 2 && wB < 2) return toast('ยังไม่จบแมตช์ (ต้องชนะ 2 เกม)', 'error');
+  if (wA < need && wB < need) return toast(`ยังไม่จบแมตช์ (ต้องชนะ ${need} เกม)`, 'error');
   const winnerId = wA > wB ? _ref.idA : _ref.idB;
   const { tid, group, idA, idB, matchType, games } = _ref;
   try {
@@ -403,11 +407,13 @@ function _renderRefModal() {
   document.getElementById('refModal')?.remove();
   const r = _ref;
   if (!r) return;
+  const need = r.winsNeeded || 2;
   const gameNo = r.games.length + 1;
   const over = _refGameOver(r.curA, r.curB);
   const { wA, wB } = _refGamesWon();
-  const matchDone = wA >= 2 || wB >= 2;
+  const matchDone = wA >= need || wB >= need;
   const gameWinnerLabel = r.curA > r.curB ? r.labelA : r.labelB;
+  const bestOfLabel = need === 2 ? 'Best of 3' : 'เกมเดียว';
 
   const gamesLog = r.games.map((g, i) =>
     `<span style="font-size:0.68rem;padding:2px 8px;border-radius:12px;background:var(--card);border:1px solid var(--glass-border);color:var(--muted)">เกม ${i+1}: ${g.a}-${g.b}</span>`
@@ -418,7 +424,11 @@ function _renderRefModal() {
     const champLabel = wA > wB ? r.labelA : r.labelB;
     actionBtn = `<button class="btn btn-primary" style="width:100%;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-weight:700" onclick="_refFinish()">💾 บันทึกผล · 🏆 ${champLabel} (${wA}-${wB})</button>`;
   } else if (over) {
-    actionBtn = `<button class="btn btn-primary" style="width:100%" onclick="_refCommitGame()">✅ จบเกม ${gameNo} (${gameWinnerLabel} ชนะ ${r.curA}-${r.curB}) → เกมต่อไป</button>`;
+    // จะจบแมตช์ไหมถ้า commit เกมนี้
+    const winnerSideWins = (r.curA > r.curB ? wA : wB) + 1;
+    const willFinish = winnerSideWins >= need;
+    const nextLabel = willFinish ? '🏆 จบแมตช์' : '→ เกมต่อไป';
+    actionBtn = `<button class="btn btn-primary" style="width:100%" onclick="_refCommitGame()">✅ จบเกม ${gameNo} (${gameWinnerLabel} ${r.curA}-${r.curB}) ${nextLabel}</button>`;
   } else {
     actionBtn = `<div style="text-align:center;font-size:0.7rem;color:var(--muted);padding:8px">กำลังแข่งเกมที่ ${gameNo} · ถึง 21 แต้ม (ห่าง 2) เกมจะจบอัตโนมัติ</div>`;
   }
@@ -429,7 +439,7 @@ function _renderRefModal() {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(0,245,160,.3);border-radius:20px;padding:18px 16px;max-width:420px;width:100%;box-shadow:0 0 60px rgba(0,245,160,.12)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-        <div style="font-size:0.95rem;font-weight:700">🎬 Referee · เกมที่ ${gameNo}</div>
+        <div style="font-size:0.95rem;font-weight:700">🎬 Referee · เกมที่ ${gameNo} <span style="font-size:0.66rem;font-weight:500;color:var(--muted)">(${bestOfLabel})</span></div>
         <button onclick="_refClose()" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer">✕</button>
       </div>
       ${gamesLog ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gamesLog}</div>` : ''}
@@ -776,6 +786,16 @@ async function executeDeclareChampion(tournamentId) {
   if (document.getElementById('tournamentTabContent')) renderTournamentTab();
 
   const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
+  // 🎬 Cinematic champion announcement (reuse Solar Emperor ascension effect)
+  if (typeof showSolarEmperorAscension === 'function') {
+    try {
+      showSolarEmperorAscension(winnerNames, false, {
+        title: `${tierName} CHAMPION`,
+        sub: `🏆 แชมป์ ${stored.name || tierName}${bonusPts > 0 ? ` · +${bonusPts} pts` : ''} · +${totalCoins} 🪙`,
+        crown: '🏆'
+      });
+    } catch(e) {}
+  }
   toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
   if (thirdPlaceName) setTimeout(() => toast(`🥉 อันดับ 3: ${thirdPlaceName}`, 'info'), 1500);
 
@@ -1880,7 +1900,8 @@ async function renderTournamentTab() {
 
   try {
     const tournaments = await dbGetTournaments();
-    const visible = tournaments.filter(t => t.status !== 'completed' && (isAdmin || t.tier !== 'Super 1000'));
+    // ทุก tier โชว์ให้ทุกคนเห็น — Super 1000 admin จัดเอง (คนทั่วไปดูได้แต่สมัครไม่ได้)
+    const visible = tournaments.filter(t => t.status !== 'completed');
 
     if (!visible.length) {
       html += `<div style="text-align:center;color:var(--muted);padding:36px 16px">
