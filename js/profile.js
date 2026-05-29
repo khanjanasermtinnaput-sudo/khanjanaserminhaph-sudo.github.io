@@ -38,8 +38,6 @@ async function openPlayerProfile(playerId) {
     return `<div class="pp2-dot ${win ? 'w' : 'l'}">${win ? 'W' : 'L'}</div>`;
   }).join('') || `<span style="color:var(--muted);font-size:0.78rem">${t('no_match')}</span>`;
 
-  // ELO Timeline SVG
-  const chartSVG = buildEloChart(eloHistory);
 
   // Head-to-Head
   const h2hMap = {};
@@ -161,9 +159,6 @@ async function openPlayerProfile(playerId) {
 
         <div class="pp2-sec">${t('ranking_hist')}</div>
         ${buildRankingChart(p.id)}
-
-        <div class="pp2-sec">${t('elo_timeline')}</div>
-        ${chartSVG}
 
         ${(() => {
           const kh = _getKingHistory(p.id);
@@ -409,10 +404,10 @@ function getNemesis(playerId) {
 }
 
 // ============================================================
-// ===== FEATURE: RANKING HISTORY CHART (full SVG) =====
+// ===== FEATURE: RANK SCORE OVER TIME CHART (full SVG) =====
 // ============================================================
 function buildRankingChart(playerId) {
-  // Reconstruct pts at each match point (same logic as buildEloHistory)
+  // Reconstruct rank-score (pts) at each match point over time
   const p = db.players.find(x => x.id === playerId);
   if (!p) return '';
 
@@ -422,95 +417,89 @@ function buildRankingChart(playerId) {
 
   if (playerMatches.length < 2) return '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:14px 0">ยังไม่มีข้อมูลเพียงพอ (ต้องเล่นอย่างน้อย 2 แมตช์)</div>';
 
-  // Build pts timeline by walking backwards from current pts
+  // Walk backwards from current pts to reconstruct the forward score timeline
   let pts = p.pts;
-  const ptsHistory = [];
-  const reversedMatches = [...playerMatches].reverse();
-  reversedMatches.forEach(m => {
+  const after = []; // pts AFTER each match, in forward order
+  [...playerMatches].reverse().forEach(m => {
+    after.unshift(pts);
     const inA = m.teamA.some(x => x.id === playerId);
     const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-    ptsHistory.unshift(pts);
-    pts = win ? Math.max(0, pts - m.pts.gain) : Math.min(pts + m.pts.loss, 9999);
+    pts = win ? Math.max(0, pts - (m.pts?.gain || 0)) : Math.min(pts + (m.pts?.loss || 0), 9999);
   });
-  ptsHistory.push(p.pts); // current
+  const startPts = pts;                  // pts before the very first match
+  const series = [startPts, ...after];   // length = playerMatches.length + 1
+  const n = series.length;
 
-  // Convert pts → leaderboard position at each point
-  // For each historical pts value, compute position among all players
-  // (simulate what other players' pts would be at that relative time — approximation:
-  //  use current pts of others since we don't have full history for everyone)
-  const otherPlayers = db.players.filter(x => x.id !== playerId);
+  // Date for each series point (index 0 = "เริ่ม", index k = after match k-1)
+  const dateAt = i => {
+    if (i === 0) return null;
+    const m = playerMatches[i - 1];
+    return m ? new Date(m.date || m.played_at) : null;
+  };
+  const fmtDate = d => d ? d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เริ่ม';
 
-  const rankHistory = ptsHistory.map(myPts => {
-    // Count how many others have more pts than myPts (position = count + 1)
-    const ahead = otherPlayers.filter(o => o.pts > myPts).length;
-    return ahead + 1;
-  });
+  const curPts  = series[n - 1];
+  const peakPts = Math.max(...series);
+  const peakIdx = series.lastIndexOf(peakPts);
+  const lowPts  = Math.min(...series);
+  const delta   = curPts - startPts;
+  const improving = delta >= 0;
+  const lineColor = improving ? '#00f5a0' : '#ff4757';
 
-  const totalPlayers = db.players.length;
-  const minRank = 1;
-  const maxRank = Math.max(...rankHistory, totalPlayers);
+  // Y-axis scaling with headroom
+  const rawRange = peakPts - lowPts;
+  const padPts = Math.max(rawRange * 0.12, 8);
+  let yMax = peakPts + padPts;
+  let yMin = Math.max(0, lowPts - padPts);
+  if (yMax - yMin < 1) { yMax = yMin + 1; }
 
-  const W = 500, H = 160, padL = 36, padR = 16, padT = 14, padB = 28;
+  const W = 500, H = 170, padL = 42, padR = 16, padT = 16, padB = 30;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
-  const n = rankHistory.length;
 
-  // Y: rank 1 = top, higher rank number = lower
-  function toX(i) { return padL + (i / (n - 1)) * chartW; }
-  function toY(rank) {
-    // rank 1 → y = padT (top), rank maxRank → y = padT + chartH (bottom)
-    return padT + ((rank - minRank) / (maxRank - minRank || 1)) * chartH;
-  }
+  const toX = i => padL + (i / (n - 1)) * chartW;
+  const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
 
-  const pathPts = rankHistory.map((r, i) => `${toX(i).toFixed(1)},${toY(r).toFixed(1)}`);
+  const pathPts = series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`);
   const pathD   = 'M' + pathPts.join(' L');
 
-  const currentRank = rankHistory[n - 1];
-  const firstRank   = rankHistory[0];
-  // Improving = rank number going down (closer to 1)
-  const improving   = currentRank <= firstRank;
-  const lineColor   = improving ? '#00f5a0' : '#ff4757';
+  // Area fill below the line
+  const lx = toX(n - 1).toFixed(1), ly = toY(curPts).toFixed(1);
+  const baseY = (padT + chartH).toFixed(1);
+  const areaD = pathD + ` L${lx},${baseY} L${padL},${baseY} Z`;
 
-  // Area fill — goes downward (worse rank direction = bottom of chart)
-  const lx = toX(n - 1).toFixed(1), ly = toY(currentRank).toFixed(1);
-  const areaD = pathD + ` L${lx},${(padT + chartH).toFixed(1)} L${padL},${(padT + chartH).toFixed(1)} Z`;
-
-  // Y-axis: show rank numbers (1, 2, 3 ...)
+  // Y-axis ticks (pts values)
+  const yTickCount = 5;
   const yTicks = [];
-  const tickCount = Math.min(maxRank, 6);
-  for (let i = 0; i < tickCount; i++) {
-    const r = Math.round(minRank + (i / (tickCount - 1)) * (maxRank - minRank));
-    yTicks.push(r);
+  for (let i = 0; i < yTickCount; i++) {
+    yTicks.push(Math.round(yMin + (i / (yTickCount - 1)) * (yMax - yMin)));
   }
-  const yAxisSVG = [...new Set(yTicks)].map(r => {
-    const y = toY(r);
-    return `<text x="${padL - 5}" y="${y + 3.5}" fill="rgba(255,255,255,0.35)" font-size="9" text-anchor="end" font-family="Rajdhani,sans-serif" font-weight="600">#${r}</text>`;
+  const yAxisSVG = [...new Set(yTicks)].map(v => {
+    const y = toY(v);
+    return `<text x="${padL - 6}" y="${y + 3.5}" fill="rgba(255,255,255,0.35)" font-size="9" text-anchor="end" font-family="Rajdhani,sans-serif" font-weight="600">${v}</text>`;
+  }).join('');
+  const gridSVG = [...new Set(yTicks)].map(v => {
+    const y = toY(v).toFixed(1);
+    return `<line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="rgba(255,255,255,0.06)" stroke-width="0.6" stroke-dasharray="2,4"/>`;
   }).join('');
 
-  // Dashed grid lines for each rank tick
-  const gridSVG = [...new Set(yTicks)].map(r => {
-    const y = toY(r).toFixed(1);
-    const isFirst = r === 1;
-    return `<line x1="${padL}" y1="${y}" x2="${padL + chartW}" y2="${y}" stroke="${isFirst ? 'rgba(255,215,0,0.3)' : 'rgba(255,255,255,0.06)'}" stroke-width="${isFirst ? 1 : 0.6}" stroke-dasharray="${isFirst ? '4,3' : '2,4'}"/>`;
-  }).join('');
+  // Peak (all-time high) dashed gold line
+  const peakY = toY(peakPts).toFixed(1);
+  const peakLineSVG = `<line x1="${padL}" y1="${peakY}" x2="${padL + chartW}" y2="${peakY}" stroke="rgba(255,215,0,0.35)" stroke-width="1" stroke-dasharray="4,3"/>
+    <text x="${padL + chartW}" y="${parseFloat(peakY) - 4}" fill="rgba(255,215,0,0.7)" font-size="8.5" text-anchor="end" font-family="Rajdhani,sans-serif" font-weight="700">🏔 ${peakPts}</text>`;
 
-  // #1 zone highlight
-  const rank1Y    = toY(1).toFixed(1);
-  const rank2Y    = toY(Math.min(2, maxRank)).toFixed(1);
-  const band1H    = Math.abs(parseFloat(rank2Y) - parseFloat(rank1Y));
-
-  // X-axis labels
+  // X-axis date labels
   const step = Math.max(1, Math.floor(n / 5));
-  const xAxisSVG = rankHistory.map((_, i) => {
+  const xAxisSVG = series.map((_, i) => {
     if (i % step !== 0 && i !== n - 1) return '';
-    const label = i === 0 ? 'เริ่ม' : i === n - 1 ? 'ล่าสุด' : `#${i}`;
-    return `<text x="${toX(i).toFixed(1)}" y="${padT + chartH + 15}" fill="rgba(255,255,255,0.3)" font-size="8" text-anchor="middle" font-family="Rajdhani,sans-serif">${label}</text>`;
+    const label = i === 0 ? 'เริ่ม' : (i === n - 1 ? 'ล่าสุด' : fmtDate(dateAt(i)));
+    return `<text x="${toX(i).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.3)" font-size="8" text-anchor="middle" font-family="Rajdhani,sans-serif">${label}</text>`;
   }).join('');
 
-  // Dots at each data point (small)
-  const dotsSVG = rankHistory.map((r, i) => {
-    const isFirst = r === 1;
-    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(r).toFixed(1)}" r="${isFirst ? 4 : 2.5}" fill="${isFirst ? '#ffd700' : lineColor}" opacity="${isFirst ? 1 : 0.6}"/>`;
+  // Dots at each data point
+  const dotsSVG = series.map((v, i) => {
+    const isPeak = i === peakIdx;
+    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="${isPeak ? 4 : 2.3}" fill="${isPeak ? '#ffd700' : lineColor}" opacity="${isPeak ? 1 : 0.55}"/>`;
   }).join('');
 
   return `
@@ -518,17 +507,17 @@ function buildRankingChart(playerId) {
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;overflow:visible">
       <defs>
         <linearGradient id="rkGrad_${playerId}" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.22"/>
+          <stop offset="0%" stop-color="${lineColor}" stop-opacity="0.24"/>
           <stop offset="100%" stop-color="${lineColor}" stop-opacity="0"/>
         </linearGradient>
         <clipPath id="rkClip_${playerId}">
           <rect x="${padL}" y="${padT}" width="${chartW}" height="${chartH}"/>
         </clipPath>
       </defs>
-      <!-- #1 band highlight -->
-      <rect x="${padL}" y="${rank1Y}" width="${chartW}" height="${Math.max(band1H, 8)}" fill="rgba(255,215,0,0.07)" clip-path="url(#rkClip_${playerId})"/>
       <!-- grid lines -->
       ${gridSVG}
+      <!-- peak line -->
+      ${peakLineSVG}
       <!-- area -->
       <path d="${areaD}" fill="url(#rkGrad_${playerId})" clip-path="url(#rkClip_${playerId})"/>
       <!-- line -->
@@ -543,14 +532,15 @@ function buildRankingChart(playerId) {
       <!-- x axis -->
       ${xAxisSVG}
     </svg>
-    <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:5px;font-size:0.7rem;color:var(--muted)">
-        <svg width="10" height="10"><circle cx="5" cy="5" r="4" fill="rgba(255,215,0,0.9)"/></svg>
-        <span>อันดับ 1</span>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.72rem;color:var(--muted)">
+        <span style="font-family:'Rajdhani';font-weight:700;color:var(--text)">${curPts}</span> pts
       </div>
-      <div style="font-size:0.7rem;color:var(--muted)">จาก ${totalPlayers} คน</div>
-      <div style="margin-left:auto;font-family:'Rajdhani';font-size:0.9rem;font-weight:700;color:${lineColor}">
-        ${improving ? '▲' : '▼'} อันดับ #${currentRank}
+      <div style="display:flex;align-items:center;gap:5px;font-size:0.72rem;color:var(--muted)">
+        🏔 สูงสุด <span style="font-family:'Rajdhani';font-weight:700;color:var(--gold)">${peakPts}</span>
+      </div>
+      <div style="margin-left:auto;font-family:'Rajdhani';font-size:0.95rem;font-weight:700;color:${lineColor}">
+        ${improving ? '▲ +' : '▼ '}${delta} pts
       </div>
     </div>
   </div>`;
