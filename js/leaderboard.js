@@ -3,8 +3,7 @@ async function renderLeaderboard() {
     await loadAll();
     checkSelfRankUpFromDB();
     checkKingChange();
-    // ผู้เล่นที่ถูกล้างประวัติ (wins=0 และ losses=0) จะไม่แสดงในหน้านี้
-    const sorted = [...db.players].filter(p => p.wins > 0 || p.losses > 0).sort((a,b) => b.pts - a.pts);
+    const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
 
     // ── STAT CARDS ──

@@ -855,14 +855,14 @@ renderAdmin = async function() {
     if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('');
     if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   }
-  // Tournament section
+  // Tournament section — always re-render when admin is opened
   if (!document.getElementById('tournamentAdminSection')) {
     const tdiv = document.createElement('div');
     tdiv.className = 'card';
     tdiv.innerHTML = `<div class="card-title">🏆 Tournament</div><div id="tournamentAdminSection"></div>`;
     main.appendChild(tdiv);
-    renderTournamentSection();
   }
+  renderTournamentSection();
 };
 
 async function adminGiveCoins() {
