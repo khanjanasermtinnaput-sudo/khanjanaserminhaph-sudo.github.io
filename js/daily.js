@@ -5,17 +5,17 @@ const DC_QUESTS = [
   { id:'q2', text:'⭐ บันทึกคะแนนครั้งแรกของวัน', coins:4, type:'first_save', goal:1 },
 ];
 
-function _dcKey() { return 'bmt_dc_'+(currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
-function getDCDone() { try{return JSON.parse(localStorage.getItem(_dcKey())||'{}');}catch(e){return{};} }
-function _dcTodayCountKey() { return 'bmt_dct_'+(currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
-function getDCToday() { try{return JSON.parse(localStorage.getItem(_dcTodayCountKey())||'{"plays":0,"wins":0,"first_save":0}');}catch(e){return{plays:0,wins:0,first_save:0};} }
-function saveDCToday(d) { localStorage.setItem(_dcTodayCountKey(), JSON.stringify(d)); }
+function _dcKey(pid) { return 'bmt_dc_'+(pid||currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
+function getDCDone(pid) { try{return JSON.parse(localStorage.getItem(_dcKey(pid))||'{}');}catch(e){return{};} }
+function _dcTodayCountKey(pid) { return 'bmt_dct_'+(pid||currentUser?.id||0)+'_'+new Date().toISOString().slice(0,10); }
+function getDCToday(pid) { try{return JSON.parse(localStorage.getItem(_dcTodayCountKey(pid))||'{"plays":0,"wins":0,"first_save":0}');}catch(e){return{plays:0,wins:0,first_save:0};} }
+function saveDCToday(d, pid) { localStorage.setItem(_dcTodayCountKey(pid), JSON.stringify(d)); }
 
-function getDCProg(q) {
-  const t = getDCToday();
-  if (q.type==='plays') return t.plays||0;
-  if (q.type==='wins') return t.wins||0;
-  if (q.type==='first_save') return t.first_save||0;
+function getDCProg(q, pid) {
+  const tc = getDCToday(pid);
+  if (q.type==='plays') return tc.plays||0;
+  if (q.type==='wins') return tc.wins||0;
+  if (q.type==='first_save') return tc.first_save||0;
   return 0;
 }
 
@@ -41,36 +41,41 @@ function renderDailyChallenge() {
   }).join('');
 }
 
-async function checkDCRewards() {
-  if (!currentUser) return;
-  const done = getDCDone();
+// ให้รางวัล Daily Quest กับผู้เล่นคนหนึ่ง (ตาม progress ที่บันทึกไว้ของคนนั้น)
+// notify=true เฉพาะตอนเป็น currentUser เพื่อไม่ให้ toast เด้งรัวจากผู้เล่นคนอื่น
+async function checkDCRewardsFor(pid, notify) {
+  const pl = db.players.find(p=>p.id===pid);
+  if (!pl) return;
+  const done = getDCDone(pid);
   let granted = false;
   for (const q of DC_QUESTS) {
     if (done[q.id]) continue;
-    if (getDCProg(q) >= q.goal) {
+    if (getDCProg(q, pid) >= q.goal) {
       done[q.id] = true;
       granted = true;
-      const pl = db.players.find(p=>p.id===currentUser.id);
-      if (pl) {
-        try {
-          await dbAddCoins(currentUser.id, q.coins);
-          _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + q.coins);
-          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
-          // อัพเดท coin balance ใน profile ด้วย
-          const pcEl = document.getElementById('profileCoinBalance');
-          if (pcEl) pcEl.textContent = getEffectiveCoins(currentUser.id);
-        } catch(e) {
-          // fallback localStorage
-          _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + q.coins);
-          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
-        }
+      try {
+        await dbAddCoins(pid, q.coins);
+        _setLsCoins(pid, _lsCoins(pid) + q.coins);
+      } catch(e) {
+        _setLsCoins(pid, _lsCoins(pid) + q.coins);
+      }
+      if (notify) {
+        toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
+        const pcEl = document.getElementById('profileCoinBalance');
+        if (pcEl) pcEl.textContent = getEffectiveCoins(pid);
       }
     }
   }
   if (granted) {
-    localStorage.setItem(_dcKey(), JSON.stringify(done));
-    renderDailyChallenge();
+    localStorage.setItem(_dcKey(pid), JSON.stringify(done));
+    if (notify) renderDailyChallenge();
   }
+}
+
+// backward-compat: ตรวจให้ currentUser
+async function checkDCRewards() {
+  if (!currentUser) return;
+  await checkDCRewardsFor(currentUser.id, true);
 }
 
 // ── 13. Player of the Day ────────────────────────
@@ -168,15 +173,23 @@ saveMatch = async function() {
   stopMatchTimer();
   const btn = document.getElementById('rematchBtn');
   if (btn) btn.style.display = '';
-  // Update daily challenge counters
-  if (matchSnap && currentUser) {
-    const today = getDCToday();
-    today.plays = (today.plays||0) + 1;
-    const isWin = matchSnap['team'+matchSnap.winTeam].some(p=>p.id===currentUser.id);
-    if (isWin) today.wins = (today.wins||0) + 1;
-    if (!today.first_save) today.first_save = 1;
-    saveDCToday(today);
-    await checkDCRewards();
+  // Update daily challenge counters — ให้กับ "ทุกคนที่อยู่ในแมตช์" (ติกในหน้าแมตช์)
+  // ไม่ใช่แค่คนที่กดบันทึก — เหรียญเข้าผู้เล่นจริงในแมตช์เท่านั้น
+  if (matchSnap) {
+    const winners = matchSnap['team'+matchSnap.winTeam].map(p=>p.id);
+    const allInMatch = [...matchSnap.teamA, ...matchSnap.teamB].map(p=>p.id);
+    const seen = new Set();
+    for (const pid of allInMatch) {
+      if (seen.has(pid)) continue;
+      seen.add(pid);
+      const today = getDCToday(pid);
+      today.plays = (today.plays||0) + 1;
+      if (winners.includes(pid)) today.wins = (today.wins||0) + 1;
+      if (!today.first_save) today.first_save = 1;
+      saveDCToday(today, pid);
+      // toast เฉพาะ currentUser เพื่อไม่ให้เด้งรัว
+      await checkDCRewardsFor(pid, currentUser && pid === currentUser.id);
+    }
   }
 };
 

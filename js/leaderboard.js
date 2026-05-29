@@ -76,21 +76,17 @@ function lbFilterBoard(q) {
   lbRenderBoard(filtered, false);
 }
 
-// badge ที่ "ห้ามแสดงใน Leaderboard" (ยังโชว์ในหน้า Profile ได้ตามปกติ)
-// Super 1000 Champion / Doubles Champion ให้ซ่อนเฉพาะในลิสต์อันดับ
-const LB_HIDDEN_BADGE_IDS = new Set(['sys_tour_s1000', 'sys_tour_doubles']);
-function isHiddenLBBadge(id) { return LB_HIDDEN_BADGE_IDS.has(id); }
-
-// คืน HTML badge สำหรับแถวใน Leaderboard ตามที่ผู้เล่นตั้งค่าไว้
+// คืน HTML badge สำหรับแถวใน Leaderboard
+// ระบบ "ติก = โชว์": ติกใน Profile → โชว์ทั้ง Leaderboard และ Profile, ไม่ติก → ไม่โชว์
 function getPlayerLBBadges(p) {
-  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (ใช้ customAch เดิม), array = ตั้งค่าแล้ว
+  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (โชว์ทุก customAch ที่มี), array = ตั้งค่าแล้ว
   if (pinnedAchs === null || pinnedAchs === undefined) {
-    // พฤติกรรมเดิม: แสดงเฉพาะ customAch (ยกเว้น badge ที่ถูกซ่อนใน LB)
-    return (p.customAch || []).filter(a => !isHiddenLBBadge(a.id)).map(a =>
+    // ยังไม่เคยตั้งค่า → โชว์ customAch ทั้งหมด (default)
+    return (p.customAch || []).map(a =>
       `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
     ).join('');
   }
-  // ตั้งค่าแล้ว: รวม built-in + customAch แล้วกรองเฉพาะ pinned
+  // ตั้งค่าแล้ว: รวม built-in + customAch แล้วโชว์เฉพาะที่ติก (pinned)
   const allDefs = (typeof ACHIEVEMENTS_DEF !== 'undefined' && typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined')
     ? [...ACHIEVEMENTS_DEF, ...TOURNAMENT_ACHIEVEMENTS_DEF] : [];
   const seenIds = new Set();
@@ -106,7 +102,7 @@ function getPlayerLBBadges(p) {
     allAchs.push({ id: a.id, icon: a.icon || '🏆', title: a.title, frame: a.frame || 'gold' });
     seenIds.add(a.id);
   });
-  return allAchs.filter(a => pinnedAchs.includes(a.id) && !isHiddenLBBadge(a.id)).map(a =>
+  return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
     `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
   ).join('');
 }
@@ -640,7 +636,10 @@ async function renderProfile() {
     if (!localStorage.getItem(peakPosKey) || rankPos < peakRankPos) { peakRankPos = rankPos; localStorage.setItem(peakPosKey, rankPos); }
     // Total days played
     const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
-    const achHtml = (p.customAch||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${(p.customAch||[]).map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
+    // ระบบติก=โชว์: ถ้าตั้งค่าแล้ว (pinnedAchs เป็น array) โชว์เฉพาะที่ติก, ถ้ายังไม่ตั้งค่า (null) โชว์ทั้งหมด
+    const _profPins = p.pinnedAchs;
+    const _profAch = (p.customAch||[]).filter(a => (_profPins === null || _profPins === undefined) ? true : _profPins.includes(a.id));
+    const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header">
         <div class="profile-avatar ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
