@@ -436,7 +436,6 @@ async function executeDeclareChampion(tournamentId) {
   if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
   const { groups, matchType, tier: tierName } = stored;
 
-  const coins = TOUR_COIN_REWARDS[tierName] || 100;
   let winnerPlayerIds = [];
   if (matchType === '2v2') {
     const team = getTeamByAnchor(groups, winnerAnchorId);
@@ -446,6 +445,9 @@ async function executeDeclareChampion(tournamentId) {
   }
 
   const savedRewards = getTournamentRewards(tournamentId) || {};
+  const coins = (savedRewards.baseCoins != null && savedRewards.baseCoins !== '')
+    ? Number(savedRewards.baseCoins)
+    : (TOUR_COIN_REWARDS[tierName] || 100);
   const bonusCoins = savedRewards.bonusCoins || 0;
   const bonusPts   = savedRewards.bonusPts   || 0;
   const totalCoins = coins + bonusCoins;
@@ -608,6 +610,7 @@ function openRewardManager(tournamentId, tierName) {
   document.getElementById('tRewardModal')?.remove();
   const saved = getTournamentRewards(tournamentId) || {};
   const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
+  const baseCoins  = (saved.baseCoins != null && saved.baseCoins !== '') ? saved.baseCoins : tierCoins;
   const bonusCoins = saved.bonusCoins || 0;
   const bonusPts   = saved.bonusPts   || 0;
   const hasCup     = saved.hasCup     || false;
@@ -620,8 +623,13 @@ function openRewardManager(tournamentId, tierName) {
   modal.innerHTML = `
     <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:22px 18px;max-width:360px;width:92%;box-shadow:0 0 60px rgba(255,215,0,.1)">
       <div style="font-size:1rem;font-weight:700;margin-bottom:4px">🎁 จัดการรางวัล</div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">Tournament · <span style="color:var(--gold)">${tierName}</span> · รางวัลพื้นฐาน <span style="color:var(--gold);font-weight:700">+${tierCoins} 🪙</span></div>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">Tournament · <span style="color:var(--gold)">${tierName}</span> · ค่าเริ่มต้น <span style="color:var(--gold);font-weight:700">${tierCoins} 🪙</span></div>
 
+      <div class="reward-mgr-row">
+        <div class="reward-mgr-label">🏆 เงินรางวัลแชมป์</div>
+        <input class="inp" type="number" id="rm_baseCoins" value="${baseCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
+        <span style="font-size:0.75rem;color:var(--muted)">🪙</span>
+      </div>
       <div class="reward-mgr-row">
         <div class="reward-mgr-label">💰 Bonus เหรียญ</div>
         <input class="inp" type="number" id="rm_bonusCoins" value="${bonusCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
@@ -658,6 +666,7 @@ function openRewardManager(tournamentId, tierName) {
 
 function _saveRewardsFromModal(tournamentId) {
   const rewards = {
+    baseCoins:   parseInt(document.getElementById('rm_baseCoins')?.value)  || 0,
     bonusCoins:  parseInt(document.getElementById('rm_bonusCoins')?.value) || 0,
     bonusPts:    parseInt(document.getElementById('rm_bonusPts')?.value)   || 0,
     hasCup:      document.getElementById('rm_hasCup')?.checked   || false,
@@ -667,16 +676,18 @@ function _saveRewardsFromModal(tournamentId) {
   saveTournamentRewards(tournamentId, rewards);
   document.getElementById('tRewardModal')?.remove();
   toast('บันทึกรางวัลแล้ว ✅', 'success');
-  renderTournamentSection();
+  if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
+  if (document.getElementById('tournamentTabContent')) renderTournamentTab();
 }
 
 function renderRewardCards(tournamentId, tierName) {
   const saved = getTournamentRewards(tournamentId);
   if (!saved) return '';
   const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
-  const totalCoins = tierCoins + (saved.bonusCoins || 0);
+  const baseCoins = (saved.baseCoins != null && saved.baseCoins !== '') ? Number(saved.baseCoins) : tierCoins;
+  const totalCoins = baseCoins + (saved.bonusCoins || 0);
   let cards = '';
-  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">รางวัลพื้นฐาน ${tierCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''}</div></div></div>`;
+  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">แชมป์ ${baseCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''}</div></div></div>`;
   if (saved.bonusPts > 0) cards += `<div class="reward-card"><div class="reward-icon">⭐</div><div class="reward-info"><div class="reward-title">+${saved.bonusPts} ELO Points</div><div class="reward-desc">Bonus rank points สำหรับแชมป์</div></div></div>`;
   if (saved.hasCup) cards += `<div class="reward-card"><div class="reward-icon">🏆</div><div class="reward-info"><div class="reward-title">ถ้วยรางวัล</div><div class="reward-desc">Trophy สำหรับแชมป์</div></div></div>`;
   if (saved.hasMvp) cards += `<div class="reward-card"><div class="reward-icon">🌟</div><div class="reward-info"><div class="reward-title">MVP Award</div><div class="reward-desc">Most Valuable Player of the Tournament</div></div></div>`;
