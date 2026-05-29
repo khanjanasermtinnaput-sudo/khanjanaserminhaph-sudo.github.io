@@ -56,10 +56,14 @@ function getCachCatalog() {
   const out = [];
   const seen = new Set();
   const add = (item) => { if (item && item.id && !seen.has(item.id)) { out.push(item); seen.add(item.id); } };
-  // 1. Supabase shared catalog (from any player's _catalogShared, prefer lowest-ID)
+  // 1. Supabase shared catalog — รวมจาก _catalogShared ของแอดมิน "ทุกคน"
+  //    เพื่อให้แอดมินคนหนึ่งเห็น achievement ที่แอดมินคนอื่นสร้าง
   if (typeof db !== 'undefined' && db.players && db.players.length) {
-    const holder = [...db.players].sort((a,b)=>a.id-b.id).find(p => p._catalogShared && Array.isArray(p._catalogShared) && p._catalogShared.length);
-    if (holder) for (const item of holder._catalogShared) add(item);
+    for (const p of [...db.players].sort((a,b)=>a.id-b.id)) {
+      if (p._catalogShared && Array.isArray(p._catalogShared)) {
+        for (const item of p._catalogShared) add(item);
+      }
+    }
   }
   // 2. Primary localStorage key
   try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY)||'[]')) add(item); } catch(e) {}
@@ -91,6 +95,14 @@ async function saveCachCatalog(c) {
     holder._catalogShared = c;
     const ptStr = buildPlayerPrimeTitles(holder, { catalog: c });
     await dbUpdatePlayer(holder.id, { prime_titles: ptStr });
+    // รวมศูนย์: ล้าง catalog ออกจากแอดมินคนอื่นที่เคยถือไว้ ให้เหลือแหล่งเดียว (holder)
+    // ป้องกัน catalog ซ้ำ/ลบไม่ออกข้ามแอดมิน
+    for (const p of db.players) {
+      if (p.id !== holder.id && p._catalogShared && p._catalogShared.length) {
+        p._catalogShared = [];
+        try { await dbUpdatePlayer(p.id, { prime_titles: buildPlayerPrimeTitles(p, { catalog: [] }) }); } catch(e) {}
+      }
+    }
   } catch(e) {
     // [FIXED] Log warning instead of silent fail — helps debugging
     console.warn('[Achievement] Supabase sync failed (prime_titles column may be missing):', e.message);
