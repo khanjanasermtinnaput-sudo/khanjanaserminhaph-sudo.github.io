@@ -242,11 +242,13 @@ function showSection(name) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(name + 'Section').classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const idx = ['leaderboard','match','history','profile','admin'].indexOf(name);
-  const btns = document.querySelectorAll('#mainNav .nav-btn');
-  if (idx >= 0 && btns[idx]) btns[idx].classList.add('active');
+  // Use ID map so position-based lookup isn't thrown off by hidden mailbox button
+  const navIdMap = { leaderboard:'navLb', match:'navMatch', tournament:'navTour', history:'navHist', profile:'navProfile', admin:'adminNavBtn' };
+  const activeBtn = document.getElementById(navIdMap[name]);
+  if (activeBtn) activeBtn.classList.add('active');
   if (name === 'leaderboard') renderLeaderboard();
   if (name === 'match') renderMatchSetup();
+  if (name === 'tournament') renderTournamentTab();
   if (name === 'history') renderHistory();
   if (name === 'profile') renderProfile();
   if (name === 'admin') renderAdmin();

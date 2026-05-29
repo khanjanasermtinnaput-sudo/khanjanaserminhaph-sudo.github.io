@@ -32,6 +32,7 @@
     <div class="nav-logo">🏸</div>
     <button class="nav-btn active" id="navLb" onclick="showSection('leaderboard')">🏆 อันดับ</button>
     <button class="nav-btn" id="navMatch" onclick="showSection('match')">⚔️ แมตช์</button>
+    <button class="nav-btn" id="navTour" onclick="showSection('tournament')">🏸 Tournament</button>
     <button class="nav-btn" id="navHist" onclick="showSection('history')">📋 ประวัติ</button>
     <button class="nav-btn" id="navProfile" onclick="showSection('profile')">👤 โปรไฟล์</button>
     <button class="nav-btn btn-sm" id="mailboxNavBtn" onclick="openMailbox()" style="padding:4px 10px;font-size:0.73rem;position:relative;display:none" data-loggedin-show="1">📬 กล่อง<span class="mb-dot" id="mailboxDot"></span></button>
@@ -336,6 +337,16 @@
   <div class="ref-bottombar">
     <button class="ref-finish-btn" onclick="confirmFinish()">🏁 จบเกม</button>
   </div>
+</div>
+
+<!-- TOURNAMENT TAB -->
+<div id="tournamentSection" class="section">
+  <main>
+    <div class="card">
+      <div class="card-title">🏸 Tournament</div>
+      <div id="tournamentTabContent"><div class="text-muted" style="text-align:center;padding:24px;font-size:0.83rem">⏳ กำลังโหลด...</div></div>
+    </div>
+  </main>
 </div>
 
 <!-- HISTORY -->
