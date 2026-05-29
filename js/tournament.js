@@ -1264,7 +1264,24 @@ async function createTournament() {
 
   let groups = [];
 
-  if (matchType === '2v2') {
+  if (tier === 'Regular' || tier === 'Super 500') {
+    // ── Regular/Super 500: open registration (players/pairs sign up themselves) ──
+    const numGroups = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
+    const perGroup = parseInt(document.getElementById('tourPlayersPerGroup')?.value) || 4;
+    if (matchType === '2v2') {
+      groups = [
+        { _meta: true, matchType: '2v2' },
+        { _config: true, matchType: '2v2', numGroups, teamsPerGroup: perGroup, registrationOpen: true, registrations: [] }
+      ];
+    } else {
+      groups = [
+        { _meta: true, matchType: '1v1' },
+        { _config: true, numGroups, playersPerGroup: perGroup, registrationOpen: true, registrations: [] }
+      ];
+    }
+
+  } else if (matchType === '2v2') {
+    // ── Super 1000 2v2: admin builds teams ──
     const teams = _get2v2Teams();
     if (teams.length < 2) return toast('ต้องมีอย่างน้อย 2 ทีม', 'error');
     const allIds = teams.flatMap(t => t.playerIds);
@@ -1274,23 +1291,6 @@ async function createTournament() {
       { _meta: true, matchType: '2v2' },
       { letter: 'A', matchType: '2v2', teams }
     ];
-
-  } else if ((tier === 'Regular' || tier === 'Super 500')) {
-    const numGroups = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
-    const perGroup = parseInt(document.getElementById('tourPlayersPerGroup')?.value) || 4;
-    if (matchType === '2v2') {
-      // ── Regular/Super 500 2v2: open registration, pairs sign up ──
-      groups = [
-        { _meta: true, matchType: '2v2' },
-        { _config: true, matchType: '2v2', numGroups, teamsPerGroup: perGroup, registrationOpen: true, registrations: [] }
-      ];
-    } else {
-      // ── Regular/Super 500 1v1: open registration, players sign up themselves ──
-      groups = [
-        { _meta: true, matchType: '1v1' },
-        { _config: true, numGroups, playersPerGroup: perGroup, registrationOpen: true, registrations: [] }
-      ];
-    }
 
   } else {
     // ── Super 1000 1v1: admin picks players ──
