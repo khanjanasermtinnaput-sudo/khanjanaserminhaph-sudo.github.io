@@ -77,12 +77,17 @@ function lbFilterBoard(q) {
   lbRenderBoard(filtered, false);
 }
 
+// badge ที่ "ห้ามแสดงใน Leaderboard" (ยังโชว์ในหน้า Profile ได้ตามปกติ)
+// Super 1000 Champion / Doubles Champion ให้ซ่อนเฉพาะในลิสต์อันดับ
+const LB_HIDDEN_BADGE_IDS = new Set(['sys_tour_s1000', 'sys_tour_doubles']);
+function isHiddenLBBadge(id) { return LB_HIDDEN_BADGE_IDS.has(id); }
+
 // คืน HTML badge สำหรับแถวใน Leaderboard ตามที่ผู้เล่นตั้งค่าไว้
 function getPlayerLBBadges(p) {
   const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (ใช้ customAch เดิม), array = ตั้งค่าแล้ว
   if (pinnedAchs === null || pinnedAchs === undefined) {
-    // พฤติกรรมเดิม: แสดงเฉพาะ customAch
-    return (p.customAch || []).map(a =>
+    // พฤติกรรมเดิม: แสดงเฉพาะ customAch (ยกเว้น badge ที่ถูกซ่อนใน LB)
+    return (p.customAch || []).filter(a => !isHiddenLBBadge(a.id)).map(a =>
       `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
     ).join('');
   }
@@ -102,7 +107,7 @@ function getPlayerLBBadges(p) {
     allAchs.push({ id: a.id, icon: a.icon || '🏆', title: a.title, frame: a.frame || 'gold' });
     seenIds.add(a.id);
   });
-  return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
+  return allAchs.filter(a => pinnedAchs.includes(a.id) && !isHiddenLBBadge(a.id)).map(a =>
     `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
   ).join('');
 }
@@ -136,7 +141,7 @@ function lbRenderBoard(data, animate = true) {
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
         </div>
         <div>
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${(p.super1000Titles||0)>0 ? ` <span class="lb-champion-crown">👑×${p.super1000Titles}</span>` : ''}</div>
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${getRankLabel(p.pts,p.id)}</span>${getPlayerLBBadges(p)}</div>
         </div>
       </div>
