@@ -511,22 +511,48 @@ async function executeDeclareChampion(tournamentId) {
   const winnerNames = winnerPlayerIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
 
   // 6. Mark tournament as completed (keep for Hall of Fame) instead of deleting
+  let thirdPlaceName = '';
   try {
-    // ดึง runner-up จาก GF match (ถ้ามี)
     let runnerUpName = '';
+    let runnerUpIds = [];
     try {
       const _tms2 = await dbGetTournamentMatches(tournamentId);
       const _gf2 = _tms2.find(m => m.group_letter === 'GF');
       if (_gf2) {
         const _ruAnchor = _gf2.winner_id === _gf2.player_a ? _gf2.player_b : _gf2.player_a;
-        const _ruIds = matchType === '2v2' ? (getTeamByAnchor(groups, _ruAnchor)?.playerIds || [_ruAnchor]) : [_ruAnchor];
-        runnerUpName = _ruIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+        runnerUpIds = matchType === '2v2' ? (getTeamByAnchor(groups, _ruAnchor)?.playerIds || [_ruAnchor]) : [_ruAnchor];
+        runnerUpName = runnerUpIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+      }
+      // คำนวณอันดับ 3 จากคะแนนรอบกลุ่มสูงสุด (ยกเว้นแชมป์และรองแชมป์)
+      const excludeIds = new Set([...winnerPlayerIds, ...runnerUpIds]);
+      const allStandings = [];
+      for (const grp of getTournamentGroups(groups)) {
+        const standings = calculateGroupStandings(grp, _tms2, matchType);
+        for (const entry of standings) {
+          if (!excludeIds.has(entry.id)) allStandings.push(entry);
+        }
+      }
+      allStandings.sort((a, b) => b.points !== a.points ? b.points - a.points : b.wins - a.wins);
+      if (allStandings.length > 0) {
+        const thirdEntry = allStandings[0];
+        const thirdIds = matchType === '2v2' ? (getTeamByAnchor(groups, thirdEntry.id)?.playerIds || [thirdEntry.id]) : [thirdEntry.id];
+        thirdPlaceName = thirdIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+        const thirdCoins = Math.max(1, Math.floor(totalCoins / 4));
+        for (const pid of thirdIds) {
+          try { await dbAddCoins(pid, thirdCoins); } catch(e) {}
+          try {
+            const pl = db.players.find(x => x.id === pid);
+            if (pl) await dbSendMail(pid, 'coins', String(thirdCoins),
+              `🥉 อันดับ 3 ${tierName}! +${thirdCoins} 🪙`);
+          } catch(e) {}
+        }
       }
     } catch(e) {}
     await dbCompleteTournament(tournamentId, {
       champion_ids: winnerPlayerIds,
       champion_name: winnerNames,
       runner_up_name: runnerUpName,
+      third_place_name: thirdPlaceName,
       tier: tierName,
       match_type: matchType,
       ended_at: new Date().toISOString(),
@@ -543,6 +569,7 @@ async function executeDeclareChampion(tournamentId) {
 
   const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
   toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
+  if (thirdPlaceName) setTimeout(() => toast(`🥉 อันดับ 3: ${thirdPlaceName}`, 'info'), 1500);
 
   renderTournamentSection();
 }
@@ -847,7 +874,7 @@ async function _hofOpenDetail(tournamentId) {
         ${date?`<span style="font-size:0.66rem;color:var(--muted)">${date}</span>`:''}
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+    <div style="display:grid;grid-template-columns:${hof.third_place_name ? '1fr 1fr 1fr' : '1fr 1fr'};gap:8px;margin-bottom:12px">
       <div style="border:1px solid rgba(255,215,0,0.3);border-radius:12px;background:rgba(255,215,0,0.07);padding:10px;text-align:center">
         <div style="font-size:1.3rem">🏆</div>
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">แชมป์</div>
@@ -858,6 +885,11 @@ async function _hofOpenDetail(tournamentId) {
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">รองแชมป์</div>
         <div style="font-weight:700;font-size:0.82rem;color:var(--silver)">${hof.runner_up_name||'?'}</div>
       </div>
+      ${hof.third_place_name ? `<div style="border:1px solid rgba(205,127,50,0.2);border-radius:12px;background:rgba(205,127,50,0.05);padding:10px;text-align:center">
+        <div style="font-size:1.3rem">🥉</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">อันดับ 3</div>
+        <div style="font-weight:700;font-size:0.82rem;color:#cd7f32">${hof.third_place_name}</div>
+      </div>` : ''}
     </div>
     <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>`;
 
