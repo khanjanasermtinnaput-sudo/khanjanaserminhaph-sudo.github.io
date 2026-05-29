@@ -30,7 +30,18 @@ async function dbAddPlayer(player) {
   const rows = await supaFetch('players', { method: 'POST', body: JSON.stringify({ name: player.name, pin: player.pin, pts: player.pts, wins: player.wins, losses: player.losses, is_admin: player.isAdmin === 1 }) });
   return rows[0];
 }
-async function dbUpdatePlayer(id, data) { await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(data) }); }
+async function dbUpdatePlayer(id, data) {
+  try {
+    await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(data) });
+  } catch(e) {
+    if (e.message && e.message.includes('PGRST204')) {
+      const colMatch = e.message.match(/'([^']+)' column/);
+      const col = colMatch ? colMatch[1] : Object.keys(data).join(', ');
+      throw new Error(`⚠️ ยังไม่มีคอลัมน์ '${col}' ในตาราง players — กรุณารัน SQL ต่อไปนี้ใน Supabase → SQL Editor:\n\nALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;`);
+    }
+    throw e;
+  }
+}
 async function dbDeletePlayer(id) { await supaFetch('players?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' }); }
 async function dbAddPending(match) {
   try {
