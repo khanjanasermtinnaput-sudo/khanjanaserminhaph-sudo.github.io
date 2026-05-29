@@ -597,10 +597,13 @@ async function renderHistory() {
         const isWin = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
         resultHint = `<span style="font-size:0.72rem;font-weight:700;color:${isWin?'var(--neon)':'var(--red)'};margin-left:6px">${isWin?t('win_badge'):t('lose_badge')}</span>`;
       }
+      const undoBtn = isAdminUser()
+        ? `<button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:3px 8px;color:var(--red);border-color:rgba(255,71,87,0.35)" onclick="undoMatch(${m.id})">↩ ย้อนกลับ</button>`
+        : '';
       return `<div class="hist-item">
         <div class="hist-header">
           <div style="font-size:0.82rem;font-weight:600">${typeLabel}${resultHint}</div>
-          <div class="hist-date">${date}</div>
+          <div style="display:flex;align-items:center;gap:6px"><div class="hist-date">${date}</div>${undoBtn}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
           <span>🏆</span><span style="font-weight:700;color:var(--neon)">${winner}</span>
@@ -802,6 +805,57 @@ async function rejectPending(pendingId) {
     toast('ปฏิเสธแมตช์แล้ว ผลจะไม่ถูกบันทึก', 'info');
     renderAdmin();
   } catch(e) { toast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
+}
+
+async function undoMatch(matchId) {
+  if (!isAdminUser()) return;
+  // Load full match list to find this match
+  const rows = await supaFetch('matches?order=played_at.desc&limit=500');
+  const match = rows.map(normalizeMatch).find(m => m.id === matchId);
+  if (!match) return toast('ไม่พบแมตช์', 'error');
+
+  const winners = match.winTeam === 'A' ? match.teamA : match.teamB;
+  const losers  = match.winTeam === 'A' ? match.teamB : match.teamA;
+  const wNames  = winners.map(p => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.name : p.id; }).join(', ');
+  const lNames  = losers.map(p  => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.name : p.id; }).join(', ');
+  const date    = new Date(match.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+
+  if (!confirm(
+    `ย้อนกลับแมตช์นี้?\n\n` +
+    `ผู้ชนะ: ${wNames} → pts -${match.pts.gain}, wins -1\n` +
+    `ผู้แพ้:  ${lNames} → pts +${match.pts.loss}, losses -1\n\n` +
+    `วันที่: ${date}\n\nแมตช์จะถูกลบออกจากประวัติด้วย`
+  )) return;
+
+  try {
+    toast('กำลังย้อนกลับแมตช์...', 'info');
+    await loadPlayers();
+
+    // Reverse winners: subtract gain, wins--
+    for (const p of winners) {
+      const pl = db.players.find(x=>x.id===p.id);
+      if (!pl) continue;
+      await dbUpdatePlayer(pl.id, {
+        pts:  Math.max(0, pl.pts - match.pts.gain),
+        wins: Math.max(0, pl.wins - 1)
+      });
+    }
+    // Reverse losers: add back loss pts, losses--
+    for (const p of losers) {
+      const pl = db.players.find(x=>x.id===p.id);
+      if (!pl) continue;
+      await dbUpdatePlayer(pl.id, {
+        pts:    pl.pts + match.pts.loss,
+        losses: Math.max(0, pl.losses - 1)
+      });
+    }
+    // Delete the match record
+    await supaFetch('matches?id=eq.' + matchId, { method: 'DELETE', prefer: 'return=minimal' });
+    await loadAll();
+    renderHistory();
+    renderLeaderboard();
+    toast('ย้อนกลับแมตช์สำเร็จ ✅', 'success');
+  } catch(e) { toast('ย้อนกลับไม่ได้: ' + e.message, 'error'); }
 }
 
 async function clearPlayerHistory(id) {
