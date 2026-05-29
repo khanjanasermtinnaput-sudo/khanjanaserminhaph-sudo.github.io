@@ -1,7 +1,16 @@
 // ==================== PLAYER PROFILE BOTTOM SHEET ====================
-function openPlayerProfile(playerId) {
+async function openPlayerProfile(playerId) {
   const p = db.players.find(x => x.id === playerId);
   if (!p) return;
+
+  // ถ้าผู้เล่นมีสถิติแต่ match ไม่อยู่ใน cache 50 รายการ ให้โหลดทั้งหมด
+  const inCache = db.matches.some(m => [...m.teamA, ...m.teamB].some(x => x.id === p.id));
+  if (!inCache && (p.wins + p.losses) > 0) {
+    try {
+      const rows = await supaFetch('matches?order=played_at.desc&limit=1000');
+      db.matches = rows.map(normalizeMatch);
+    } catch(e) {}
+  }
 
   const myMatches = db.matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === p.id));
   const rank = getRank(p.pts, p.id);
