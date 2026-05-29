@@ -268,6 +268,42 @@ function _readBo3(prefix) {
   return { wA, wB };
 }
 
+// ── Per-game score detail (localStorage; DB stores only games-won) ──────────────
+function _gameDetailKey(tid, group, idA, idB) {
+  const lo = Math.min(idA, idB), hi = Math.max(idA, idB);
+  return `tgame_${tid}_${group}_${lo}_${hi}`;
+}
+function _saveGameDetail(tid, group, idA, idB, games) {
+  try { localStorage.setItem(_gameDetailKey(tid, group, idA, idB), JSON.stringify({ idA, idB, games })); } catch(e) {}
+}
+function _getGameDetail(tid, group, idA, idB) {
+  try {
+    const raw = localStorage.getItem(_gameDetailKey(tid, group, idA, idB));
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+// Read-only เกม 1/2/3 summary boxes, oriented so left = playerA(=pa), right = playerB(=pb)
+function _renderGameSummary(tid, group, pa, pb) {
+  const det = _getGameDetail(tid, group, pa, pb);
+  let games = [];
+  if (det) {
+    games = (det.idA === pa) ? det.games : det.games.map(g => ({ a: g.b, b: g.a }));
+  }
+  return `<div style="margin-top:4px">
+    ${[0,1,2].map(i => {
+      const g = games[i];
+      const a = g ? g.a : '-', b = g ? g.b : '-';
+      const wa = g && g.a > g.b, wb = g && g.b > g.a;
+      return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
+        <span style="font-size:0.62rem;color:var(--muted);width:36px;flex-shrink:0">เกม ${i+1}</span>
+        <span style="width:40px;text-align:center;font-size:0.78rem;font-weight:${wa?700:400};color:${wa?'var(--neon)':'var(--muted)'};font-family:'Rajdhani',sans-serif">${a}</span>
+        <span style="color:var(--muted);font-size:0.75rem">-</span>
+        <span style="width:40px;text-align:center;font-size:0.78rem;font-weight:${wb?700:400};color:${wb?'var(--neon)':'var(--muted)'};font-family:'Rajdhani',sans-serif">${b}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 // ── Referee mode: live point counter (21-point rules, Best of 3) ────────────────
 let _ref = null;
 
@@ -327,9 +363,10 @@ async function _refFinish() {
   const { wA, wB } = _refGamesWon();
   if (wA < 2 && wB < 2) return toast('ยังไม่จบแมตช์ (ต้องชนะ 2 เกม)', 'error');
   const winnerId = wA > wB ? _ref.idA : _ref.idB;
-  const { tid, group, idA, idB, matchType } = _ref;
+  const { tid, group, idA, idB, matchType, games } = _ref;
   try {
     await dbAddTournamentMatch(tid, group, idA, idB, wA, wB, winnerId);
+    _saveGameDetail(tid, group, idA, idB, games);
     if (matchType === '2v2' && isAdminUser()) {
       try {
         const groups = _tourStore[tid]?.groups || [];
@@ -1359,11 +1396,14 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
             const wA = rec.winner_id === aA;
             const sa = rec.player_a===aA ? rec.score_a : rec.score_b;
             const sb = rec.player_a===aA ? rec.score_b : rec.score_a;
-            recordSection += `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;background:rgba(0,245,160,0.04);border:1px solid var(--glass-border);margin-bottom:5px;font-size:0.75rem">
-              <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${lA}: ${dA}</span>
-              <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);min-width:36px;text-align:center">${sa}-${sb}</span>
-              <span style="flex:1;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${lB}: ${dB}</span>
-              <span style="color:var(--neon);font-size:0.6rem">✅</span>
+            recordSection += `<div style="padding:6px 10px;border-radius:10px;background:rgba(0,245,160,0.04);border:1px solid var(--glass-border);margin-bottom:5px">
+              <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem">
+                <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${lA}: ${dA}</span>
+                <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);min-width:36px;text-align:center">${sa}-${sb}</span>
+                <span style="flex:1;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${lB}: ${dB}</span>
+                <span style="color:var(--neon);font-size:0.6rem">✅</span>
+              </div>
+              ${_renderGameSummary(tournament.id, grpLetter, aA, aB)}
             </div>`;
           } else {
             recordSection += `<div style="padding:7px 10px;border-radius:10px;border:1px dashed rgba(255,255,255,0.1);margin-bottom:5px">
@@ -1378,9 +1418,27 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
       }
       recordSection += '</div>';
     } else {
-      // Singles: original free-entry form
+      // Singles: recorded-match summaries + free-entry referee form
       const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
-      recordSection = `<div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
+      const grpRecs = tMatches.filter(m => m.group_letter === grpLetter);
+      let recList = '';
+      for (const rec of grpRecs) {
+        const nameA = db.players.find(p=>p.id===rec.player_a)?.name || '?';
+        const nameB = db.players.find(p=>p.id===rec.player_b)?.name || '?';
+        const wA = rec.winner_id === rec.player_a;
+        recList += `<div style="padding:6px 10px;border-radius:10px;background:rgba(0,245,160,0.04);border:1px solid var(--glass-border);margin-bottom:5px">
+          <div style="display:flex;align-items:center;gap:6px;font-size:0.75rem">
+            <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${nameA}</span>
+            <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);min-width:36px;text-align:center">${rec.score_a}-${rec.score_b}</span>
+            <span style="flex:1;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${nameB}</span>
+            <span style="color:var(--neon);font-size:0.6rem">✅</span>
+          </div>
+          ${_renderGameSummary(tournament.id, grpLetter, rec.player_a, rec.player_b)}
+        </div>`;
+      }
+      recordSection = `<div style="margin-top:8px">
+        ${recList ? `<div style="font-size:0.76rem;font-weight:600;color:var(--muted);margin-bottom:6px">📋 ผลแมตช์ที่บันทึกแล้ว</div>${recList}` : ''}
+        <div style="font-size:0.78rem;color:var(--muted);margin:8px 0 4px">บันทึกแมตช์ใหม่ Group ${grpLetter}</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
           <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
           <span style="font-size:0.8rem">vs</span>
