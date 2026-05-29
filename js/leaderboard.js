@@ -881,13 +881,12 @@ async function undoMatch(matchId) {
 
 async function clearPlayerHistory(id) {
   const p = db.players.find(x=>x.id===id); if (!p) return;
-  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ตทุกอย่าง: W/L, คะแนน, แมตช์ และ Achievement ทั้งหมด`)) return;
+  if (!confirm(`ล้างประวัติของ ${p.name}?\nจะรีเซ็ต W/L, แมตช์ และ Achievement ทั้งหมด\n(คงคะแนนแรงค์ ${p.pts} ไว้)`)) return;
   try {
     toast('กำลังล้างประวัติ...', 'info');
 
-    // 1. ล้าง DB ทั้ง prime_titles และ custom_ach ให้ว่างเปล่าสมบูรณ์
+    // 1. ล้าง DB ทั้ง prime_titles และ custom_ach ให้ว่างเปล่าสมบูรณ์ — คงคะแนนแรงค์ (pts) ไว้
     await dbUpdatePlayer(id, {
-      pts: 50,
       wins: 0,
       losses: 0,
       prime_titles: '[]',
@@ -914,7 +913,6 @@ async function clearPlayerHistory(id) {
       db.players[idx].super1000Titles = 0;
       db.players[idx].pinnedAchs = null;
       db.players[idx].primeTitles = [];
-      db.players[idx].pts = 50;
       db.players[idx].wins = 0;
       db.players[idx].losses = 0;
     }
