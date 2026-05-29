@@ -1593,7 +1593,7 @@ async function startTournament(tournamentId) {
           letter, playerIds: playerSlots.filter(Boolean)
         }));
         const totalPlayers = groupEntries.reduce((s, g) => s + g.playerIds.length, 0);
-        if (totalPlayers < 4) return toast('ต้องมีผู้เล่นอย่างน้อย 4 คน', 'error');
+        if (totalPlayers < 2) return toast('ต้องมีผู้เล่นอย่างน้อย 2 คน', 'error');
       }
     } else {
       // ── Legacy: registrations array ──
