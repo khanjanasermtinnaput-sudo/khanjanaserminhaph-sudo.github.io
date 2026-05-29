@@ -664,57 +664,178 @@ function onTournamentModeChange() {
   if (d2) d2.style.display = mode === '2v2' ? '' : 'none';
 }
 
-// ── renderTournamentSection (updated: add matchType selector + 2v2 team UI) ──
+// ── TOURNAMENT HALL OF FAME ────────────────────────────────────────────────
+let _hofAllRows = [], _hofActiveTab = 'all';
+
 async function openTournamentHoF() {
-  // สร้าง modal HOF Tournament
   document.getElementById('tourHofBg')?.remove();
   const bg = document.createElement('div');
   bg.id = 'tourHofBg';
   bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
-  bg.innerHTML = `<div style="background:var(--bg2);border:1px solid rgba(255,215,0,0.25);border-radius:24px;width:100%;max-width:420px;max-height:82vh;overflow-y:auto;padding:0">
-    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-      <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#ffd700,#fff4a3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">🏛️ ทำเนียบแชมป์</div>
-      <button onclick="document.getElementById('tourHofBg').remove()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">✕</button>
-    </div>
-    <div id="tourHofBody" style="padding:4px 16px 20px"><div style="text-align:center;color:var(--muted);padding:20px">⏳ กำลังโหลด...</div></div>
-  </div>`;
+  bg.innerHTML = `
+    <div style="background:var(--bg2);border:1px solid rgba(255,215,0,0.2);border-radius:24px;width:100%;max-width:440px;max-height:86vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:18px 18px 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+        <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#ffd700,#fff4a3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">🏛️ ทำเนียบแชมป์</div>
+        <button onclick="document.getElementById('tourHofBg').remove()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+      <div id="hofTabRow" style="display:flex;gap:6px;padding:12px 16px 8px;overflow-x:auto;flex-shrink:0;scrollbar-width:none">
+        ${[['all','ทั้งหมด'],['Super 1000','👑 S1000'],['Super 500','🥈 S500'],['Regular','🏸 Regular']].map(([v,l]) =>
+          `<button data-tier="${v}" onclick="_hofSwitchTab('${v}')" style="flex-shrink:0;padding:5px 13px;border-radius:20px;border:1px solid var(--glass-border);background:${v==='all'?'var(--neon)':'var(--btn-glass)'};color:${v==='all'?'#000':'var(--muted)'};font-size:0.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all 0.18s">${l}</button>`
+        ).join('')}
+      </div>
+      <div id="tourHofList" style="overflow-y:auto;flex:1;padding:0 14px 16px">
+        <div style="text-align:center;color:var(--muted);padding:24px">⏳ กำลังโหลด...</div>
+      </div>
+    </div>`;
   bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
   document.body.appendChild(bg);
+  try {
+    _hofAllRows = await dbGetHOFTournaments();
+    _hofActiveTab = 'all';
+    _hofRenderList();
+  } catch(e) {
+    const el = document.getElementById('tourHofList');
+    if (el) el.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.82rem">โหลดไม่ได้: ${e.message}</div>`;
+  }
+}
+
+function _hofSwitchTab(tier) {
+  _hofActiveTab = tier;
+  document.querySelectorAll('#hofTabRow button').forEach(b => {
+    const active = b.dataset.tier === tier;
+    b.style.background = active ? 'var(--neon)' : 'var(--btn-glass)';
+    b.style.color = active ? '#000' : 'var(--muted)';
+    b.style.borderColor = active ? 'var(--neon)' : 'var(--glass-border)';
+  });
+  _hofRenderList();
+}
+
+function _hofRenderList() {
+  const el = document.getElementById('tourHofList');
+  if (!el) return;
+  const rows = _hofActiveTab === 'all' ? _hofAllRows : _hofAllRows.filter(r => r.tier === _hofActiveTab);
+  if (!rows.length) { el.innerHTML = `<div style="text-align:center;color:var(--muted);padding:28px;font-size:0.84rem">ยังไม่มีทัวร์นาเมนต์ใน tier นี้</div>`; return; }
+  const tierIcon = t => t === 'Super 1000' ? '👑' : t === 'Super 500' ? '🥈' : '🏸';
+  const tierBg   = t => t === 'Super 1000' ? 'rgba(255,215,0,0.07)' : t === 'Super 500' ? 'rgba(192,192,192,0.06)' : 'rgba(205,127,50,0.06)';
+  const tierBd   = t => t === 'Super 1000' ? 'rgba(255,215,0,0.28)' : t === 'Super 500' ? 'rgba(192,192,192,0.22)' : 'rgba(205,127,50,0.22)';
+  el.innerHTML = rows.map(r => {
+    let hof = {};
+    try { const g = typeof r.groups==='string'?JSON.parse(r.groups):(r.groups||[]); hof = g.find(x=>x._hof)||{}; } catch(e){}
+    const date = (hof.ended_at||r.created_at) ? new Date(hof.ended_at||r.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '';
+    const mTag = hof.match_type==='2v2'
+      ? '<span style="font-size:0.58rem;background:rgba(0,217,245,0.12);border:1px solid rgba(0,217,245,0.3);color:var(--neon2);border-radius:20px;padding:1px 5px">2v2</span>'
+      : '<span style="font-size:0.58rem;background:rgba(0,245,160,0.09);border:1px solid rgba(0,245,160,0.22);color:var(--neon);border-radius:20px;padding:1px 5px">1v1</span>';
+    return `<div onclick="_hofOpenDetail(${r.id})" style="border:1px solid ${tierBd(r.tier)};border-radius:14px;background:${tierBg(r.tier)};padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span>${tierIcon(r.tier)}</span>
+          <span style="font-weight:700;font-size:0.88rem">${r.name}</span>
+          ${mTag}
+        </div>
+        <span style="font-size:0.62rem;color:var(--muted)">${date}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 8px">🏆 ${hof.champion_name||'?'}</span>
+        ${hof.runner_up_name?`<span style="font-size:0.68rem;color:var(--muted)">🥈 ${hof.runner_up_name}</span>`:''}
+      </div>
+      <div style="text-align:right;margin-top:5px;font-size:0.6rem;color:var(--muted)">ดูรายละเอียด →</div>
+    </div>`;
+  }).join('');
+}
+
+async function _hofOpenDetail(tournamentId) {
+  const r = _hofAllRows.find(x => x.id === tournamentId);
+  if (!r) return;
+  let hof = {}, groups = [];
+  try {
+    const g = typeof r.groups==='string'?JSON.parse(r.groups):(r.groups||[]);
+    hof = g.find(x=>x._hof)||{};
+    groups = g.filter(x=>!x._hof&&!x._meta);
+  } catch(e){}
+  const matchType = hof.match_type||'1v1';
+  const tierIcon = r.tier==='Super 1000'?'👑':r.tier==='Super 500'?'🥈':'🏸';
+  const date = (hof.ended_at||r.created_at) ? new Date(hof.ended_at||r.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '';
+  const pName = id => db.players.find(x=>x.id===id)?.name||`#${id}`;
+
+  const listEl = document.getElementById('tourHofList');
+  if (!listEl) return;
+  listEl.innerHTML = `
+    <button onclick="_hofRenderList()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:0.74rem;cursor:pointer;margin-bottom:10px">← กลับ</button>
+    <div style="border:1px solid rgba(255,215,0,0.22);border-radius:16px;background:rgba(255,215,0,0.04);padding:14px;margin-bottom:12px;text-align:center">
+      <div style="font-size:1.6rem;margin-bottom:4px">${tierIcon}</div>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">${r.name}</div>
+      <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:0.66rem;color:var(--gold)">${r.tier}</span>
+        <span style="font-size:0.66rem;color:var(--muted)">${matchType==='2v2'?'⚔️ 2v2':'🏸 1v1'}</span>
+        ${date?`<span style="font-size:0.66rem;color:var(--muted)">${date}</span>`:''}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="border:1px solid rgba(255,215,0,0.3);border-radius:12px;background:rgba(255,215,0,0.07);padding:10px;text-align:center">
+        <div style="font-size:1.3rem">🏆</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">แชมป์</div>
+        <div style="font-weight:700;font-size:0.82rem;color:var(--gold)">${hof.champion_name||'?'}</div>
+      </div>
+      <div style="border:1px solid rgba(192,192,192,0.2);border-radius:12px;background:rgba(192,192,192,0.05);padding:10px;text-align:center">
+        <div style="font-size:1.3rem">🥈</div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">รองแชมป์</div>
+        <div style="font-weight:700;font-size:0.82rem;color:var(--silver)">${hof.runner_up_name||'?'}</div>
+      </div>
+    </div>
+    <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>`;
 
   try {
-    const rows = await dbGetHOFTournaments();
-    const body = document.getElementById('tourHofBody');
-    if (!body) return;
-    if (!rows.length) { body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px;font-size:0.85rem">ยังไม่มีทัวร์นาเมนต์ที่จบแล้ว</div>`; return; }
-    const tierIcon = t => t === 'Super 1000' ? '👑' : t === 'Super 500' ? '🥈' : '🏸';
-    const tierColor = t => t === 'Super 1000' ? 'var(--gold)' : t === 'Super 500' ? 'var(--silver)' : 'var(--rank-bronze)';
-    body.innerHTML = rows.map(r => {
-      let hof = {};
-      try {
-        const grps = typeof r.groups === 'string' ? JSON.parse(r.groups) : (r.groups || []);
-        hof = grps.find(g => g._hof) || {};
-      } catch(e) {}
-      const endDate = hof.ended_at ? new Date(hof.ended_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : new Date(r.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
-      const modeTag = hof.match_type === '2v2' ? '<span style="font-size:0.6rem;background:rgba(0,217,245,0.12);border:1px solid rgba(0,217,245,0.3);color:var(--neon2);border-radius:20px;padding:1px 6px">2v2</span>' : '';
-      return `<div style="border:1px solid var(--glass-border);border-radius:14px;background:var(--card);padding:12px 14px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:1.1rem">${tierIcon(r.tier)}</span>
-            <span style="font-weight:700;font-size:0.9rem">${r.name}</span>
-            ${modeTag}
-          </div>
-          <span style="font-size:0.65rem;color:var(--muted)">${endDate}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-          <span style="font-size:0.75rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 7px">🏆 ${hof.champion_name || '?'}</span>
-          <span style="font-size:0.65rem;color:var(--muted);font-weight:600;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.05)">${r.tier}</span>
-        </div>
-        ${hof.runner_up_name ? `<div style="font-size:0.7rem;color:var(--muted)">🥈 รองแชมป์: ${hof.runner_up_name}</div>` : ''}
+    const tms = await dbGetTournamentMatches(tournamentId);
+    const detEl = document.getElementById('hofDetailBody');
+    if (!detEl) return;
+
+    // Collect participants
+    const pIds = new Set();
+    if (hof.champion_ids) hof.champion_ids.forEach(id => pIds.add(id));
+    groups.forEach(grp => {
+      if (matchType==='2v2'&&grp.teams) grp.teams.forEach(t=>(t.playerIds||[]).forEach(id=>pIds.add(id)));
+      else (grp.playerIds||[]).forEach(id=>pIds.add(id));
+    });
+    tms.forEach(m=>{pIds.add(m.player_a);pIds.add(m.player_b);});
+
+    const mRow = m => {
+      const wA = m.winner_id===m.player_a;
+      return `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:10px;background:var(--card);margin-bottom:5px;font-size:0.77rem">
+        <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${pName(m.player_a)}</span>
+        <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--muted);min-width:44px;text-align:center">${m.score_a??'-'} - ${m.score_b??'-'}</span>
+        <span style="flex:1;text-align:left;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${pName(m.player_b)}</span>
       </div>`;
-    }).join('');
+    };
+
+    let html = `<div style="font-size:0.68rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:7px">👥 ผู้เข้าร่วม</div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px">
+        ${[...pIds].map(id=>`<span style="font-size:0.71rem;padding:2px 9px;border-radius:20px;background:var(--card);border:1px solid var(--glass-border)">${pName(id)}</span>`).join('')}
+      </div>`;
+
+    const groupMs = tms.filter(m=>m.group_letter!=='GF'&&m.group_letter!=='SF');
+    const finalMs = tms.filter(m=>m.group_letter==='GF'||m.group_letter==='SF');
+
+    if (groupMs.length) {
+      const byG = {};
+      groupMs.forEach(m=>{(byG[m.group_letter]=byG[m.group_letter]||[]).push(m);});
+      html += `<div style="font-size:0.68rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px">📊 รอบกลุ่ม</div>`;
+      for (const [ltr,ms] of Object.entries(byG)) {
+        html += `<div style="font-size:0.71rem;color:var(--neon2);font-weight:700;margin:6px 0 4px">Group ${ltr}</div>${ms.map(mRow).join('')}`;
+      }
+    }
+    if (finalMs.length) {
+      html += `<div style="font-size:0.68rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin:12px 0 8px">🏆 รอบ Final</div>`;
+      html += finalMs.map(m=>{
+        const lbl = m.group_letter==='GF'?'Grand Final':'Semi Final';
+        return `<div style="font-size:0.65rem;color:var(--gold);font-weight:700;margin:5px 0 3px">${lbl}</div>`+mRow(m);
+      }).join('');
+    }
+    if (!groupMs.length&&!finalMs.length) html += `<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:10px">ไม่พบข้อมูลแมตช์</div>`;
+
+    detEl.innerHTML = html;
   } catch(e) {
-    const body = document.getElementById('tourHofBody');
-    if (body) body.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.82rem">โหลดไม่ได้: ${e.message}</div>`;
+    const detEl = document.getElementById('hofDetailBody');
+    if (detEl) detEl.innerHTML = `<div style="color:var(--red);font-size:0.78rem;text-align:center;padding:12px">โหลดไม่ได้: ${e.message}</div>`;
   }
 }
 
