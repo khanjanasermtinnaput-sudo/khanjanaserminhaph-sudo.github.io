@@ -406,7 +406,27 @@ function getNemesis(playerId) {
 // ============================================================
 // ===== FEATURE: RANK SCORE OVER TIME CHART (full SVG) =====
 // ============================================================
-function buildRankingChart(playerId) {
+function buildRankingChart(playerId, rangeDays) {
+  return `<div id="rkHost_${playerId}">${_buildRankingChartInner(playerId, rangeDays)}</div>`;
+}
+
+// Re-render only the chart body when the user switches time range
+function setRankChartRange(playerId, rangeDays) {
+  const host = document.getElementById('rkHost_' + playerId);
+  if (host) host.innerHTML = _buildRankingChartInner(playerId, rangeDays);
+}
+
+// Time-range pills (7d / 30d / all) — lets you focus on recent movement
+function _rkRangeToggle(playerId, active) {
+  const opts = _lang === 'en'
+    ? [[7, '7d'], [30, '30d'], [0, 'All']]
+    : [[7, '7 วัน'], [30, '30 วัน'], [0, 'ทั้งหมด']];
+  return `<div class="rk-range">${opts.map(([v, l]) =>
+    `<button class="rk-range-btn${(active || 0) === v ? ' on' : ''}" onclick="setRankChartRange(${playerId},${v})">${l}</button>`
+  ).join('')}</div>`;
+}
+
+function _buildRankingChartInner(playerId, rangeDays) {
   // Reconstruct rank-score (pts) at each match point over time
   const p = db.players.find(x => x.id === playerId);
   if (!p) return '';
@@ -415,29 +435,52 @@ function buildRankingChart(playerId) {
     .filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId))
     .sort((a, b) => new Date(a.date || a.played_at) - new Date(b.date || b.played_at));
 
-  if (playerMatches.length < 2) return '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:14px 0">ยังไม่มีข้อมูลเพียงพอ (ต้องเล่นอย่างน้อย 2 แมตช์)</div>';
+  const _msg = m => `<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:14px 0">${m}</div>`;
+  if (playerMatches.length < 2)
+    return _msg(_lang === 'en' ? 'Not enough data yet (play at least 2 matches)' : 'ยังไม่มีข้อมูลเพียงพอ (ต้องเล่นอย่างน้อย 2 แมตช์)');
 
   // Walk backwards from current pts to reconstruct the forward score timeline
-  let pts = p.pts;
+  let walk = p.pts;
   const after = []; // pts AFTER each match, in forward order
   [...playerMatches].reverse().forEach(m => {
-    after.unshift(pts);
+    after.unshift(walk);
     const inA = m.teamA.some(x => x.id === playerId);
     const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-    pts = win ? Math.max(0, pts - (m.pts?.gain || 0)) : Math.min(pts + (m.pts?.loss || 0), 9999);
+    walk = win ? Math.max(0, walk - (m.pts?.gain || 0)) : Math.min(walk + (m.pts?.loss || 0), 9999);
   });
-  const startPts = pts;                  // pts before the very first match
-  const series = [startPts, ...after];   // length = playerMatches.length + 1
+  const fullSeries = [walk, ...after];                                       // index 0 = before first match
+  const fullDates  = [null, ...playerMatches.map(m => new Date(m.date || m.played_at))];
+  const N = fullSeries.length;
+
+  // Default range: focus on the last 30 days when there is enough recent data
+  if (rangeDays === undefined || rangeDays === null) {
+    const cut30 = Date.now() - 30 * 86400000;
+    const recent = fullDates.filter(d => d && d.getTime() >= cut30).length;
+    rangeDays = recent >= 2 ? 30 : 0;
+  }
+  rangeDays = Number(rangeDays) || 0;
+  const toggle = _rkRangeToggle(playerId, rangeDays);
+
+  // Slice to the selected window (keep one anchor point just before it)
+  let series = fullSeries, dates = fullDates;
+  if (rangeDays > 0) {
+    const cut = Date.now() - rangeDays * 86400000;
+    let startIdx = -1;
+    for (let i = 1; i < N; i++) { if (fullDates[i] && fullDates[i].getTime() >= cut) { startIdx = i; break; } }
+    if (startIdx === -1)
+      return toggle + _msg(_lang === 'en' ? 'No matches in this period' : 'ไม่มีแมตช์ในช่วงนี้');
+    const from = Math.max(0, startIdx - 1);
+    series = fullSeries.slice(from);
+    dates  = fullDates.slice(from);
+  }
   const n = series.length;
+  if (n < 2)
+    return toggle + _msg(_lang === 'en' ? 'Not enough data in this period' : 'ข้อมูลในช่วงนี้ไม่พอแสดงกราฟ');
 
-  // Date for each series point (index 0 = "เริ่ม", index k = after match k-1)
-  const dateAt = i => {
-    if (i === 0) return null;
-    const m = playerMatches[i - 1];
-    return m ? new Date(m.date || m.played_at) : null;
-  };
-  const fmtDate = d => d ? d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เริ่ม';
+  // Date for each series point (index 0 may be the pre-window anchor; null = "เริ่ม")
+  const fmtDate = d => d ? d.toLocaleDateString(_lang === 'en' ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'short' }) : (_lang === 'en' ? 'start' : 'เริ่ม');
 
+  const startPts = series[0];
   const curPts  = series[n - 1];
   const peakPts = Math.max(...series);
   const peakIdx = series.lastIndexOf(peakPts);
@@ -492,7 +535,7 @@ function buildRankingChart(playerId) {
   const step = Math.max(1, Math.floor(n / 5));
   const xAxisSVG = series.map((_, i) => {
     if (i % step !== 0 && i !== n - 1) return '';
-    const label = i === 0 ? 'เริ่ม' : (i === n - 1 ? 'ล่าสุด' : fmtDate(dateAt(i)));
+    const label = i === n - 1 ? (_lang === 'en' ? 'now' : 'ล่าสุด') : fmtDate(dates[i]);
     return `<text x="${toX(i).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.3)" font-size="8" text-anchor="middle" font-family="Rajdhani,sans-serif">${label}</text>`;
   }).join('');
 
@@ -503,6 +546,7 @@ function buildRankingChart(playerId) {
   }).join('');
 
   return `
+  ${toggle}
   <div style="position:relative">
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;overflow:visible">
       <defs>

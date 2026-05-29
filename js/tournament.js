@@ -1379,50 +1379,104 @@ async function renderTournamentSection() {
   container.innerHTML = html;
 }
 
-// ── Knockout stage helpers ────────────────────────────────────────────────────
-function _renderKnockoutStage(tournament, tMatches, stageId, stageLabel, leftEntry, rightEntry, matchType, readOnly) {
-  const match = tMatches.find(m => m.group_letter === stageId);
-  let content = '';
-  if (match) {
-    const wLabel = (leftEntry?.id === match.winner_id ? leftEntry : rightEntry)?.label
-      || db.players.find(p => p.id === match.winner_id)?.name || '?';
-    const lLabel = (leftEntry?.id !== match.winner_id ? leftEntry : rightEntry)?.label || '?';
-    content = `<div class="gf-result">
-      <div style="font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">ผลการแข่งขัน</div>
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center">
-        <span style="font-size:1.1rem">🏆</span>
-        <span class="gf-winner">${wLabel}</span>
-        <span style="font-family:'Rajdhani';font-size:1rem;font-weight:700;color:var(--gold)">${match.score_a} – ${match.score_b}</span>
-        <span style="font-size:0.8rem;color:var(--muted)">${lLabel}</span>
-      </div>
-      ${stageId === 'GF' ? `<div style="margin-top:5px;font-size:0.7rem;color:var(--neon);font-weight:600">✅ Grand Final เสร็จสิ้น · กด "ประกาศแชมป์" เพื่อมอบรางวัล</div>` : ''}
-    </div>`;
-  } else if (!readOnly && leftEntry && rightEntry) {
-    content = `<div class="gf-match" style="margin-bottom:10px">
-        <span class="gf-winner">${leftEntry.label}</span><span class="gf-vs">vs</span><span class="gf-winner">${rightEntry.label}</span>
-      </div>
-      <button class="btn btn-sm" style="width:100%;font-size:0.74rem;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700"
-        onclick="openReferee(${tournament.id},'${stageId}',${leftEntry.id},${rightEntry.id},'${matchType}')">🎬 นับคะแนน (Referee)</button>`;
-  } else if (!readOnly) {
-    content = `<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;text-align:center">⏳ รอผลรอบก่อนหน้า...</div>`;
-  } else if (leftEntry && rightEntry) {
-    content = `<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;text-align:center">${leftEntry.label} vs ${rightEntry.label}</div>`;
-  }
-  return `<div class="gf-bracket" style="margin-bottom:8px"><div class="gf-title">${stageLabel}</div>${content}</div>`;
+// ── Knockout bracket tree (visual) ────────────────────────────────────────────
+// Orient a recorded match's scores/winner flags to given left/right entry ids
+function _bkSplit(m, leftId, rightId) {
+  const ls = m.player_a === leftId ? m.score_a : m.score_b;
+  const rs = m.player_a === leftId ? m.score_b : m.score_a;
+  return { ls, rs, lWin: m.winner_id === leftId, rWin: m.winner_id === rightId };
 }
+
+// One match-node card. left/right are entry objects ({id,label}) or null (TBD).
+function _bkCard(tournament, tMatches, stageId, left, right, matchType, readOnly, isGF) {
+  const cls = isGF ? 't-bk-m gf' : 't-bk-m';
+  const m = tMatches.find(x => x.group_letter === stageId);
+
+  if (m) {
+    const lId = left ? left.id : m.player_a;
+    const rId = right ? right.id : m.player_b;
+    const lLabel = left ? left.label : (db.players.find(p => p.id === m.player_a)?.name || '?');
+    const rLabel = right ? right.label : (db.players.find(p => p.id === m.player_b)?.name || '?');
+    const { ls, rs, lWin, rWin } = _bkSplit(m, lId, rId);
+    const gold = isGF ? ' gold' : '';
+    const mark = isGF ? '👑' : '✓';
+    const row = (label, sc, win) =>
+      `<div class="t-bk-row ${win ? 'win' + gold : 'lose'}"><span class="t-bk-nm">${label}</span>${win ? `<span class="t-bk-tick">${mark}</span>` : ''}<span class="t-bk-sc">${sc}</span></div>`;
+    return `<div class="${cls}">${row(lLabel, ls, lWin)}${row(rLabel, rs, rWin)}</div>`;
+  }
+
+  if (left && right) {
+    if (readOnly)
+      return `<div class="${cls}"><div class="t-bk-row"><span class="t-bk-nm">${left.label}</span></div><div class="t-bk-vs">VS</div><div class="t-bk-row"><span class="t-bk-nm">${right.label}</span></div></div>`;
+    return `<div class="${cls} live">
+      <div class="t-bk-row"><span class="t-bk-nm">${left.label}</span><span class="t-bk-sc">–</span></div>
+      <div class="t-bk-vs">VS</div>
+      <div class="t-bk-row"><span class="t-bk-nm">${right.label}</span><span class="t-bk-sc">–</span></div>
+      <button class="t-bk-ref" onclick="openReferee(${tournament.id},'${stageId}',${left.id},${right.id},'${matchType}')">🎬 นับคะแนน (Referee)</button>
+    </div>`;
+  }
+  return `<div class="${cls}"><div class="t-bk-wait">⏳ รอผลรอบก่อนหน้า…</div></div>`;
+}
+
+// Single-competitor chip (group-winner feeder / bye)
+function _bkChip(entry, sub) {
+  const name = entry ? entry.label : '—';
+  return `<div class="t-bk-m t-bk-chip"><div class="t-bk-row"><span class="t-bk-nm">${name}</span>${sub ? `<span class="t-bk-byetag">${sub}</span>` : ''}</div></div>`;
+}
+
+// Champion node
+function _bkChampion(winner) {
+  const name = winner ? winner.label : (_lang === 'en' ? 'TBD' : 'รอผล');
+  return `<div class="t-bk-champ"><div class="t-bk-champ-em">🏆</div><div class="t-bk-champ-cap">Champion</div><div class="t-bk-champ-nm">${name}</div></div>`;
+}
+
+// A labelled cell = round label + slot holding the card (siblings, so the slot
+// centres the card and the connectors line up with each slot)
+function _bkCell(label, cardHtml, gf) {
+  return `<div class="t-bk-rl${gf ? ' gf' : ''}">${label}</div><div class="t-bk-slot">${cardHtml}</div>`;
+}
+
+// Connector columns — percentage-positioned so they scale with any height
+const _BK_MERGE = `<div class="t-bk-conn"><i class="t-bk-h" style="left:0;top:25%;width:50%"></i><i class="t-bk-h" style="left:0;top:75%;width:50%"></i><i class="t-bk-v" style="left:calc(50% - 1px);top:25%;height:50%"></i><i class="t-bk-h" style="left:50%;top:50%;width:50%"></i></div>`;
+const _BK_PASS  = `<div class="t-bk-conn"><i class="t-bk-h" style="left:0;top:50%;width:100%"></i></div>`;
 
 function _buildKnockoutSection(tournament, tMatches, winners, matchType, readOnly) {
   if (winners.length < 2) return '';
-  const _mw = (sid, a, b) => { const m = tMatches.find(x => x.group_letter === sid); return m ? (m.winner_id === a?.id ? a : b) : null; };
-  if (winners.length === 2)
-    return _renderKnockoutStage(tournament, tMatches, 'GF', '🏆 Grand Final', winners[0], winners[1], matchType, readOnly);
-  if (winners.length === 3)
-    return _renderKnockoutStage(tournament, tMatches, 'SF', '⚔️ Semi Final', winners[0], winners[1], matchType, readOnly)
-      + _renderKnockoutStage(tournament, tMatches, 'GF', '🏆 Grand Final', _mw('SF', winners[0], winners[1]), winners[2], matchType, readOnly);
-  // 4 groups
-  return _renderKnockoutStage(tournament, tMatches, 'SF1', '⚔️ Semi Final 1', winners[0], winners[1], matchType, readOnly)
-    + _renderKnockoutStage(tournament, tMatches, 'SF2', '⚔️ Semi Final 2', winners[2], winners[3], matchType, readOnly)
-    + _renderKnockoutStage(tournament, tMatches, 'GF', '🏆 Grand Final', _mw('SF1', winners[0], winners[1]), _mw('SF2', winners[2], winners[3]), matchType, readOnly);
+  const T = tournament, M = tMatches, mt = matchType, ro = readOnly;
+  const _mw = (sid, a, b) => { const m = M.find(x => x.group_letter === sid); return m ? (m.winner_id === a?.id ? a : b) : null; };
+  const champLabel = _lang === 'en' ? '👑 Champ' : '👑 แชมป์';
+
+  let firstRound = '', secondRound = '', champWinner = null;
+
+  if (winners.length === 2) {
+    const a = winners[0], b = winners[1];
+    champWinner = _mw('GF', a, b);
+    const fLabel = _lang === 'en' ? 'Group Winners' : 'ผู้ชนะกลุ่ม';
+    firstRound  = `<div class="t-bk-round narrow">${_bkCell(fLabel, _bkChip(a), false)}${_bkCell('&nbsp;', _bkChip(b), false)}</div>`;
+    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', a, b, mt, ro, true), true)}</div>`;
+  } else if (winners.length === 3) {
+    const a = winners[0], b = winners[1], bye = winners[2];
+    const sfW = _mw('SF', a, b);
+    champWinner = _mw('GF', sfW, bye);
+    const byeLabel = _lang === 'en' ? '🎟️ Bye' : '🎟️ ผ่านบาย';
+    const byeSub   = _lang === 'en' ? 'bye' : 'บายเข้ารอบ';
+    firstRound  = `<div class="t-bk-round">${_bkCell('⚔️ Semi Final', _bkCard(T, M, 'SF', a, b, mt, ro, false), false)}${_bkCell(byeLabel, _bkChip(bye, byeSub), false)}</div>`;
+    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', sfW, bye, mt, ro, true), true)}</div>`;
+  } else { // 4 groups
+    const w1 = _mw('SF1', winners[0], winners[1]);
+    const w2 = _mw('SF2', winners[2], winners[3]);
+    champWinner = _mw('GF', w1, w2);
+    firstRound  = `<div class="t-bk-round">${_bkCell('⚔️ Semi Final 1', _bkCard(T, M, 'SF1', winners[0], winners[1], mt, ro, false), false)}${_bkCell('⚔️ Semi Final 2', _bkCard(T, M, 'SF2', winners[2], winners[3], mt, ro, false), false)}</div>`;
+    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', w1, w2, mt, ro, true), true)}</div>`;
+  }
+
+  const champRound = `<div class="t-bk-round champ">${_bkCell(champLabel, _bkChampion(champWinner), false)}</div>`;
+  const title = _lang === 'en' ? '🏆 Knockout Bracket' : '🏆 รอบน็อคเอาท์ (สาย)';
+
+  return `<div class="t-bk-wrap">
+    <div class="t-bk-heading">${title}</div>
+    <div class="t-bk-scroll"><div class="t-bk">${firstRound}${_BK_MERGE}${secondRound}${_BK_PASS}${champRound}</div></div>
+  </div>`;
 }
 
 // ── renderTournamentBracket (v3: multi-group knockout + readOnly mode) ──────

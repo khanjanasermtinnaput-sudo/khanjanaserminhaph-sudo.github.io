@@ -502,6 +502,54 @@ body.x2-active .toast-wrap{bottom:120px}
 /* ── Grand Final result card ── */
 .gf-result{text-align:center;padding:10px 8px;border-radius:10px;background:linear-gradient(135deg,rgba(255,215,0,0.07),rgba(255,165,0,0.04));border:1px solid rgba(255,215,0,0.25)}
 
+/* ── Knockout bracket tree (visual) ── */
+.t-bk-wrap{margin-top:14px}
+.t-bk-heading{font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold);margin-bottom:10px}
+.t-bk-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.t-bk{display:flex;align-items:stretch;min-height:210px;min-width:min-content}
+.t-bk-round{flex:0 0 168px;display:flex;flex-direction:column;justify-content:center}
+.t-bk-round.narrow{flex:0 0 132px}
+.t-bk-round.champ{flex:0 0 148px}
+.t-bk-slot{flex:1;display:flex;align-items:center;justify-content:center;min-height:54px}
+.t-bk-slot+.t-bk-rl{margin-top:8px}
+.t-bk-rl{font-size:0.6rem;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:6px}
+.t-bk-rl.gf{color:var(--gold)}
+.t-bk-conn{flex:0 0 30px;position:relative;align-self:stretch}
+.t-bk-conn i{position:absolute;background:rgba(255,215,0,0.30)}
+.t-bk-conn i.t-bk-h{height:2px}
+.t-bk-conn i.t-bk-v{width:2px}
+.t-bk-m{width:100%;border-radius:11px;border:1px solid var(--glass-border);background:linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02));overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,0.28)}
+.t-bk-m.gf{border-color:rgba(255,215,0,0.45);background:linear-gradient(180deg,rgba(255,215,0,0.08),rgba(255,165,0,0.03));box-shadow:0 0 22px rgba(255,215,0,0.10)}
+.t-bk-m.live{border-color:rgba(255,215,0,0.40)}
+.t-bk-chip{opacity:0.95}
+.t-bk-row{display:flex;align-items:center;gap:7px;padding:7px 10px;font-size:0.76rem}
+.t-bk-row+.t-bk-row{border-top:1px solid rgba(255,255,255,0.07)}
+.t-bk-nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-bk-sc{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.9rem;min-width:18px;text-align:center;color:var(--muted)}
+.t-bk-row.win .t-bk-nm{color:var(--neon);font-weight:700}
+.t-bk-row.win .t-bk-sc{color:var(--neon)}
+.t-bk-row.win.gold .t-bk-nm{color:var(--gold)}
+.t-bk-row.win.gold .t-bk-sc{color:var(--gold)}
+.t-bk-row.lose .t-bk-nm{color:var(--muted)}
+.t-bk-tick{font-size:0.6rem;color:var(--neon)}
+.t-bk-row.win.gold .t-bk-tick{font-size:0.8rem}
+.t-bk-byetag{font-size:0.58rem;color:var(--neon2)}
+.t-bk-vs{text-align:center;font-size:0.56rem;color:var(--muted);letter-spacing:0.12em;padding:2px 0}
+.t-bk-wait{padding:13px 8px;text-align:center;font-size:0.7rem;color:var(--muted)}
+.t-bk-ref{display:block;width:100%;font-size:0.66rem;font-weight:600;text-align:center;padding:7px 8px;border:none;border-top:1px solid rgba(255,215,0,0.25);background:rgba(255,215,0,0.14);color:#ffd700;cursor:pointer}
+.t-bk-ref:hover{background:rgba(255,215,0,0.22)}
+.t-bk-champ{width:100%;border-radius:13px;border:1px solid rgba(255,215,0,0.5);background:linear-gradient(160deg,rgba(255,215,0,0.16),rgba(255,165,0,0.05));padding:12px 10px;text-align:center;box-shadow:0 0 28px rgba(255,215,0,0.16)}
+.t-bk-champ-em{font-size:1.4rem;margin-bottom:2px;filter:drop-shadow(0 0 9px rgba(255,215,0,0.5))}
+.t-bk-champ-cap{font-size:0.54rem;letter-spacing:0.13em;text-transform:uppercase;color:rgba(255,215,0,0.7);margin-bottom:4px}
+.t-bk-champ-nm{font-family:'Rajdhani',sans-serif;font-size:1.05rem;font-weight:700;color:var(--gold);line-height:1.1;text-shadow:0 0 14px rgba(255,215,0,0.35)}
+
+/* ── Rank-score chart time-range pills ── */
+.rk-range{display:flex;gap:5px;margin-bottom:10px}
+.rk-range-btn{font-size:0.66rem;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer;transition:all .15s}
+.rk-range-btn:hover{color:var(--text)}
+.rk-range-btn.on{background:rgba(0,245,160,0.14);border-color:rgba(0,245,160,0.45);color:var(--neon)}
+[data-style="lite"] .t-bk-m,[data-style="lite"] .t-bk-champ{box-shadow:none!important}
+
 /* ── Reward manager modal ── */
 .reward-mgr-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
 .reward-mgr-label{font-size:0.78rem;color:var(--muted);width:80px;flex-shrink:0}
