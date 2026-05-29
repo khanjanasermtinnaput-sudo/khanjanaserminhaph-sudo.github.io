@@ -169,10 +169,11 @@ function getTeamByAnchor(groups, anchorId) {
   return null;
 }
 
-// ── [NEW] Human-readable team name: "Alice + Bob" ──
+// ── [NEW] Human-readable team name: "A: Alice + Bob" (or "Alice + Bob" for legacy) ──
 function getTeamDisplayName(team, players) {
   if (!team || !team.playerIds) return '—';
-  return team.playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(' + ');
+  const names = team.playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(' + ');
+  return team.name ? `${team.name}: ${names}` : names;
 }
 
 // ── calculateGroupStandings: full standings with h2h, scoreDiff ──
@@ -649,19 +650,73 @@ function renderRewardCards(tournamentId, tierName) {
   return cards ? `<div style="margin-top:10px">${cards}</div>` : '';
 }
 
-// ── [NEW] Toggle Group B section in 2v2 create form ──
-function toggle2v2GroupB(show) {
-  const el = document.getElementById('t2v2_groupB_section');
-  if (el) el.style.display = show ? '' : 'none';
-}
+// ── 2v2 team builder ──────────────────────────────────────────────────────────
+let _t2v2TeamCount = 0;
 
-// ── [NEW] Switch between 1v1 checkboxes and 2v2 team UI ──
 function onTournamentModeChange() {
   const mode = document.getElementById('tournamentMatchType')?.value || '1v1';
   const d1 = document.getElementById('tournamentPlayerSelect1v1');
   const d2 = document.getElementById('tournamentPlayerSelect2v2');
   if (d1) d1.style.display = mode === '1v1' ? '' : 'none';
   if (d2) d2.style.display = mode === '2v2' ? '' : 'none';
+  if (mode === '2v2') _init2v2Teams();
+}
+
+function _init2v2Teams() {
+  _t2v2TeamCount = 0;
+  const list = document.getElementById('t2v2_teams_list');
+  if (list) list.innerHTML = '';
+  _add2v2Team(); _add2v2Team();
+}
+
+function _add2v2Team() {
+  if (_t2v2TeamCount >= 8) { toast('สูงสุด 8 ทีม', 'error'); return; }
+  const idx = _t2v2TeamCount++;
+  const letter = 'ABCDEFGHIJKLMNOP'[idx];
+  const list = document.getElementById('t2v2_teams_list');
+  if (!list) return;
+  const pOpts = db.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const div = document.createElement('div');
+  div.className = 't2v2-team-row';
+  div.style.cssText = 'border:1px solid var(--glass-border);border-radius:12px;padding:10px 12px;margin-bottom:8px;position:relative';
+  div.innerHTML = `
+    <div style="font-size:0.75rem;font-weight:700;color:var(--neon2);margin-bottom:8px">⚔️ Team ${letter}</div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select class="inp t2v2-p0" style="flex:1;min-width:100px;font-size:0.76rem">${pOpts}</select>
+      <span style="color:var(--muted);font-size:0.7rem">+</span>
+      <select class="inp t2v2-p1" style="flex:1;min-width:100px;font-size:0.76rem">${pOpts}</select>
+    </div>
+    ${idx >= 2 ? `<button onclick="this.closest('.t2v2-team-row').remove()" style="position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:rgba(255,100,100,0.9);font-size:0.7rem;cursor:pointer">✕</button>` : ''}
+  `;
+  list.appendChild(div);
+}
+
+function _get2v2Teams() {
+  const teams = [];
+  document.querySelectorAll('.t2v2-team-row').forEach((row, i) => {
+    teams.push({
+      name: 'ABCDEFGHIJKLMNOP'[i],
+      playerIds: [
+        parseInt(row.querySelector('.t2v2-p0')?.value),
+        parseInt(row.querySelector('.t2v2-p1')?.value),
+      ]
+    });
+  });
+  return teams;
+}
+
+async function recordFixture(tournamentId, groupLetter, anchorA, anchorB) {
+  const fid = `f_${tournamentId}_${groupLetter}_${anchorA}_${anchorB}`;
+  const sa = parseInt(document.getElementById(`${fid}_sa`)?.value);
+  const sb = parseInt(document.getElementById(`${fid}_sb`)?.value);
+  if (isNaN(sa) || isNaN(sb)) return toast('กรุณากรอกสกอร์', 'error');
+  if (sa === sb) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
+  const winnerId = sa > sb ? anchorA : anchorB;
+  try {
+    await dbAddTournamentMatch(tournamentId, groupLetter, anchorA, anchorB, sa, sb, winnerId);
+    toast('บันทึกแมตช์แล้ว ✅', 'success');
+    renderTournamentSection();
+  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
 }
 
 // ── TOURNAMENT HALL OF FAME ────────────────────────────────────────────────
@@ -871,43 +926,11 @@ async function renderTournamentSection() {
       </div>
     </div>
 
-    <!-- [NEW] 2v2 team builder (hidden until mode = 2v2) -->
+    <!-- [UPDATED] 2v2 dynamic team builder -->
     <div id="tournamentPlayerSelect2v2" style="display:none">
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">ระบุผู้เล่นในแต่ละทีม (ไม่ซ้ำกัน):</div>
-      <div style="font-size:0.75rem;font-weight:700;color:var(--neon);margin-bottom:6px">📌 Group A</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-        <div class="t-team-box">
-          <div class="t-team-label">⚔️ Team A1</div>
-          <select class="inp" id="t2v2_A_0_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
-          <select class="inp" id="t2v2_A_0_1" style="font-size:0.76rem">${pOpts}</select>
-        </div>
-        <div style="font-weight:700;color:var(--muted);padding:4px;align-self:center">vs</div>
-        <div class="t-team-box">
-          <div class="t-team-label">⚔️ Team A2</div>
-          <select class="inp" id="t2v2_A_1_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
-          <select class="inp" id="t2v2_A_1_1" style="font-size:0.76rem">${pOpts}</select>
-        </div>
-      </div>
-      <label style="display:flex;align-items:center;gap:6px;font-size:0.78rem;cursor:pointer;margin-bottom:8px">
-        <input type="checkbox" id="t2v2_addGroupB" onchange="toggle2v2GroupB(this.checked)">
-        เพิ่ม Group B (Group Stage)
-      </label>
-      <div id="t2v2_groupB_section" style="display:none">
-        <div style="font-size:0.75rem;font-weight:700;color:var(--neon);margin-bottom:6px">📌 Group B</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-          <div class="t-team-box">
-            <div class="t-team-label">⚔️ Team B1</div>
-            <select class="inp" id="t2v2_B_0_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
-            <select class="inp" id="t2v2_B_0_1" style="font-size:0.76rem">${pOpts}</select>
-          </div>
-          <div style="font-weight:700;color:var(--muted);padding:4px;align-self:center">vs</div>
-          <div class="t-team-box">
-            <div class="t-team-label">⚔️ Team B2</div>
-            <select class="inp" id="t2v2_B_1_0" style="margin-bottom:6px;font-size:0.76rem">${pOpts}</select>
-            <select class="inp" id="t2v2_B_1_1" style="font-size:0.76rem">${pOpts}</select>
-          </div>
-        </div>
-      </div>
+      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">สร้างทีม (A, B, C...) · อย่างน้อย 2 ทีม · Round-Robin อัตโนมัติ:</div>
+      <div id="t2v2_teams_list"></div>
+      <button onclick="_add2v2Team()" style="display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;border:1px solid var(--neon);background:rgba(0,245,160,0.07);color:var(--neon);font-size:0.76rem;cursor:pointer;margin-top:2px;margin-bottom:8px">+ เพิ่มทีม</button>
     </div>
 
     <button class="btn btn-primary btn-sm" style="width:auto" onclick="createTournament()">🏆 สร้าง Tournament</button>
@@ -966,9 +989,68 @@ async function renderTournamentBracket(tournament, groups) {
       return `<tr${topStyle}><td style="font-weight:600">${rankEmoji} ${s.label}</td><td style="color:var(--neon)">${s.wins}</td><td style="color:var(--red)">${s.losses}</td><td style="color:var(--gold)">${s.points}</td><td style="font-size:0.72rem;color:var(--muted)">${s.scoreFor}-${s.scoreAgainst}</td></tr>`;
     }).join('');
 
-    const playerOpts = isDoubles
-      ? (grp.teams || []).map(t => `<option value="${t.playerIds[0]}">${getTeamDisplayName(t, db.players)}</option>`).join('')
-      : (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
+    // Build record section: fixture grid (doubles) or free-entry form (singles)
+    let recordSection = '';
+    if (isDoubles && grp.teams && grp.teams.length >= 2) {
+      const teams = grp.teams;
+      const grpDone = tMatches.filter(m => m.group_letter === grpLetter);
+      const total = teams.length * (teams.length - 1) / 2;
+      recordSection += `<div style="margin-top:10px">
+        <div style="font-size:0.76rem;font-weight:600;color:var(--muted);margin-bottom:6px">📋 Fixtures · ${grpDone.length}/${total} แมตช์</div>`;
+      for (let i = 0; i < teams.length; i++) {
+        for (let j = i + 1; j < teams.length; j++) {
+          const tA = teams[i], tB = teams[j];
+          const aA = tA.playerIds[0], aB = tB.playerIds[0];
+          const lA = tA.name || String.fromCharCode(65 + i);
+          const lB = tB.name || String.fromCharCode(65 + j);
+          const dA = tA.playerIds.map(id => db.players.find(p=>p.id===id)?.name||'?').join('+');
+          const dB = tB.playerIds.map(id => db.players.find(p=>p.id===id)?.name||'?').join('+');
+          const rec = grpDone.find(m =>
+            (m.player_a===aA && m.player_b===aB)||(m.player_a===aB && m.player_b===aA)
+          );
+          if (rec) {
+            const wA = rec.winner_id === aA;
+            const sa = rec.player_a===aA ? rec.score_a : rec.score_b;
+            const sb = rec.player_a===aA ? rec.score_b : rec.score_a;
+            recordSection += `<div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;background:rgba(0,245,160,0.04);border:1px solid var(--glass-border);margin-bottom:5px;font-size:0.75rem">
+              <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${lA}: ${dA}</span>
+              <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--gold);min-width:36px;text-align:center">${sa}-${sb}</span>
+              <span style="flex:1;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${lB}: ${dB}</span>
+              <span style="color:var(--neon);font-size:0.6rem">✅</span>
+            </div>`;
+          } else {
+            const fid = `f_${tournament.id}_${grpLetter}_${aA}_${aB}`;
+            recordSection += `<div style="padding:7px 10px;border-radius:10px;border:1px dashed rgba(255,255,255,0.1);margin-bottom:5px">
+              <div style="font-size:0.73rem;color:var(--muted);margin-bottom:5px">
+                <span style="color:var(--text)">${lA}: ${dA}</span> <span>vs</span> <span style="color:var(--text)">${lB}: ${dB}</span>
+              </div>
+              <div style="display:flex;gap:5px;align-items:center">
+                <input class="inp" type="number" id="${fid}_sa" placeholder="${lA}" style="width:52px;font-size:0.76rem;padding:5px 6px" min="0">
+                <span style="color:var(--muted)">-</span>
+                <input class="inp" type="number" id="${fid}_sb" placeholder="${lB}" style="width:52px;font-size:0.76rem;padding:5px 6px" min="0">
+                <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;padding:4px 10px"
+                  onclick="recordFixture(${tournament.id},'${grpLetter}',${aA},${aB})">✅</button>
+              </div>
+            </div>`;
+          }
+        }
+      }
+      recordSection += '</div>';
+    } else {
+      // Singles: original free-entry form
+      const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
+      recordSection = `<div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
+          <span style="font-size:0.8rem">vs</span>
+          <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
+          <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <span>-</span>
+          <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
+          <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
+            onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅</button>
+        </div>`;
+    }
 
     html += `<div style="margin-bottom:12px">
       <div style="font-size:0.8rem;font-weight:600;margin-bottom:5px">Group ${grpLetter} ${modeBadge}</div>
@@ -976,17 +1058,7 @@ async function renderTournamentBracket(tournament, groups) {
         <thead><tr><th>${colHeader}</th><th>W</th><th>L</th><th>Pts</th><th>Score</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      <div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-        <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
-        <span style="font-size:0.8rem">vs</span>
-        <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
-        <input class="inp" type="number" id="tm_sa_${tournament.id}_${grpLetter}" placeholder="A" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-        <span>-</span>
-        <input class="inp" type="number" id="tm_sb_${tournament.id}_${grpLetter}" placeholder="B" style="width:50px;font-size:0.76rem;padding:6px 8px" min="0">
-        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem"
-          onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅</button>
-      </div>
+      ${recordSection}
     </div>`;
   }
 
@@ -1066,30 +1138,15 @@ async function createTournament() {
   let groups = [];
 
   if (matchType === '2v2') {
-    // ── [NEW] Build 2v2 groups from dropdown selections ──
-    const gv = id => parseInt(document.getElementById(id)?.value);
-    const teamA1 = { playerIds: [gv('t2v2_A_0_0'), gv('t2v2_A_0_1')] };
-    const teamA2 = { playerIds: [gv('t2v2_A_1_0'), gv('t2v2_A_1_1')] };
-    const allA = teamA1.playerIds.concat(teamA2.playerIds);
-    if (allA.some(isNaN)) return toast('กรุณาเลือกผู้เล่น Group A ให้ครบ', 'error');
-    if (new Set(allA).size !== allA.length) return toast('ผู้เล่นใน Group A ต้องไม่ซ้ำกัน', 'error');
-
-    // _meta sentinel stores matchType for future reads
+    const teams = _get2v2Teams();
+    if (teams.length < 2) return toast('ต้องมีอย่างน้อย 2 ทีม', 'error');
+    const allIds = teams.flatMap(t => t.playerIds);
+    if (allIds.some(isNaN)) return toast('กรุณาเลือกผู้เล่นในทุกทีมให้ครบ', 'error');
+    if (new Set(allIds).size !== allIds.length) return toast('ผู้เล่นต้องไม่ซ้ำกันในทุกทีม', 'error');
     groups = [
       { _meta: true, matchType: '2v2' },
-      { letter: 'A', matchType: '2v2', teams: [teamA1, teamA2] }
+      { letter: 'A', matchType: '2v2', teams }
     ];
-
-    // Optional Group B
-    if (document.getElementById('t2v2_addGroupB')?.checked) {
-      const teamB1 = { playerIds: [gv('t2v2_B_0_0'), gv('t2v2_B_0_1')] };
-      const teamB2 = { playerIds: [gv('t2v2_B_1_0'), gv('t2v2_B_1_1')] };
-      const allB = teamB1.playerIds.concat(teamB2.playerIds);
-      if (allB.some(isNaN)) return toast('กรุณาเลือกผู้เล่น Group B ให้ครบ', 'error');
-      const combined = allA.concat(allB);
-      if (new Set(combined).size !== combined.length) return toast('ผู้เล่นซ้ำกันระหว่าง Group A และ B', 'error');
-      groups.push({ letter: 'B', matchType: '2v2', teams: [teamB1, teamB2] });
-    }
 
   } else {
     // ── 1v1: original logic (unchanged) ──
