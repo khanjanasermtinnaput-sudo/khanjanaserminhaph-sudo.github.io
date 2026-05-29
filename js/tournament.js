@@ -1088,7 +1088,10 @@ async function _hofOpenDetail(tournamentId) {
   const listEl = document.getElementById('tourHofList');
   if (!listEl) return;
   listEl.innerHTML = `
-    <button onclick="_hofRenderList()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:0.74rem;cursor:pointer;margin-bottom:10px">← กลับ</button>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+      <button onclick="_hofRenderList()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:0.74rem;cursor:pointer">← กลับ</button>
+      ${isAdminUser() ? `<button onclick="confirmDeleteHofTournament(${r.id},'${(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.74rem;font-weight:600;cursor:pointer">🗑️ ลบ</button>` : ''}
+    </div>
     <div style="border:1px solid rgba(255,215,0,0.22);border-radius:16px;background:rgba(255,215,0,0.04);padding:14px;margin-bottom:12px;text-align:center">
       <div style="font-size:1.6rem;margin-bottom:4px">${tierIcon}</div>
       <div style="font-weight:700;font-size:1rem;margin-bottom:6px">${r.name}</div>
@@ -1115,8 +1118,7 @@ async function _hofOpenDetail(tournamentId) {
         <div style="font-weight:700;font-size:0.82rem;color:#cd7f32">${hof.third_place_name}</div>
       </div>` : ''}
     </div>
-    <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>
-    ${isAdminUser() ? `<button onclick="confirmDeleteHofTournament(${r.id},'${(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="width:100%;margin-top:12px;padding:9px;border-radius:10px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.08);color:#ff6060;font-size:0.78rem;font-weight:600;cursor:pointer">🗑️ ลบประวัติทัวร์นาเมนต์นี้</button>` : ''}`;
+    <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>`;
 
   try {
     const tms = await dbGetTournamentMatches(tournamentId);
