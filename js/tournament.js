@@ -1326,7 +1326,11 @@ async function renderTournamentSection() {
               </div>
             </div>
             ${_renderRegSlotTable(cfg, t.id, true)}
-            <button class="btn btn-primary btn-sm" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-primary btn-sm" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
+              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
+              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
+            </div>
           </div>`;
         } else {
           // ── Bracket in progress ──
@@ -1928,7 +1932,11 @@ async function renderTournamentTab() {
           html += _renderRegSlotTable(cfg, t.id, isAdmin);
           if (isAdmin) {
             const canStart = filled === totalSlots && totalSlots >= 2;
-            html += `<button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>`;
+            html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
+              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
+              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
+            </div>`;
           }
 
         } else {
