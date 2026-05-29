@@ -663,6 +663,9 @@ async function renderProfile() {
         <div class="pstat"><div class="pstat-num" style="font-size:1.1rem;color:var(--neon2)">${totalDays}</div><div class="pstat-label">${t('days_played')}</div></div>
       </div>
       <div class="divider"></div>
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📊 ${_lang === 'en' ? 'Days at Each Rank' : 'วันที่อยู่แต่ละอันดับ'}<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
+      ${buildRankDaysHTML(p.id)}
+      <div class="divider"></div>
       ${renderPrimeSSTitles(p)}
       <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>

@@ -147,6 +147,9 @@ function openPlayerProfile(playerId) {
         <div class="pp2-sec">${t('form_10')}</div>
         <div class="pp2-form">${formDots}</div>
 
+        <div class="pp2-sec">📊 ${_lang === 'en' ? 'Days at Each Rank' : 'วันที่อยู่แต่ละอันดับ'}</div>
+        ${buildRankDaysHTML(p.id)}
+
         <div class="pp2-sec">${t('ranking_hist')}</div>
         ${buildRankingChart(p.id)}
 
@@ -542,6 +545,74 @@ function buildRankingChart(playerId) {
       </div>
     </div>
   </div>`;
+}
+
+// ============================================================
+// ===== FEATURE: RANK DAYS (days spent at each rank position) =====
+// ============================================================
+function calcRankDays(playerId) {
+  const p = db.players.find(x => x.id === playerId);
+  if (!p) return {};
+
+  const playerMatches = [...db.matches]
+    .filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId))
+    .sort((a, b) => new Date(a.date || a.played_at) - new Date(b.date || b.played_at));
+
+  if (!playerMatches.length) return {};
+
+  // Reconstruct pts at each match point by walking backwards from current pts
+  let pts = p.pts;
+  const ptsHistory = [];
+  [...playerMatches].reverse().forEach(m => {
+    const inA = m.teamA.some(x => x.id === playerId);
+    const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+    ptsHistory.unshift(pts);
+    pts = win ? Math.max(0, pts - m.pts.gain) : Math.min(pts + m.pts.loss, 9999);
+  });
+
+  const otherPlayers = db.players.filter(x => x.id !== playerId);
+  const rankHistory = ptsHistory.map(myPts => otherPlayers.filter(o => o.pts > myPts).length + 1);
+
+  const rankDays = {};
+  const now = Date.now();
+
+  for (let i = 0; i < playerMatches.length; i++) {
+    const rank = rankHistory[i];
+    const startMs = new Date(playerMatches[i].date || playerMatches[i].played_at).getTime();
+    const endMs = i + 1 < playerMatches.length
+      ? new Date(playerMatches[i + 1].date || playerMatches[i + 1].played_at).getTime()
+      : now;
+    const days = Math.max(1, Math.round((endMs - startMs) / 86400000));
+    rankDays[rank] = (rankDays[rank] || 0) + days;
+  }
+
+  return rankDays;
+}
+
+function buildRankDaysHTML(playerId) {
+  const rankDays = calcRankDays(playerId);
+  const entries = Object.entries(rankDays)
+    .map(([rank, days]) => ({ rank: parseInt(rank), days }))
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, 5);
+
+  if (!entries.length) return `<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:8px 0">${t('no_data')}</div>`;
+
+  const maxDays = Math.max(...entries.map(e => e.days));
+  const rankColors = { 1: '#FFD700', 2: '#C0C0C0', 3: '#CD7F32' };
+
+  return entries.map(({ rank, days }) => {
+    const pct = Math.round((days / maxDays) * 100);
+    const color = rankColors[rank] || 'var(--neon)';
+    const dayLabel = _lang === 'en' ? (days === 1 ? '1 day' : `${days} days`) : `${days} วัน`;
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-family:'Rajdhani';font-weight:700;font-size:0.92rem;color:${color};min-width:28px">#${rank}</div>
+      <div style="flex:1;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${color};border-radius:3px"></div>
+      </div>
+      <div style="font-family:'Rajdhani';font-size:0.82rem;font-weight:600;color:var(--muted);min-width:52px;text-align:right">${dayLabel}</div>
+    </div>`;
+  }).join('');
 }
 
 // ============================================================

@@ -340,7 +340,11 @@ async function saveAchPins(playerId) {
     toast('✅ บันทึกการตั้งค่าแล้ว — ทุกคนจะเห็น achievement ที่เลือกในหน้า Leaderboard', 'success');
     await loadPlayers();
   } catch(e) {
-    toast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
+    if (e.message && e.message.includes('PGRST204')) {
+      toast('⚠️ บันทึกไม่สำเร็จ — ยังไม่มีคอลัมน์ prime_titles ใน Supabase กรุณารัน SQL ใน Admin → Achievements', 'error');
+    } else {
+      toast('บันทึกไม่สำเร็จ: ' + e.message, 'error');
+    }
   }
 }
 
