@@ -1039,17 +1039,17 @@ async function renderTournamentSection() {
         const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
         if (cfg?.registrationOpen) {
-          // ── Open registration: show sign-up status + start button ──
-          const regs = cfg.registrations || [];
+          // ── Open registration (admin view): slot table + start button ──
+          const slots = cfg.slots || {};
           const is2v2Reg = cfg.matchType === '2v2';
-          const max = cfg.numGroups * (is2v2Reg ? cfg.teamsPerGroup : cfg.playersPerGroup);
-          const pct = Math.round(regs.length / max * 100);
+          const filled = is2v2Reg
+            ? Object.values(slots).flatMap(g=>g).filter(tm=>tm[0]&&tm[1]).length
+            : Object.values(slots).flat().filter(Boolean).length;
+          const totalSlots = Object.values(slots).reduce((s,g)=>s+g.length,0);
+          const pct = totalSlots ? Math.round(filled/totalSlots*100) : 0;
           const unitLabel = is2v2Reg ? 'ทีม' : 'คน';
           const perLabel = is2v2Reg ? `${cfg.teamsPerGroup} ทีม/กลุ่ม` : `${cfg.playersPerGroup} คน/กลุ่ม`;
-          const canStart = is2v2Reg ? regs.length >= 2 : regs.length >= 4;
-          const regList = is2v2Reg
-            ? regs.map(r => { const [p1,p2]=r.playerIds||[]; return `<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid var(--glass-border)">⚔️ ${db.players.find(p=>p.id===p1)?.name||'?'} & ${db.players.find(p=>p.id===p2)?.name||'?'}</span>`; }).join('')
-            : regs.map(id=>`<span style="font-size:0.72rem;padding:2px 9px;border-radius:20px;background:var(--card);border:1px solid var(--glass-border)">${db.players.find(p=>p.id===id)?.name||'?'}</span>`).join('');
+          const canStart = is2v2Reg ? filled >= 2 : filled >= 4;
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
@@ -1058,15 +1058,15 @@ async function renderTournamentSection() {
             </div>
             <div style="margin:8px 0">
               <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-                <span style="font-size:0.82rem;font-weight:700"><span style="color:var(--neon)">${regs.length}</span>/${max} ${unitLabel}</span>
+                <span style="font-size:0.82rem;font-weight:700"><span style="color:var(--neon)">${filled}</span>/${totalSlots} ${unitLabel}</span>
                 <span style="font-size:0.72rem;color:var(--muted)">${cfg.numGroups} กลุ่ม · ${perLabel}</span>
               </div>
               <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
                 <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px"></div>
               </div>
             </div>
-            ${regs.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">${regList}</div>` : `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">ยังไม่มีผู้สมัคร</div>`}
-            <button class="btn btn-primary btn-sm" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${regs.length} ${unitLabel})</button>
+            ${_renderRegSlotTable(cfg, t.id, true)}
+            <button class="btn btn-primary btn-sm" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
           </div>`;
         } else {
           // ── Bracket in progress ──
@@ -1265,18 +1265,23 @@ async function createTournament() {
   let groups = [];
 
   if (tier === 'Regular' || tier === 'Super 500') {
-    // ── Regular/Super 500: open registration (players/pairs sign up themselves) ──
+    // ── Regular/Super 500: slot-based open registration ──
     const numGroups = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
     const perGroup = parseInt(document.getElementById('tourPlayersPerGroup')?.value) || 4;
+    const letters = Array.from({length: numGroups}, (_, i) => String.fromCharCode(65+i));
     if (matchType === '2v2') {
+      const slots = {};
+      letters.forEach(l => { slots[l] = Array.from({length: perGroup}, () => [null, null]); });
       groups = [
         { _meta: true, matchType: '2v2' },
-        { _config: true, matchType: '2v2', numGroups, teamsPerGroup: perGroup, registrationOpen: true, registrations: [] }
+        { _config: true, matchType: '2v2', numGroups, teamsPerGroup: perGroup, registrationOpen: true, slots }
       ];
     } else {
+      const slots = {};
+      letters.forEach(l => { slots[l] = Array(perGroup).fill(null); });
       groups = [
         { _meta: true, matchType: '1v1' },
-        { _config: true, numGroups, playersPerGroup: perGroup, registrationOpen: true, registrations: [] }
+        { _config: true, numGroups, playersPerGroup: perGroup, registrationOpen: true, slots }
       ];
     }
 
@@ -1359,6 +1364,131 @@ async function _patchTournamentConfig(tournamentId, newConfig) {
   });
 }
 
+// ── Slot-based registration ────────────────────────────────────────────────────
+
+async function claimTournamentSlot(tournamentId, group, slotIdx, subIdx) {
+  if (!currentUser) return toast('กรุณาเข้าสู่ระบบก่อน', 'error');
+  try {
+    const t = await dbGetTournamentById(tournamentId);
+    let gs = [];
+    try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+    const cfg = getTournamentConfig(gs);
+    if (!cfg?.registrationOpen) return toast('ปิดรับสมัครแล้ว', 'error');
+    const slots = cfg.slots || {};
+    const is2v2 = cfg.matchType === '2v2';
+
+    // Find if current user already has a slot
+    let mySlot = null;
+    outer: for (const [g, gSlots] of Object.entries(slots)) {
+      if (is2v2) {
+        for (let i = 0; i < gSlots.length; i++) {
+          for (let s = 0; s < 2; s++) {
+            if (gSlots[i][s] === currentUser.id) { mySlot = { g, i, s }; break outer; }
+          }
+        }
+      } else {
+        const idx = gSlots.indexOf(currentUser.id);
+        if (idx !== -1) { mySlot = { g, idx }; break; }
+      }
+    }
+
+    const targetVal = is2v2 ? slots[group]?.[slotIdx]?.[subIdx] : slots[group]?.[slotIdx];
+
+    if (targetVal === currentUser.id) {
+      // Click own slot → unregister
+      if (is2v2) slots[group][slotIdx][subIdx] = null;
+      else slots[group][slotIdx] = null;
+      cfg.slots = slots;
+      await _patchTournamentConfig(tournamentId, cfg);
+      toast('ถอนสมัครแล้ว', 'success');
+    } else if (targetVal !== null && targetVal !== undefined) {
+      return toast('ช่องนี้มีคนสมัครแล้ว', 'error');
+    } else if (mySlot) {
+      return toast('คุณสมัครไปแล้ว กดที่ช่องของตัวเองเพื่อถอนสมัคร', 'error');
+    } else {
+      if (is2v2) slots[group][slotIdx][subIdx] = currentUser.id;
+      else slots[group][slotIdx] = currentUser.id;
+      cfg.slots = slots;
+      await _patchTournamentConfig(tournamentId, cfg);
+      toast('สมัครแล้ว ✅', 'success');
+    }
+    renderTournamentTab();
+    if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
+  } catch(e) { toast('ไม่สำเร็จ: ' + e.message, 'error'); }
+}
+
+function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
+  const slots = cfg.slots || {};
+  const is2v2 = cfg.matchType === '2v2';
+  const pName = id => db.players.find(p => p.id === id)?.name || `#${id}`;
+  const groups = Object.keys(slots).sort();
+
+  // Find current user's slot
+  let mySlot = null;
+  if (currentUser) {
+    outer: for (const [g, gSlots] of Object.entries(slots)) {
+      if (is2v2) {
+        for (let i = 0; i < gSlots.length; i++) {
+          for (let s = 0; s < 2; s++) {
+            if (gSlots[i][s] === currentUser.id) { mySlot = true; break outer; }
+          }
+        }
+      } else {
+        if (gSlots.includes(currentUser.id)) { mySlot = true; break; }
+      }
+    }
+  }
+
+  const cols = Math.min(groups.length, 4);
+  let html = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;margin-bottom:12px">`;
+
+  for (const grp of groups) {
+    const gSlots = slots[grp] || [];
+    html += `<div>
+      <div style="font-size:0.72rem;font-weight:700;color:var(--neon2);text-align:center;padding:4px;margin-bottom:5px;background:rgba(100,220,255,0.07);border-radius:6px;letter-spacing:.06em">สาย ${grp}</div>`;
+
+    if (is2v2) {
+      gSlots.forEach((team, tIdx) => {
+        const p0 = team[0], p1 = team[1];
+        html += `<div style="border:1px solid var(--glass-border);border-radius:8px;padding:5px 6px;margin-bottom:5px">
+          <div style="font-size:0.6rem;color:var(--muted);margin-bottom:3px">ทีม ${tIdx+1}</div>`;
+        [0, 1].forEach(sIdx => {
+          const pid = team[sIdx];
+          const isMe = currentUser && pid === currentUser.id;
+          const isEmpty = pid === null || pid === undefined;
+          const canClaim = currentUser && isEmpty && !mySlot;
+          html += `<div onclick="claimTournamentSlot(${tournamentId},'${grp}',${tIdx},${sIdx})"
+            style="padding:5px 8px;border-radius:6px;margin-bottom:2px;font-size:0.74rem;
+            cursor:${canClaim||isMe?'pointer':'default'};
+            background:${isMe?'rgba(0,245,160,0.12)':isEmpty?'rgba(255,255,255,0.03)':'rgba(255,255,255,0.06)'};
+            border:1px solid ${isMe?'rgba(0,245,160,0.5)':isEmpty?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.12)'};
+            color:${isMe?'var(--neon)':isEmpty?'var(--muted)':'var(--text)'}">
+            ${isMe ? `✓ ${pName(pid)}` : isEmpty ? (canClaim ? '<span style="color:var(--neon)">+ สมัคร</span>' : 'ว่าง') : pName(pid)}
+          </div>`;
+        });
+        html += `</div>`;
+      });
+    } else {
+      gSlots.forEach((pid, idx) => {
+        const isMe = currentUser && pid === currentUser.id;
+        const isEmpty = pid === null || pid === undefined;
+        const canClaim = currentUser && isEmpty && !mySlot;
+        html += `<div onclick="claimTournamentSlot(${tournamentId},'${grp}',${idx},-1)"
+          style="padding:6px 10px;border-radius:8px;margin-bottom:4px;font-size:0.78rem;
+          cursor:${canClaim||isMe?'pointer':'default'};
+          background:${isMe?'rgba(0,245,160,0.12)':isEmpty?'rgba(255,255,255,0.03)':'rgba(255,255,255,0.06)'};
+          border:1px solid ${isMe?'rgba(0,245,160,0.5)':isEmpty?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.12)'};
+          color:${isMe?'var(--neon)':isEmpty?'var(--muted)':'var(--text)'}">
+          ${isMe ? `✓ ${pName(pid)}` : isEmpty ? (canClaim ? '<span style="color:var(--neon)">+ สมัคร</span>' : 'ว่าง') : pName(pid)}
+        </div>`;
+      });
+    }
+    html += `</div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
 async function registerForTournament(tournamentId) {
   if (!currentUser) return toast('กรุณาเข้าสู่ระบบก่อน', 'error');
   try {
@@ -1417,25 +1547,40 @@ async function startTournament(tournamentId) {
     try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
     const cfg = getTournamentConfig(gs);
     if (!cfg) return toast('ไม่พบการตั้งค่า', 'error');
-    const regs = cfg.registrations || [];
     let groupEntries;
-    if (cfg.matchType === '2v2') {
-      if (regs.length < 2) return toast(`ต้องมีอย่างน้อย 2 ทีม (ตอนนี้ ${regs.length} ทีม)`, 'error');
-      const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.teamsPerGroup || 3))));
-      groupEntries = Array.from({length: numGroups}, (_, i) => ({
-        letter: String.fromCharCode(65+i), matchType: '2v2', teams: []
-      }));
-      regs.forEach((teamReg, i) => {
-        groupEntries[i % numGroups].teams.push({ playerIds: teamReg.playerIds });
-      });
+
+    if (cfg.slots) {
+      // ── Slot-based registration ──
+      if (cfg.matchType === '2v2') {
+        groupEntries = Object.entries(cfg.slots).sort().map(([letter, teamSlots]) => ({
+          letter, matchType: '2v2',
+          teams: teamSlots.filter(t => t[0] || t[1]).map(t => ({ playerIds: t.filter(Boolean) }))
+        }));
+        const totalTeams = groupEntries.reduce((s, g) => s + g.teams.length, 0);
+        if (totalTeams < 2) return toast('ต้องมีอย่างน้อย 2 ทีม', 'error');
+      } else {
+        groupEntries = Object.entries(cfg.slots).sort().map(([letter, playerSlots]) => ({
+          letter, playerIds: playerSlots.filter(Boolean)
+        }));
+        const totalPlayers = groupEntries.reduce((s, g) => s + g.playerIds.length, 0);
+        if (totalPlayers < 4) return toast('ต้องมีผู้เล่นอย่างน้อย 4 คน', 'error');
+      }
     } else {
-      if (regs.length < 4) return toast(`ต้องมีผู้เล่นอย่างน้อย 4 คน (ตอนนี้ ${regs.length} คน)`, 'error');
-      const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.playersPerGroup || 4))));
-      groupEntries = Array.from({length: numGroups}, (_, i) => ({
-        letter: String.fromCharCode(65+i), playerIds: []
-      }));
-      regs.forEach((id, i) => groupEntries[i % numGroups].playerIds.push(id));
+      // ── Legacy: registrations array ──
+      const regs = cfg.registrations || [];
+      if (cfg.matchType === '2v2') {
+        if (regs.length < 2) return toast(`ต้องมีอย่างน้อย 2 ทีม`, 'error');
+        const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.teamsPerGroup || 3))));
+        groupEntries = Array.from({length: numGroups}, (_, i) => ({ letter: String.fromCharCode(65+i), matchType: '2v2', teams: [] }));
+        regs.forEach((r, i) => groupEntries[i % numGroups].teams.push({ playerIds: r.playerIds }));
+      } else {
+        if (regs.length < 4) return toast(`ต้องมีผู้เล่นอย่างน้อย 4 คน`, 'error');
+        const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.playersPerGroup || 4))));
+        groupEntries = Array.from({length: numGroups}, (_, i) => ({ letter: String.fromCharCode(65+i), playerIds: [] }));
+        regs.forEach((id, i) => groupEntries[i % numGroups].playerIds.push(id));
+      }
     }
+
     const newGs = [
       ...gs.filter(g => g._meta),
       { ...cfg, registrationOpen: false },
@@ -1489,13 +1634,15 @@ async function renderTournamentTab() {
 
         if (cfg?.registrationOpen) {
           // ── REGISTRATION PHASE ──────────────────────────────────────────────
-          const regs = cfg.registrations || [];
+          const slots = cfg.slots || {};
           const is2v2Reg = cfg.matchType === '2v2';
-          const max = cfg.numGroups * (is2v2Reg ? cfg.teamsPerGroup : cfg.playersPerGroup);
-          const pct = Math.round(regs.length / max * 100);
-          const allRegIds = is2v2Reg ? regs.flatMap(r => r.playerIds || []) : regs;
-          const isRegistered = currentUser && allRegIds.includes(currentUser.id);
-          const isFull = regs.length >= max;
+          const totalSlots = is2v2Reg
+            ? Object.values(slots).reduce((s,g)=>s+g.length,0)
+            : Object.values(slots).reduce((s,g)=>s+g.length,0);
+          const filled = is2v2Reg
+            ? Object.values(slots).flatMap(g=>g).filter(tm=>tm[0]&&tm[1]).length
+            : Object.values(slots).flat().filter(Boolean).length;
+          const pct = totalSlots ? Math.round(filled / totalSlots * 100) : 0;
           const unitLabel = is2v2Reg ? 'ทีม' : 'คน';
           const perLabel = is2v2Reg ? `${cfg.teamsPerGroup} ทีม/กลุ่ม` : `${cfg.playersPerGroup} คน/กลุ่ม`;
           if (isAdmin) {
@@ -1504,65 +1651,21 @@ async function renderTournamentTab() {
           html += header;
           html += `<div style="margin:10px 0 8px">
             <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-              <span style="font-size:0.82rem;font-weight:700">📋 รับสมัคร <span style="color:var(--neon)">${regs.length}</span>/${max} ${unitLabel}</span>
+              <span style="font-size:0.82rem;font-weight:700">📋 รับสมัคร <span style="color:var(--neon)">${filled}</span>/${totalSlots} ${unitLabel}</span>
               <span style="font-size:0.72rem;color:var(--muted)">${cfg.numGroups} กลุ่ม · ${perLabel}</span>
             </div>
             <div style="height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
               <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px;transition:width .3s"></div>
             </div>
           </div>`;
-          if (regs.length) {
-            if (is2v2Reg) {
-              html += `<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:12px">
-                ${regs.map(r => {
-                  const [p1, p2] = r.playerIds || [];
-                  const n1 = db.players.find(p => p.id === p1)?.name || `#${p1}`;
-                  const n2 = db.players.find(p => p.id === p2)?.name || `#${p2}`;
-                  const me = currentUser && (p1 === currentUser.id || p2 === currentUser.id);
-                  return `<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:var(--card);border:1px solid ${me?'var(--neon)':'var(--glass-border)'};color:${me?'var(--neon)':'var(--text)'}">⚔️ ${n1} & ${n2}${me?' ✓':''}</span>`;
-                }).join('')}
-              </div>`;
-            } else {
-              html += `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px">
-                ${regs.map(id => {
-                  const n = db.players.find(p => p.id === id)?.name || `#${id}`;
-                  const me = currentUser && id === currentUser.id;
-                  return `<span style="font-size:0.72rem;padding:2px 9px;border-radius:20px;background:var(--card);border:1px solid ${me?'var(--neon)':'var(--glass-border)'};color:${me?'var(--neon)':'var(--text)'}">${n}${me?' ✓':''}</span>`;
-                }).join('')}
-              </div>`;
-            }
-          } else {
-            html += `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:12px">ยังไม่มีผู้สมัคร · เป็นคนแรกเลย!</div>`;
+          if (!currentUser) {
+            html += `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px">เข้าสู่ระบบเพื่อสมัครแข่ง</div>`;
           }
-          html += `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">`;
-          if (currentUser) {
-            if (isRegistered) {
-              html += `<button class="btn btn-sm" style="width:auto;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.4);color:#ff6060;font-size:0.8rem" onclick="unregisterFromTournament(${t.id})">✕ ถอนสมัคร</button>`;
-            } else if (!isFull) {
-              if (is2v2Reg) {
-                const takenIds = new Set(allRegIds);
-                takenIds.add(currentUser.id);
-                const available = db.players.filter(p => !takenIds.has(p.id));
-                html += `<select class="inp" id="tour_partner_${t.id}" style="width:auto;font-size:0.78rem;padding:4px 8px;height:auto">
-                  <option value="">เลือกคู่หู...</option>
-                  ${available.map(p => `<option value="${p.id}">${p.name}</option>`).join('')}
-                </select>`;
-                html += `<button class="btn btn-primary btn-sm" style="width:auto;font-size:0.8rem" onclick="registerForTournament(${t.id})">⚔️ สมัครคู่</button>`;
-              } else {
-                html += `<button class="btn btn-primary btn-sm" style="width:auto;font-size:0.8rem" onclick="registerForTournament(${t.id})">🏸 สมัครแข่ง</button>`;
-              }
-            } else {
-              html += `<span style="font-size:0.78rem;color:var(--muted)">เต็มแล้ว</span>`;
-            }
-          } else {
-            html += `<span style="font-size:0.76rem;color:var(--muted)">เข้าสู่ระบบเพื่อสมัครแข่ง</span>`;
-          }
+          html += _renderRegSlotTable(cfg, t.id, isAdmin);
           if (isAdmin) {
-            const canStart = is2v2Reg ? regs.length >= 2 : regs.length >= 4;
-            const startLabel = is2v2Reg ? `▶ เริ่มการแข่งขัน (${regs.length} ทีม)` : `▶ เริ่มการแข่งขัน (${regs.length} คน)`;
-            html += `<button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">${startLabel}</button>`;
+            const canStart = is2v2Reg ? filled >= 2 : filled >= 4;
+            html += `<button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>`;
           }
-          html += `</div>`;
 
         } else {
           // ── BRACKET PHASE ───────────────────────────────────────────────────
