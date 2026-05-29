@@ -802,8 +802,13 @@ lbRenderBoard = function(data, animate) {
     const rankBadgeEl = row.querySelector('.lb-rh');
     if (rankBadgeEl) {
       if (!rankBadgeEl.querySelector('.form-badge')) {
-        const fi = getFormIndicator(p.id);
-        rankBadgeEl.insertAdjacentHTML('beforeend', `<span class="form-badge ${fi.cls}">${fi.arrow}</span>`);
+        // แสดงการเปลี่ยนอันดับเทียบเมื่อวาน: ▲N (ขึ้น) เขียว / ▼N (ลง) แดง / ไม่เปลี่ยน = ไม่แสดง
+        const _d = (window.lbRankDelta && window.lbRankDelta[p.id]) || 0;
+        if (_d !== 0) {
+          const _cls = _d > 0 ? 'up' : 'down';
+          const _arr = _d > 0 ? `▲${_d}` : `▼${Math.abs(_d)}`;
+          rankBadgeEl.insertAdjacentHTML('beforeend', `<span class="form-badge ${_cls}">${_arr}</span>`);
+        }
       }
       if (!rankBadgeEl.querySelector('.gf-badge')) {
         const gfBadge = getGrandFinalBadge(p.id);

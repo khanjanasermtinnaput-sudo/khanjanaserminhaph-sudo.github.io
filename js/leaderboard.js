@@ -5,8 +5,23 @@ async function renderLeaderboard() {
     checkKingChange();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
-    lbPrevRanks = JSON.parse(localStorage.getItem('badminton_rank_snapshot') || '{}');
-    const _curSnap = {}; sorted.forEach((p,i) => { _curSnap[p.id] = i+1; }); localStorage.setItem('badminton_rank_snapshot', JSON.stringify(_curSnap));
+    // ── DAILY RANK SNAPSHOT: เทียบอันดับปัจจุบันกับ "เมื่อวาน" (snapshot วันละครั้ง) ──
+    const _today = new Date().toISOString().slice(0, 10);
+    let _rankDaily = {};
+    try { _rankDaily = JSON.parse(localStorage.getItem('badminton_rank_daily') || '{}'); } catch(e) {}
+    const _curRanks = {}; sorted.forEach((p, idx) => { _curRanks[p.id] = idx + 1; });
+    // ขึ้นวันใหม่ → เลื่อน snapshot: ของวันก่อนกลายเป็น baseline (เมื่อวาน), แล้ว freeze อันดับวันนี้
+    if (!_rankDaily.today || _rankDaily.today.date !== _today) {
+      _rankDaily = { yesterday: _rankDaily.today || null, today: { date: _today, ranks: _curRanks } };
+      localStorage.setItem('badminton_rank_daily', JSON.stringify(_rankDaily));
+    }
+    // สร้าง map การเปลี่ยนอันดับ: บวก = ขึ้นกี่อันดับ, ลบ = ลงกี่อันดับ (เทียบ baseline เมื่อวาน)
+    const _baseline = (_rankDaily.yesterday && _rankDaily.yesterday.ranks) || {};
+    window.lbRankDelta = {};
+    sorted.forEach((p, idx) => {
+      const _prev = _baseline[p.id];
+      window.lbRankDelta[p.id] = _prev ? (_prev - (idx + 1)) : 0;
+    });
 
     // ── STAT CARDS ──
     const totalMatches = db.matches.length;
@@ -73,7 +88,6 @@ async function renderLeaderboard() {
 }
 
 let lbAllPlayers = [];
-let lbPrevRanks = {};
 function lbFilterBoard(q) {
   const filtered = q ? lbAllPlayers.filter(p => p.name.toLowerCase().includes(q.toLowerCase())) : lbAllPlayers;
   lbRenderBoard(filtered, false);
@@ -124,14 +138,6 @@ function lbRenderBoard(data, animate = true) {
     // rank badge emoji
     const posEmoji = globalPos === 1 ? '🥇' : globalPos === 2 ? '🥈' : globalPos === 3 ? '🥉' : null;
     const posDisplay = posEmoji || globalPos;
-    // rank change arrow
-    const _prevPos = lbPrevRanks[p.id];
-    const _rankDiff = _prevPos ? _prevPos - globalPos : 0;
-    const rankArrow = _rankDiff > 0
-      ? `<span class="lb-rank-arrow lb-rank-up">▲${_rankDiff}</span>`
-      : _rankDiff < 0
-      ? `<span class="lb-rank-arrow lb-rank-down">▼${Math.abs(_rankDiff)}</span>`
-      : '';
     // trend badge
     const trendBdg = rank.id === 'king' ? '👑' : rank.id === 'master' ? '🔥' : rank.id === 'diamond' ? '💠' : rank.id === 'platinum' ? '💎' : rank.id === 'gold' ? '🥇' : rank.id === 'silver' ? '🥈' : '🥉';
 
@@ -140,7 +146,7 @@ function lbRenderBoard(data, animate = true) {
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
     row.innerHTML = `
-      <div class="lb-rrank">${posDisplay}${rankArrow}</div>
+      <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0">
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
