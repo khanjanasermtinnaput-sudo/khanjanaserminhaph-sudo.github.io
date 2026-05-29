@@ -1115,7 +1115,8 @@ async function _hofOpenDetail(tournamentId) {
         <div style="font-weight:700;font-size:0.82rem;color:#cd7f32">${hof.third_place_name}</div>
       </div>` : ''}
     </div>
-    <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>`;
+    <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>
+    ${isAdminUser() ? `<button onclick="confirmDeleteHofTournament(${r.id},'${(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="width:100%;margin-top:12px;padding:9px;border-radius:10px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.08);color:#ff6060;font-size:0.78rem;font-weight:600;cursor:pointer">🗑️ ลบประวัติทัวร์นาเมนต์นี้</button>` : ''}`;
 
   try {
     const tms = await dbGetTournamentMatches(tournamentId);
@@ -1133,10 +1134,21 @@ async function _hofOpenDetail(tournamentId) {
 
     const mRow = m => {
       const wA = m.winner_id===m.player_a;
-      return `<div style="display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:10px;background:var(--card);margin-bottom:5px;font-size:0.77rem">
-        <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${pName(m.player_a)}</span>
-        <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--muted);min-width:44px;text-align:center">${m.score_a??'-'} - ${m.score_b??'-'}</span>
-        <span style="flex:1;text-align:left;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${pName(m.player_b)}</span>
+      const det = _getGameDetail(tournamentId, m.group_letter, m.player_a, m.player_b);
+      let gamesHtml = '';
+      if (det && det.games && det.games.length) {
+        const games = (det.idA === m.player_a) ? det.games : det.games.map(g=>({a:g.b,b:g.a}));
+        gamesHtml = `<div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+          ${games.map((g,i)=>`<span style="font-size:0.62rem;padding:1px 7px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border);color:var(--muted)">เกม ${i+1}: ${g.a}-${g.b}</span>`).join('')}
+        </div>`;
+      }
+      return `<div style="padding:7px 10px;border-radius:10px;background:var(--card);margin-bottom:5px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:0.77rem">
+          <span style="flex:1;text-align:right;font-weight:${wA?700:400};color:${wA?'var(--neon)':'var(--text)'}">${pName(m.player_a)}</span>
+          <span style="font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--muted);min-width:44px;text-align:center">${m.score_a??'-'} - ${m.score_b??'-'}</span>
+          <span style="flex:1;text-align:left;font-weight:${!wA?700:400};color:${!wA?'var(--neon)':'var(--text)'}">${pName(m.player_b)}</span>
+        </div>
+        ${gamesHtml}
       </div>`;
     };
 
@@ -1170,6 +1182,37 @@ async function _hofOpenDetail(tournamentId) {
     const detEl = document.getElementById('hofDetailBody');
     if (detEl) detEl.innerHTML = `<div style="color:var(--red);font-size:0.78rem;text-align:center;padding:12px">โหลดไม่ได้: ${e.message}</div>`;
   }
+}
+
+// ── Delete a completed tournament from Hall of Fame (admin) ──
+function confirmDeleteHofTournament(tournamentId, name) {
+  document.getElementById('hofDelModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'hofDelModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(255,60,60,.4);border-radius:18px;padding:20px 18px;max-width:340px;width:100%;text-align:center">
+      <div style="font-size:1.8rem;margin-bottom:6px">🗑️</div>
+      <div style="font-size:0.95rem;font-weight:700;margin-bottom:6px">ลบประวัติทัวร์นาเมนต์?</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-bottom:16px">"${name}" จะถูกลบออกจากทำเนียบแชมป์ถาวร พร้อมผลแมตช์ทั้งหมด — ย้อนกลับไม่ได้</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.8rem" onclick="document.getElementById('hofDelModal').remove()">ยกเลิก</button>
+        <button class="btn" style="flex:1;font-size:0.8rem;background:rgba(255,60,60,.16);border:1px solid rgba(255,60,60,.5);color:#ff6060;font-weight:700" onclick="executeDeleteHofTournament(${tournamentId})">ลบถาวร</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+}
+
+async function executeDeleteHofTournament(tournamentId) {
+  document.getElementById('hofDelModal')?.remove();
+  try {
+    toast('กำลังลบ...', 'info');
+    await dbDeleteTournament(tournamentId);
+    _hofAllRows = _hofAllRows.filter(r => r.id !== tournamentId);
+    toast('ลบประวัติแล้ว ✅', 'success');
+    _hofRenderList();
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
 
 async function renderTournamentSection() {
