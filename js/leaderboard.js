@@ -5,6 +5,8 @@ async function renderLeaderboard() {
     checkKingChange();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
+    lbPrevRanks = JSON.parse(localStorage.getItem('badminton_rank_snapshot') || '{}');
+    const _curSnap = {}; sorted.forEach((p,i) => { _curSnap[p.id] = i+1; }); localStorage.setItem('badminton_rank_snapshot', JSON.stringify(_curSnap));
 
     // ── STAT CARDS ──
     const totalMatches = db.matches.length;
@@ -71,6 +73,7 @@ async function renderLeaderboard() {
 }
 
 let lbAllPlayers = [];
+let lbPrevRanks = {};
 function lbFilterBoard(q) {
   const filtered = q ? lbAllPlayers.filter(p => p.name.toLowerCase().includes(q.toLowerCase())) : lbAllPlayers;
   lbRenderBoard(filtered, false);
@@ -121,6 +124,14 @@ function lbRenderBoard(data, animate = true) {
     // rank badge emoji
     const posEmoji = globalPos === 1 ? '🥇' : globalPos === 2 ? '🥈' : globalPos === 3 ? '🥉' : null;
     const posDisplay = posEmoji || globalPos;
+    // rank change arrow
+    const _prevPos = lbPrevRanks[p.id];
+    const _rankDiff = _prevPos ? _prevPos - globalPos : 0;
+    const rankArrow = _rankDiff > 0
+      ? `<span class="lb-rank-arrow lb-rank-up">▲${_rankDiff}</span>`
+      : _rankDiff < 0
+      ? `<span class="lb-rank-arrow lb-rank-down">▼${Math.abs(_rankDiff)}</span>`
+      : '';
     // trend badge
     const trendBdg = rank.id === 'king' ? '👑' : rank.id === 'master' ? '🔥' : rank.id === 'diamond' ? '💠' : rank.id === 'platinum' ? '💎' : rank.id === 'gold' ? '🥇' : rank.id === 'silver' ? '🥈' : '🥉';
 
@@ -129,7 +140,7 @@ function lbRenderBoard(data, animate = true) {
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
     row.innerHTML = `
-      <div class="lb-rrank">${posDisplay}</div>
+      <div class="lb-rrank">${posDisplay}${rankArrow}</div>
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0">
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
