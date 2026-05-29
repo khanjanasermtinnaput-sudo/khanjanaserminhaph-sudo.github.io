@@ -195,7 +195,9 @@ function lbCountUp(elId, target, dur = 1000) {
   requestAnimationFrame(step);
 }
 
+const _lbParticleRafs = {};
 function lbParticles(id, r, g, b) {
+  if (_lbParticleRafs[id]) { cancelAnimationFrame(_lbParticleRafs[id]); delete _lbParticleRafs[id]; }
   const c = document.getElementById(id); if (!c) return;
   const ctx = c.getContext('2d'); let ps = [], W, H;
   function resize() { const rc = c.parentElement.getBoundingClientRect(); W = c.width = rc.width; H = c.height = rc.height; }
@@ -211,9 +213,9 @@ function lbParticles(id, r, g, b) {
       ctx.fillStyle = `rgba(${r},${g},${b},${p.a.toFixed(2)})`; ctx.fill();
       if (p.y < -10) ps[i] = mk();
     });
-    requestAnimationFrame(loop);
+    _lbParticleRafs[id] = requestAnimationFrame(loop);
   }
-  loop();
+  _lbParticleRafs[id] = requestAnimationFrame(loop);
 }
 
 function renderMatchSetup() {
@@ -1030,9 +1032,16 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── CURSOR GLOW (Liquid UI 2.0) ──
 const liqCg = document.getElementById('liqCg');
+let _liqX = 0, _liqY = 0, _liqPending = false;
 document.addEventListener('mousemove', e => {
-  liqCg.style.left = e.clientX + 'px';
-  liqCg.style.top = e.clientY + 'px';
+  _liqX = e.clientX; _liqY = e.clientY;
+  if (!_liqPending) {
+    _liqPending = true;
+    requestAnimationFrame(() => {
+      liqCg.style.transform = `translate(calc(${_liqX}px - 50%), calc(${_liqY}px - 50%))`;
+      _liqPending = false;
+    });
+  }
 });
 
 const CURRENT_VERSION = '6.0';
