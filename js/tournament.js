@@ -268,6 +268,151 @@ function _readBo3(prefix) {
   return { wA, wB };
 }
 
+// ── Referee mode: live point counter (21-point rules, Best of 3) ────────────────
+let _ref = null;
+
+function _refLabel(tid, id, matchType) {
+  if (matchType === '2v2') {
+    const groups = _tourStore[tid]?.groups || [];
+    const team = (typeof getTeamByAnchor === 'function') ? getTeamByAnchor(groups, id) : null;
+    if (team) return getTeamDisplayName(team, db.players);
+  }
+  return db.players.find(p => p.id === id)?.name || '?';
+}
+
+function _refGameOver(a, b) {
+  const hi = Math.max(a, b), lo = Math.min(a, b);
+  if (hi >= 30) return true;          // hard cap at 30
+  if (hi >= 21 && hi - lo >= 2) return true;
+  return false;
+}
+
+function openReferee(tid, group, idA, idB, matchType) {
+  if (!idA || !idB || idA === idB) return toast('เลือก 2 ฝ่ายที่ต่างกัน', 'error');
+  _ref = {
+    tid, group, idA, idB, matchType,
+    labelA: _refLabel(tid, idA, matchType),
+    labelB: _refLabel(tid, idB, matchType),
+    games: [],     // committed games: {a, b}
+    curA: 0, curB: 0
+  };
+  _renderRefModal();
+}
+
+function _refPoint(side, delta) {
+  if (!_ref) return;
+  if (side === 'a') _ref.curA = Math.max(0, _ref.curA + delta);
+  else _ref.curB = Math.max(0, _ref.curB + delta);
+  _renderRefModal();
+}
+
+function _refCommitGame() {
+  if (!_ref) return;
+  if (!_refGameOver(_ref.curA, _ref.curB)) return;
+  _ref.games.push({ a: _ref.curA, b: _ref.curB });
+  _ref.curA = 0; _ref.curB = 0;
+  _renderRefModal();
+}
+
+function _refGamesWon() {
+  let wA = 0, wB = 0;
+  for (const g of _ref.games) { if (g.a > g.b) wA++; else if (g.b > g.a) wB++; }
+  return { wA, wB };
+}
+
+function _refClose() { _ref = null; document.getElementById('refModal')?.remove(); }
+
+async function _refFinish() {
+  if (!_ref) return;
+  const { wA, wB } = _refGamesWon();
+  if (wA < 2 && wB < 2) return toast('ยังไม่จบแมตช์ (ต้องชนะ 2 เกม)', 'error');
+  const winnerId = wA > wB ? _ref.idA : _ref.idB;
+  const { tid, group, idA, idB, matchType } = _ref;
+  try {
+    await dbAddTournamentMatch(tid, group, idA, idB, wA, wB, winnerId);
+    if (matchType === '2v2' && isAdminUser()) {
+      try {
+        const groups = _tourStore[tid]?.groups || [];
+        const winTeam = getTeamByAnchor(groups, winnerId);
+        if (winTeam?.playerIds) await awardMatchCoins(winTeam.playerIds);
+      } catch(e) {}
+    }
+    _refClose();
+    toast('บันทึกผลแล้ว ✅', 'success');
+    renderTournamentSection();
+    if (document.getElementById('tournamentTabContent')) renderTournamentTab();
+  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
+}
+
+function _refRenderSide(side) {
+  const r = _ref;
+  const cur = side === 'a' ? r.curA : r.curB;
+  const label = side === 'a' ? r.labelA : r.labelB;
+  const won = _refGamesWon();
+  const gamesWon = side === 'a' ? won.wA : won.wB;
+  const color = side === 'a' ? 'var(--neon)' : 'var(--neon2)';
+  return `<div style="flex:1;text-align:center;padding:8px">
+    <div style="font-size:0.78rem;font-weight:700;color:${color};margin-bottom:4px;min-height:2.2em;display:flex;align-items:center;justify-content:center">${label}</div>
+    <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">ชนะ ${gamesWon} เกม</div>
+    <div style="font-family:'Rajdhani',sans-serif;font-size:4rem;font-weight:700;line-height:1;color:${color}">${cur}</div>
+    <div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
+      <button onclick="_refPoint('${side}',-1)" style="width:42px;height:42px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:1.2rem;cursor:pointer">−</button>
+      <button onclick="_refPoint('${side}',1)" style="width:56px;height:56px;border-radius:50%;border:1px solid ${color};background:${color}22;color:${color};font-size:1.6rem;font-weight:700;cursor:pointer">+</button>
+    </div>
+  </div>`;
+}
+
+function _renderRefModal() {
+  document.getElementById('refModal')?.remove();
+  const r = _ref;
+  if (!r) return;
+  const gameNo = r.games.length + 1;
+  const over = _refGameOver(r.curA, r.curB);
+  const { wA, wB } = _refGamesWon();
+  const matchDone = wA >= 2 || wB >= 2;
+  const gameWinnerLabel = r.curA > r.curB ? r.labelA : r.labelB;
+
+  const gamesLog = r.games.map((g, i) =>
+    `<span style="font-size:0.68rem;padding:2px 8px;border-radius:12px;background:var(--card);border:1px solid var(--glass-border);color:var(--muted)">เกม ${i+1}: ${g.a}-${g.b}</span>`
+  ).join('');
+
+  let actionBtn = '';
+  if (matchDone) {
+    const champLabel = wA > wB ? r.labelA : r.labelB;
+    actionBtn = `<button class="btn btn-primary" style="width:100%;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-weight:700" onclick="_refFinish()">💾 บันทึกผล · 🏆 ${champLabel} (${wA}-${wB})</button>`;
+  } else if (over) {
+    actionBtn = `<button class="btn btn-primary" style="width:100%" onclick="_refCommitGame()">✅ จบเกม ${gameNo} (${gameWinnerLabel} ชนะ ${r.curA}-${r.curB}) → เกมต่อไป</button>`;
+  } else {
+    actionBtn = `<div style="text-align:center;font-size:0.7rem;color:var(--muted);padding:8px">กำลังแข่งเกมที่ ${gameNo} · ถึง 21 แต้ม (ห่าง 2) เกมจะจบอัตโนมัติ</div>`;
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'refModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:14px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(0,245,160,.3);border-radius:20px;padding:18px 16px;max-width:420px;width:100%;box-shadow:0 0 60px rgba(0,245,160,.12)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:0.95rem;font-weight:700">🎬 Referee · เกมที่ ${gameNo}</div>
+        <button onclick="_refClose()" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer">✕</button>
+      </div>
+      ${gamesLog ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gamesLog}</div>` : ''}
+      <div style="display:flex;align-items:stretch;border:1px solid var(--glass-border);border-radius:14px;background:rgba(255,255,255,0.02);margin-bottom:12px">
+        ${_refRenderSide('a')}
+        <div style="width:1px;background:var(--glass-border)"></div>
+        ${_refRenderSide('b')}
+      </div>
+      ${actionBtn}
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+// Open referee from group 1v1 dropdowns
+function openRefereeFromSelects(tid, group, matchType) {
+  const a = parseInt(document.getElementById(`tm_pa_${tid}_${group}`)?.value);
+  const b = parseInt(document.getElementById(`tm_pb_${tid}_${group}`)?.value);
+  openReferee(tid, group, a, b, matchType);
+}
+
 // ── [NEW] Show confirm-cancel modal ──
 function confirmCancelTournament(tournamentId, tournamentName) {
   document.getElementById('tCancelModal')?.remove();
@@ -1143,20 +1288,11 @@ function _renderKnockoutStage(tournament, tMatches, stageId, stageLabel, leftEnt
       ${stageId === 'GF' ? `<div style="margin-top:5px;font-size:0.7rem;color:var(--neon);font-weight:600">✅ Grand Final เสร็จสิ้น · กด "ประกาศแชมป์" เพื่อมอบรางวัล</div>` : ''}
     </div>`;
   } else if (!readOnly && leftEntry && rightEntry) {
-    const opts = [leftEntry, rightEntry].map(w => `<option value="${w.id}">${w.label}</option>`).join('');
     content = `<div class="gf-match" style="margin-bottom:10px">
         <span class="gf-winner">${leftEntry.label}</span><span class="gf-vs">vs</span><span class="gf-winner">${rightEntry.label}</span>
       </div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
-        <select class="inp" id="tm_pa_${tournament.id}_${stageId}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${opts}</select>
-        <span style="font-size:0.8rem">vs</span>
-        <select class="inp" id="tm_pb_${tournament.id}_${stageId}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${opts}</select>
-      </div>
-      ${_renderBo3Input(`tm_${tournament.id}_${stageId}`)}
-      <div style="margin-top:6px">
-        <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700"
-          onclick="recordTournamentMatch(${tournament.id},'${stageId}','${matchType}')">🏆 บันทึก</button>
-      </div>`;
+      <button class="btn btn-sm" style="width:100%;font-size:0.74rem;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700"
+        onclick="openReferee(${tournament.id},'${stageId}',${leftEntry.id},${rightEntry.id},'${matchType}')">🎬 นับคะแนน (Referee)</button>`;
   } else if (!readOnly) {
     content = `<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;text-align:center">⏳ รอผลรอบก่อนหน้า...</div>`;
   } else if (leftEntry && rightEntry) {
@@ -1230,14 +1366,12 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
               <span style="color:var(--neon);font-size:0.6rem">✅</span>
             </div>`;
           } else {
-            const fid = `f_${tournament.id}_${grpLetter}_${aA}_${aB}`;
             recordSection += `<div style="padding:7px 10px;border-radius:10px;border:1px dashed rgba(255,255,255,0.1);margin-bottom:5px">
-              <div style="font-size:0.73rem;color:var(--muted);margin-bottom:5px">
+              <div style="font-size:0.73rem;color:var(--muted);margin-bottom:6px">
                 <span style="color:var(--text)">${lA}: ${dA}</span> <span>vs</span> <span style="color:var(--text)">${lB}: ${dB}</span>
               </div>
-              ${_renderBo3Input(fid)}
-              <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;padding:4px 10px;margin-top:5px"
-                onclick="recordFixture(${tournament.id},'${grpLetter}',${aA},${aB})">✅ บันทึก</button>
+              <button class="btn btn-primary btn-sm" style="width:100%;font-size:0.72rem;padding:5px 10px"
+                onclick="openReferee(${tournament.id},'${grpLetter}',${aA},${aB},'2v2')">🎬 นับคะแนน (Referee)</button>
             </div>`;
           }
         }
@@ -1247,14 +1381,13 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
       // Singles: original free-entry form
       const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
       recordSection = `<div style="margin-top:8px;font-size:0.78rem;color:var(--muted);margin-bottom:4px">บันทึกแมตช์ Group ${grpLetter}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:4px">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
           <select class="inp" id="tm_pa_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
           <span style="font-size:0.8rem">vs</span>
           <select class="inp" id="tm_pb_${tournament.id}_${grpLetter}" style="flex:1;min-width:100px;font-size:0.76rem;padding:6px 8px">${playerOpts}</select>
         </div>
-        ${_renderBo3Input(`tm_${tournament.id}_${grpLetter}`)}
-        <button class="btn btn-primary btn-sm" style="width:auto;font-size:0.72rem;margin-top:6px"
-          onclick="recordTournamentMatch(${tournament.id},'${grpLetter}','${matchType}')">✅ บันทึก</button>`;
+        <button class="btn btn-primary btn-sm" style="width:100%;font-size:0.74rem"
+          onclick="openRefereeFromSelects(${tournament.id},'${grpLetter}','${matchType}')">🎬 นับคะแนน (Referee)</button>`;
     }
     } // end !readOnly
 
