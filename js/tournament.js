@@ -95,7 +95,18 @@ function getGrandFinalBadge(playerId) {
 
 // ── DB helpers (unchanged) ──
 async function dbGetTournaments() {
-  try { return await supaFetch('tournaments?order=created_at.desc'); } catch(e) { return []; }
+  try { return await supaFetch('tournaments?status=eq.active&order=created_at.desc'); } catch(e) { return []; }
+}
+async function dbCompleteTournament(id, hofMeta) {
+  const t = await dbGetTournamentById(id);
+  let groups = [];
+  try { groups = typeof t?.groups === 'string' ? JSON.parse(t.groups) : (t?.groups || []); } catch(e) {}
+  groups = groups.filter(g => !g._hof);
+  groups.push({ _hof: true, ...hofMeta });
+  await supaFetch(`tournaments?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'completed', groups: JSON.stringify(groups) }), prefer: 'return=minimal' });
+}
+async function dbGetHOFTournaments() {
+  try { return await supaFetch('tournaments?status=eq.completed&order=created_at.desc&limit=50'); } catch(e) { return []; }
 }
 async function dbCreateTournament(name, tier, groups) {
   const rows = await supaFetch('tournaments', { method: 'POST', body: JSON.stringify({ name, tier, groups: JSON.stringify(groups) }) });
@@ -490,15 +501,38 @@ async function executeDeclareChampion(tournamentId) {
     for (const pid of winnerPlayerIds) { try { await incrementS1000Titles(pid); } catch(e) {} }
   }
 
-  // 6. Remove tournament from DB (no status column needed — just delete)
-  try { await dbDeleteTournament(tournamentId); } catch(e) {}
+  const winnerNames = winnerPlayerIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+
+  // 6. Mark tournament as completed (keep for Hall of Fame) instead of deleting
+  try {
+    // ดึง runner-up จาก GF match (ถ้ามี)
+    let runnerUpName = '';
+    try {
+      const _tms2 = await dbGetTournamentMatches(tournamentId);
+      const _gf2 = _tms2.find(m => m.group_letter === 'GF');
+      if (_gf2) {
+        const _ruAnchor = _gf2.winner_id === _gf2.player_a ? _gf2.player_b : _gf2.player_a;
+        const _ruIds = matchType === '2v2' ? (getTeamByAnchor(groups, _ruAnchor)?.playerIds || [_ruAnchor]) : [_ruAnchor];
+        runnerUpName = _ruIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
+      }
+    } catch(e) {}
+    await dbCompleteTournament(tournamentId, {
+      champion_ids: winnerPlayerIds,
+      champion_name: winnerNames,
+      runner_up_name: runnerUpName,
+      tier: tierName,
+      match_type: matchType,
+      ended_at: new Date().toISOString(),
+    });
+  } catch(e) {
+    try { await dbDeleteTournament(tournamentId); } catch(e2) {}
+  }
   delete _tourStore[tournamentId];
 
   // 7. Reload + refresh UI
   try { await loadPlayers(); } catch(e) {}
   try { if (typeof renderLeaderboard === 'function') renderLeaderboard(); } catch(e) {}
 
-  const winnerNames = winnerPlayerIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
   const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
   toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
 
@@ -631,6 +665,59 @@ function onTournamentModeChange() {
 }
 
 // ── renderTournamentSection (updated: add matchType selector + 2v2 team UI) ──
+async function openTournamentHoF() {
+  // สร้าง modal HOF Tournament
+  document.getElementById('tourHofBg')?.remove();
+  const bg = document.createElement('div');
+  bg.id = 'tourHofBg';
+  bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px';
+  bg.innerHTML = `<div style="background:var(--bg2);border:1px solid rgba(255,215,0,0.25);border-radius:24px;width:100%;max-width:420px;max-height:82vh;overflow-y:auto;padding:0">
+    <div style="padding:20px 20px 0;display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,#ffd700,#fff4a3);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent">🏛️ ทำเนียบแชมป์</div>
+      <button onclick="document.getElementById('tourHofBg').remove()" style="width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer;font-size:0.9rem;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+    <div id="tourHofBody" style="padding:4px 16px 20px"><div style="text-align:center;color:var(--muted);padding:20px">⏳ กำลังโหลด...</div></div>
+  </div>`;
+  bg.addEventListener('click', e => { if (e.target === bg) bg.remove(); });
+  document.body.appendChild(bg);
+
+  try {
+    const rows = await dbGetHOFTournaments();
+    const body = document.getElementById('tourHofBody');
+    if (!body) return;
+    if (!rows.length) { body.innerHTML = `<div style="text-align:center;color:var(--muted);padding:24px;font-size:0.85rem">ยังไม่มีทัวร์นาเมนต์ที่จบแล้ว</div>`; return; }
+    const tierIcon = t => t === 'Super 1000' ? '👑' : t === 'Super 500' ? '🥈' : '🏸';
+    const tierColor = t => t === 'Super 1000' ? 'var(--gold)' : t === 'Super 500' ? 'var(--silver)' : 'var(--rank-bronze)';
+    body.innerHTML = rows.map(r => {
+      let hof = {};
+      try {
+        const grps = typeof r.groups === 'string' ? JSON.parse(r.groups) : (r.groups || []);
+        hof = grps.find(g => g._hof) || {};
+      } catch(e) {}
+      const endDate = hof.ended_at ? new Date(hof.ended_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : new Date(r.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+      const modeTag = hof.match_type === '2v2' ? '<span style="font-size:0.6rem;background:rgba(0,217,245,0.12);border:1px solid rgba(0,217,245,0.3);color:var(--neon2);border-radius:20px;padding:1px 6px">2v2</span>' : '';
+      return `<div style="border:1px solid var(--glass-border);border-radius:14px;background:var(--card);padding:12px 14px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:1.1rem">${tierIcon(r.tier)}</span>
+            <span style="font-weight:700;font-size:0.9rem">${r.name}</span>
+            ${modeTag}
+          </div>
+          <span style="font-size:0.65rem;color:var(--muted)">${endDate}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:0.75rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 7px">🏆 ${hof.champion_name || '?'}</span>
+          <span style="font-size:0.65rem;color:var(--muted);font-weight:600;padding:1px 6px;border-radius:10px;background:rgba(255,255,255,0.05)">${r.tier}</span>
+        </div>
+        ${hof.runner_up_name ? `<div style="font-size:0.7rem;color:var(--muted)">🥈 รองแชมป์: ${hof.runner_up_name}</div>` : ''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    const body = document.getElementById('tourHofBody');
+    if (body) body.innerHTML = `<div style="text-align:center;color:var(--red);padding:20px;font-size:0.82rem">โหลดไม่ได้: ${e.message}</div>`;
+  }
+}
+
 async function renderTournamentSection() {
   const container = document.getElementById('tournamentAdminSection');
   if (!container) return;
@@ -638,7 +725,10 @@ async function renderTournamentSection() {
   // Player dropdown options shared across 2v2 selects
   const pOpts = db.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
 
-  let html = `<div style="margin-bottom:12px">
+  let html = `<div style="margin-bottom:12px;display:flex;justify-content:flex-end">
+    <button onclick="openTournamentHoF()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:50px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.07);color:var(--gold);font-size:0.78rem;font-weight:700;cursor:pointer">🏛️ ทำเนียบแชมป์</button>
+  </div>
+  <div style="margin-bottom:12px">
     <div style="font-size:0.83rem;color:var(--muted);margin-bottom:8px">สร้าง Tournament ใหม่</div>
     <input class="inp" id="tournamentName" placeholder="ชื่อทัวร์นาเมนต์" style="margin-bottom:8px">
     <select class="inp" id="tournamentTier" style="margin-bottom:8px">
