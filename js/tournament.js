@@ -995,6 +995,7 @@ async function renderTournamentSection() {
         <div style="flex:1;min-width:110px">
           <div id="tourPerGroupLabel" style="font-size:0.72rem;color:var(--muted);margin-bottom:4px">คนต่อกลุ่ม</div>
           <select class="inp" id="tourPlayersPerGroup" style="font-size:0.82rem" onchange="_updateRegTotal()">
+            <option value="2">2</option>
             <option value="3">3</option>
             <option value="4" selected>4</option>
             <option value="5">5</option>
