@@ -202,15 +202,35 @@ function lbCountUp(elId, target, dur = 1000) {
 }
 
 const _lbParticleRafs = {};
+const _lbParticleRO = {};   // ResizeObserver per canvas (so we can disconnect on re-init)
+const _lbParticleIO = {};   // IntersectionObserver per canvas (pause when off-screen)
 function lbParticles(id, r, g, b) {
+  // Clean up any previous instance for this canvas (avoids leaked observers/RAFs)
   if (_lbParticleRafs[id]) { cancelAnimationFrame(_lbParticleRafs[id]); delete _lbParticleRafs[id]; }
+  if (_lbParticleRO[id]) { _lbParticleRO[id].disconnect(); delete _lbParticleRO[id]; }
+  if (_lbParticleIO[id]) { _lbParticleIO[id].disconnect(); delete _lbParticleIO[id]; }
   const c = document.getElementById(id); if (!c) return;
   const ctx = c.getContext('2d'); let ps = [], W, H;
-  function resize() { const rc = c.parentElement.getBoundingClientRect(); W = c.width = rc.width; H = c.height = rc.height; }
-  resize(); new ResizeObserver(resize).observe(c.parentElement);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // cap DPR — retina was rendering 4x pixels
+  function resize() {
+    const rc = c.parentElement.getBoundingClientRect();
+    W = rc.width; H = rc.height;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    c.style.width = W + 'px'; c.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  _lbParticleRO[id] = new ResizeObserver(resize); _lbParticleRO[id].observe(c.parentElement);
+  const COUNT = Math.max(6, Math.min(10, Math.round(W / 18)));   // ~10 instead of a flat 18
   function mk() { return { x: Math.random()*W, y: H+8, r: Math.random()*2.4+.7, sp: Math.random()*.7+.28, a: Math.random()*.45+.15, wb: Math.random()*Math.PI*2, ws: (Math.random()-.5)*.045 }; }
-  for (let i = 0; i < 18; i++) { const p = mk(); p.y = Math.random()*H; ps.push(p); }
-  function loop() {
+  for (let i = 0; i < COUNT; i++) { const p = mk(); p.y = Math.random()*H; ps.push(p); }
+  let onScreen = true, last = 0;
+  const FRAME = 1000 / 30;   // throttle to ~30fps (was uncapped ~60)
+  function loop(ts) {
+    _lbParticleRafs[id] = requestAnimationFrame(loop);
+    if (document.hidden || !onScreen) return;          // pause work when tab hidden / canvas off-screen
+    if (ts - last < FRAME) return;                      // FPS cap
+    last = ts;
     ctx.clearRect(0,0,W,H);
     ps.forEach((p,i) => {
       p.y -= p.sp; p.wb += p.ws; p.x += Math.sin(p.wb)*.45;
@@ -219,8 +239,9 @@ function lbParticles(id, r, g, b) {
       ctx.fillStyle = `rgba(${r},${g},${b},${p.a.toFixed(2)})`; ctx.fill();
       if (p.y < -10) ps[i] = mk();
     });
-    _lbParticleRafs[id] = requestAnimationFrame(loop);
   }
+  _lbParticleIO[id] = new IntersectionObserver(es => { onScreen = es[0].isIntersecting; }, { threshold: 0 });
+  _lbParticleIO[id].observe(c);
   _lbParticleRafs[id] = requestAnimationFrame(loop);
 }
 
