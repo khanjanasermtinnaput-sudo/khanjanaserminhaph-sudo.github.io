@@ -195,7 +195,7 @@ function setStatsTopN(n) {
   if (h) h.innerHTML = _buildScoreRaceInner(_statsRange, _statsTopN);
 }
 
-// ── the multi-player score race chart (แบบ B) ──
+// ── horizontal bar-race chart ──
 function _buildScoreRaceInner(rangeDays, topN) {
   const isEn = _lang === 'en';
   const controls = _srControls(rangeDays, topN);
@@ -208,121 +208,80 @@ function _buildScoreRaceInner(rangeDays, topN) {
   if (rangeDays > 0) {
     t0 = now - rangeDays * 86400000;
   } else {
-    // all-time: just before the earliest match across the shown players
     let earliest = now;
     players.forEach(p => { const ms = _srPlayerMatches(p.id); if (ms.length) earliest = Math.min(earliest, ms[0].date); });
     t0 = earliest < now ? earliest - 1000 : now - 7 * 86400000;
   }
-  if (now - t0 < 60000) t0 = now - 86400000; // guard against zero-width window
+  if (now - t0 < 60000) t0 = now - 86400000;
 
-  // Reconstruct each player's pts timeline once
   const timelines = players.map(p => _srTimeline(p));
 
-  // One ordinal slot per calendar day (last-match time of that day).
-  // Grouping by day collapses a 20-match session into 1 clean data point
-  // instead of 20 near-vertical wiggles that tangle into knots.
-  const dayLastTime = new Map();
-  timelines.forEach(tl => tl.pts.forEach(pt => {
-    if (pt.t > t0 && pt.t < now) {
-      const dk = Math.floor(pt.t / 86400000);
-      if (!dayLastTime.has(dk) || pt.t > dayLastTime.get(dk)) dayLastTime.set(dk, pt.t);
+  // Build row data: current score + score at period start (for delta)
+  const rows = players.map((p, i) => {
+    const scoreBefore = _srPtsAt(timelines[i], t0);
+    const delta = p.pts - scoreBefore;
+    return { player: p, color: SR_COLORS[i % SR_COLORS.length], isMe: p.id === currentUser.id, score: p.pts, delta };
+  }).sort((a, b) => b.score - a.score);
+
+  const maxScore = Math.max(...rows.map(r => r.score), 1);
+
+  // SVG layout
+  const RH = 34, GAP = 5;
+  const PL = 8, PR = 8, PT = 14, PB = 10;
+  const RANK_W = 26, NAME_W = 108, BAR_W = 220, SCORE_W = 48, DELTA_W = 44;
+  const W = PL + RANK_W + NAME_W + BAR_W + SCORE_W + DELTA_W + PR;
+  const H = PT + rows.length * (RH + GAP) - GAP + PB;
+
+  const barX = PL + RANK_W + NAME_W;
+
+  let svgRows = '';
+  rows.forEach((r, i) => {
+    const y = PT + i * (RH + GAP);
+    const cy = y + RH / 2 + 1;
+    const bw = (r.score / maxScore) * BAR_W;
+    const dStr = r.delta > 0 ? `▲${r.delta}` : r.delta < 0 ? `▼${Math.abs(r.delta)}` : '—';
+    const dCol = r.delta > 0 ? '#00f5a0' : r.delta < 0 ? '#ff5d8f' : 'rgba(255,255,255,0.3)';
+    const short = r.player.name.length > 11 ? r.player.name.slice(0, 10) + '…' : r.player.name;
+
+    // row bg
+    svgRows += `<rect x="${PL}" y="${y}" width="${W - PL - PR}" height="${RH}" rx="7" fill="${r.isMe ? 'rgba(0,245,160,0.08)' : 'rgba(255,255,255,0.03)'}"/>`;
+    // rank badge
+    svgRows += `<text x="${PL + RANK_W - 2}" y="${cy + 4}" fill="rgba(255,255,255,0.45)" font-size="12" font-weight="700" text-anchor="end" font-family="Rajdhani,sans-serif">#${i + 1}</text>`;
+    // name
+    svgRows += `<text x="${PL + RANK_W + 6}" y="${cy + 4}" fill="${r.isMe ? '#00f5a0' : 'rgba(255,255,255,0.9)'}" font-size="${r.isMe ? 12 : 11.5}" font-weight="${r.isMe ? '800' : '600'}" font-family="Rajdhani,sans-serif">${short}</text>`;
+    // bar track
+    svgRows += `<rect x="${barX}" y="${y + 9}" width="${BAR_W}" height="${RH - 18}" rx="4" fill="rgba(255,255,255,0.06)"/>`;
+    // bar fill with gradient-like opacity
+    if (bw > 0) {
+      svgRows += `<rect x="${barX}" y="${y + 9}" width="${bw.toFixed(1)}" height="${RH - 18}" rx="4" fill="${r.color}" opacity="${r.isMe ? '1' : '0.78'}"/>`;
+      // score label inside bar if wide enough, else outside
+      if (bw > 36) {
+        svgRows += `<text x="${barX + bw - 5}" y="${cy + 4}" fill="rgba(0,0,0,0.7)" font-size="11" font-weight="800" text-anchor="end" font-family="Rajdhani,sans-serif">${r.score}</text>`;
+      } else {
+        svgRows += `<text x="${barX + bw + 6}" y="${cy + 4}" fill="${r.color}" font-size="11" font-weight="800" font-family="Rajdhani,sans-serif">${r.score}</text>`;
+      }
     }
-  }));
-  const slotTimes = [t0, ...[...dayLastTime.values()].sort((a, b) => a - b), now];
-  const S = slotTimes.length;
-
-  const seriesList = players.map((p, i) => ({
-    player: p,
-    color: SR_COLORS[i % SR_COLORS.length],
-    isMe: p.id === currentUser.id,
-    vals: slotTimes.map(t => _srPtsAt(timelines[i], t))
-  }));
-
-  // y-range across every series, with headroom
-  let yMin = Infinity, yMax = -Infinity;
-  seriesList.forEach(s => s.vals.forEach(v => { if (v < yMin) yMin = v; if (v > yMax) yMax = v; }));
-  if (!isFinite(yMin)) { yMin = 0; yMax = 100; }
-  const padV = Math.max((yMax - yMin) * 0.14, 12);
-  yMax += padV; yMin = Math.max(0, yMin - padV);
-  if (yMax - yMin < 1) yMax = yMin + 1;
-
-  const W = 540, H = 320, padL = 46, padR = 92, padT = 18, padB = 30;
-  const chartW = W - padL - padR, chartH = H - padT - padB;
-  const toXi = j => padL + (S < 2 ? 0 : (j / (S - 1)) * chartW);
-  const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
-
-  // grid + y-axis
-  const yTicks = [];
-  for (let i = 0; i < 5; i++) yTicks.push(Math.round(yMin + (i / 4) * (yMax - yMin)));
-  const gridSVG = [...new Set(yTicks)].map(v =>
-    `<line x1="${padL}" y1="${toY(v).toFixed(1)}" x2="${padL + chartW}" y2="${toY(v).toFixed(1)}" stroke="rgba(255,255,255,0.06)" stroke-width="0.6" stroke-dasharray="2,4"/>`).join('');
-  const yAxisSVG = [...new Set(yTicks)].map(v =>
-    `<text x="${padL - 7}" y="${(toY(v) + 3.5).toFixed(1)}" fill="rgba(255,255,255,0.35)" font-size="9" text-anchor="end" font-family="Rajdhani,sans-serif" font-weight="600">${v}</text>`).join('');
-
-  // x-axis labels at evenly-spaced slots (date of that slot)
-  const fmtDate = t => new Date(t).toLocaleDateString(isEn ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'short' });
-  const xTickCount = Math.min(5, S);
-  let xAxisSVG = '';
-  for (let k = 0; k < xTickCount; k++) {
-    const j = xTickCount < 2 ? S - 1 : Math.round(k * (S - 1) / (xTickCount - 1));
-    const label = j === S - 1 ? (isEn ? 'now' : 'ล่าสุด') : fmtDate(slotTimes[j]);
-    const anchor = k === 0 ? 'start' : k === xTickCount - 1 ? 'end' : 'middle';
-    xAxisSVG += `<text x="${toXi(j).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.32)" font-size="8" text-anchor="${anchor}" font-family="Rajdhani,sans-serif">${label}</text>`;
-  }
-
-  // lines + current-value dots + end labels
-  let linesSVG = '', dotsSVG = '';
-  const endLabels = [];
-  seriesList.forEach(s => {
-    const xy = s.vals.map((v, j) => ({ x: toXi(j), y: toY(v) }));
-    const d = _srMonotone(xy);
-    const w = s.isMe ? 3.4 : 2.4;
-    linesSVG += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${s.isMe ? 1 : 0.9}" clip-path="url(#srClip)"${s.isMe ? ' filter="url(#srGlow)"' : ''}/>`;
-    const last = xy[xy.length - 1];
-    if (s.isMe) dotsSVG += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="9" fill="${s.color}" opacity="0.16"/>`;
-    dotsSVG += `<circle cx="${last.x.toFixed(1)}" cy="${last.y.toFixed(1)}" r="${s.isMe ? 5 : 3.4}" fill="${s.color}" stroke="rgba(0,0,0,0.45)" stroke-width="1"/>`;
-    endLabels.push({ y: last.y, color: s.color, name: s.player.name, isMe: s.isMe });
+    // delta
+    svgRows += `<text x="${barX + BAR_W + SCORE_W}" y="${cy + 4}" fill="${dCol}" font-size="10" font-weight="700" text-anchor="end" font-family="Rajdhani,sans-serif">${dStr}</text>`;
   });
 
-  // de-collide end labels vertically so names stay readable
-  endLabels.sort((a, b) => a.y - b.y);
-  const minGap = 13;
-  for (let i = 1; i < endLabels.length; i++) {
-    if (endLabels[i].y - endLabels[i - 1].y < minGap) endLabels[i].y = endLabels[i - 1].y + minGap;
-  }
-  const over = endLabels.length ? endLabels[endLabels.length - 1].y - (padT + chartH) : 0;
-  if (over > 0) endLabels.forEach(l => l.y -= over);
-  if (endLabels.length && endLabels[0].y < padT) {
-    const up = padT - endLabels[0].y;
-    endLabels.forEach(l => l.y += up);
-  }
-  const labelX = padL + chartW + 8;
-  const endLabelSVG = endLabels.map(l => {
-    const short = l.name.length > 7 ? l.name.slice(0, 7) + '…' : l.name;
-    return `<text x="${labelX}" y="${(l.y + 3).toFixed(1)}" fill="${l.color}" font-size="9.5" font-family="Rajdhani,sans-serif" font-weight="${l.isMe ? '800' : '700'}">${short}${l.isMe ? ' ●' : ''}</text>`;
-  }).join('');
+  // column header
+  const periodLabel = rangeDays > 0
+    ? (isEn ? `Last ${rangeDays} days` : `${rangeDays} วันที่ผ่านมา`)
+    : (isEn ? 'All time' : 'ทั้งหมด');
+  const hdrY = PT - 3;
+  const header = `<text x="${barX + BAR_W + SCORE_W}" y="${hdrY}" fill="rgba(255,255,255,0.28)" font-size="8.5" text-anchor="end" font-family="Rajdhani,sans-serif">${periodLabel}</text>`;
 
-  // legend with current pts
-  const legend = seriesList.map(s =>
-    `<div class="sr-leg${s.isMe ? ' sr-leg-me' : ''}"><span class="sr-leg-dot" style="background:${s.color}"></span><span class="sr-leg-name">${s.player.name}${s.isMe ? (isEn ? ' (you)' : ' (คุณ)') : ''}</span><span class="sr-leg-pts">${s.player.pts}</span></div>`).join('');
-
-  return `
-  ${controls}
-  <div class="sr-chart-wrap">
+  return `${controls}
+  <div class="sr-chart-wrap" style="margin-top:6px">
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;overflow:visible">
       <defs>
-        <clipPath id="srClip"><rect x="${padL - 1}" y="${padT - 8}" width="${chartW + 2}" height="${chartH + 16}"/></clipPath>
-        <filter id="srGlow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        <filter id="srGlow2" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      ${gridSVG}
-      ${yAxisSVG}
-      ${linesSVG}
-      ${dotsSVG}
-      ${endLabelSVG}
-      ${xAxisSVG}
+      ${header}
+      ${svgRows}
     </svg>
-  </div>
-  <div class="sr-legend">${legend}</div>`;
+  </div>`;
 }
