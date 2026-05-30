@@ -773,3 +773,50 @@ body.x2-active .toast-wrap{bottom:120px}
   .gf-champion .gf-glow{display:block!important;animation:champPulse 2s steps(48) infinite!important}
   .gf-thundergod .gf-glow{display:block!important;animation:tgPulse 1.4s steps(34) infinite!important}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   [LIQUID FRAME] Animated profile frame for hero avatars.
+   GPU-only — animates transform + opacity exclusively (no animated
+   box-shadow / filter / backdrop-filter). Ring / glow / particles are
+   injected child <i> layers (LIQUID_FRAME_INNER in utils.js), so it
+   never collides with gacha frame ::before/::after. Applied to the
+   Profile avatar and leaderboard #1 avatar, only when no gacha frame
+   is equipped (the two FX systems never stack).
+   ═══════════════════════════════════════════════════════════════ */
+.liquid-frame{position:relative;isolation:isolate;overflow:visible}
+.liquid-frame > i{position:absolute;pointer-events:none;border-radius:50%}
+/* soft glow — gentle scale/opacity pulse (~5s); no box-shadow loop */
+.liquid-frame > .lf-glow{inset:-10px;z-index:-2;background:radial-gradient(circle,rgba(0,245,160,.30),rgba(0,217,245,.12) 55%,transparent 72%);opacity:.55;animation:lfGlowPulse 5s ease-in-out infinite;will-change:transform,opacity}
+/* rotating ring — conic gradient masked into a thin ring, GPU rotate (~8s) */
+.liquid-frame > .lf-ring{inset:-5px;z-index:-1;background:conic-gradient(from 0deg,transparent 0deg,var(--neon) 60deg,var(--neon2) 140deg,transparent 210deg,transparent 360deg);-webkit-mask:radial-gradient(closest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(closest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));opacity:.9;animation:lfRingSpin 8s linear infinite;will-change:transform}
+/* orbiting liquid particles — 5 dots (trimmed to 3 on mobile) */
+.liquid-frame > .lf-p{top:50%;left:50%;width:6px;height:6px;margin:-3px 0 0 -3px;--r:40px;background:radial-gradient(circle,#fff,var(--neon) 60%,transparent 75%);box-shadow:0 0 4px var(--neon);animation:lfOrbit 8s linear infinite;will-change:transform}
+.liquid-frame > .lf-p:nth-child(3){--r:38px;animation-duration:7s;animation-delay:-1.2s}
+.liquid-frame > .lf-p:nth-child(4){--r:43px;animation-duration:9s;animation-delay:-3s;background:radial-gradient(circle,#fff,var(--neon2) 60%,transparent 75%);box-shadow:0 0 4px var(--neon2)}
+.liquid-frame > .lf-p:nth-child(5){--r:36px;animation-duration:8.5s;animation-delay:-5s}
+.liquid-frame > .lf-p:nth-child(6){--r:41px;animation-duration:7.5s;animation-delay:-6.3s;background:radial-gradient(circle,#fff,var(--neon2) 60%,transparent 75%);box-shadow:0 0 4px var(--neon2)}
+.liquid-frame > .lf-p:nth-child(7){--r:39px;animation-duration:8s;animation-delay:-2.4s}
+@keyframes lfRingSpin{to{transform:rotate(360deg)}}
+@keyframes lfGlowPulse{0%,100%{transform:scale(.95);opacity:.4}50%{transform:scale(1.07);opacity:.72}}
+@keyframes lfOrbit{from{transform:rotate(0deg) translateX(var(--r))}to{transform:rotate(360deg) translateX(var(--r))}}
+/* accessibility + lite mode: static frame, no motion */
+@media (prefers-reduced-motion: reduce){
+  .liquid-frame > i{animation:none!important}
+  .liquid-frame > .lf-p:nth-child(n+6){display:none}
+}
+[data-style="lite"] .liquid-frame > .lf-glow,
+[data-style="lite"] .liquid-frame > .lf-p{display:none}
+[data-style="lite"] .liquid-frame > .lf-ring{animation:none!important;opacity:.5}
+
+/* [perf 9] Mobile: trim the new liquid frame (5→3 particles, slower spin/pulse,
+   drop particle shadows) AND close the [perf 3] gap — .lb-glass (podium cards +
+   every leaderboard board row) was never blur-reduced, so the landing screen
+   still stacked blur(16px)+saturate+brightness per row. Desktop untouched. */
+@media (max-width:620px){
+  .liquid-frame > .lf-p:nth-child(6),
+  .liquid-frame > .lf-p:nth-child(7){display:none}
+  .liquid-frame > .lf-p{box-shadow:none}
+  .liquid-frame > .lf-ring{animation-duration:11s}
+  .liquid-frame > .lf-glow{animation-duration:7s}
+  [data-style="glass"] .lb-glass{backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+}

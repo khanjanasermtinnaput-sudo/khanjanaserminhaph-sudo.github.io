@@ -61,7 +61,7 @@ async function renderLeaderboard() {
         <div class="lb-pod-shim"></div>
         ${isFirst ? '<div class="lb-crown">👑</div>' : ''}
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
-        <div class="lb-pod-av ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
+        <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
         <div class="lb-pod-name ${getGachaNameClass(p)}">${p.name}</div>
         <div class="lb-pod-score" id="lbpscore${p.id}">${p.pts.toLocaleString()}</div>
         <div class="lb-pod-wins">ชนะ ${p.wins} · แพ้ ${p.losses} · ${wr}%</div>
@@ -682,7 +682,7 @@ async function renderProfile() {
     const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header">
-        <div class="profile-avatar ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
+        <div class="profile-avatar ${getGachaFrameClass(p) || 'liquid-frame'} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameClass(p) ? '' : getLiquidFrameInner()}${getGachaFrameInner(p)}${av.content}</div>
         <div><div class="profile-name ${getGachaNameClass(p)}">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="rank-badge ${rank.class}">${getRankLabel(p.pts,p.id)}</span><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
       <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">${t('rank_progress')} ${prog.next ? '→ '+prog.next.label : t('rank_max')}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>

@@ -17,6 +17,16 @@ const GACHA_FRAME_INNER = {
 // Backward-compat alias: old 'solar' key maps to new 'solaremperor'
 function _resolveFrameKey(f) { return (f === 'solar') ? 'solaremperor' : f; }
 function _resolveNameKey(n)  { return (n === 'solar') ? 'solaremperor' : n; }
+
+// ── Liquid UI profile frame (lightweight, GPU-only: transform + opacity) ──
+// Rotating ring + soft pulse glow + a few orbiting particles. Injected as child
+// layers so it never collides with gacha frame ::before/::after pseudo-elements.
+// Used only on hero avatars (Profile page + leaderboard #1) and only when the
+// player has NOT equipped a gacha frame, so the two systems never stack.
+const LIQUID_FRAME_INNER =
+  '<i class="lf-glow"></i><i class="lf-ring"></i>' +
+  '<i class="lf-p"></i><i class="lf-p"></i><i class="lf-p"></i><i class="lf-p"></i><i class="lf-p"></i>';
+function getLiquidFrameInner() { return LIQUID_FRAME_INNER; }
 // Returns extra class for the avatar element e.g. "gf-void"
 function getGachaFrameClass(player) {
   const raw = player && player.gachaFrame;
