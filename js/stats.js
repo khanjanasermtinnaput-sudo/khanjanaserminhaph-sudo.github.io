@@ -218,13 +218,17 @@ function _buildScoreRaceInner(rangeDays, topN) {
   // Reconstruct each player's pts timeline once
   const timelines = players.map(p => _srTimeline(p));
 
-  // Unified ORDINAL axis: a slot for the window start (t0), every distinct match
-  // time inside the window, and "now". Slots are spaced EVENLY (by event order,
-  // not by real clock time) so clustered recent matches don't squash into a
-  // vertical tangle at the right edge.
-  const eventSet = new Set();
-  timelines.forEach(tl => tl.pts.forEach(pt => { if (pt.t > t0 && pt.t < now) eventSet.add(pt.t); }));
-  const slotTimes = [t0, ...[...eventSet].sort((a, b) => a - b), now];
+  // One ordinal slot per calendar day (last-match time of that day).
+  // Grouping by day collapses a 20-match session into 1 clean data point
+  // instead of 20 near-vertical wiggles that tangle into knots.
+  const dayLastTime = new Map();
+  timelines.forEach(tl => tl.pts.forEach(pt => {
+    if (pt.t > t0 && pt.t < now) {
+      const dk = Math.floor(pt.t / 86400000);
+      if (!dayLastTime.has(dk) || pt.t > dayLastTime.get(dk)) dayLastTime.set(dk, pt.t);
+    }
+  }));
+  const slotTimes = [t0, ...[...dayLastTime.values()].sort((a, b) => a - b), now];
   const S = slotTimes.length;
 
   const seriesList = players.map((p, i) => ({
