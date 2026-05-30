@@ -690,3 +690,23 @@ body.x2-active .toast-wrap{bottom:120px}
     scroll-behavior:auto!important;
   }
 }
+
+/* [perf 3] Mobile glass: backdrop-filter blur is the #1 GPU cost. Shrink blur
+   radius on large panels and DROP it entirely on repeated list rows (stacked
+   per-row blurs murder scroll FPS) — swap to a flat translucent fill so the
+   panels still read as glass. Desktop glass is untouched. */
+@media (max-width:620px){
+  [data-style="glass"] .card{backdrop-filter:blur(8px) saturate(1.4);-webkit-backdrop-filter:blur(8px) saturate(1.4)}
+  [data-style="glass"] nav,[data-style="glass"] .ref-topbar,[data-style="glass"] .ref-bottombar{backdrop-filter:blur(8px) saturate(1.6);-webkit-backdrop-filter:blur(8px) saturate(1.6)}
+  [data-style="glass"] .modal,[data-style="glass"] .login-box,[data-style="glass"] .toast,[data-style="glass"] .theme-controls{backdrop-filter:blur(10px) saturate(1.6);-webkit-backdrop-filter:blur(10px) saturate(1.6)}
+  .modal-bg,.pp-bg,.pp-overlay,.patch-modal-bg,#gachaRevealOverlay,#gachaPullOverlay,#mailboxOverlay,.brm-bg{backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+  [data-style="glass"] .lb-item,[data-style="glass"] .pl-item,[data-style="glass"] .hist-item,
+  [data-style="glass"] .stat-card,[data-style="glass"] .pstat,[data-style="glass"] .pp-stat,
+  [data-style="glass"] .pp2-stat,[data-style="glass"] .pp-h2h-item,[data-style="glass"] .pp2-h2h,
+  [data-style="glass"] .ach-list-item,[data-style="glass"] .rank-tier-row,[data-style="glass"] .nemesis-card,
+  [data-style="glass"] .pp-partner,[data-style="glass"] .pp2-partner,[data-style="glass"] .pp2-hist{
+    backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(255,255,255,0.045)
+  }
+  /* inputs: drop blur only, keep their own background (contrast) */
+  [data-style="glass"] .inp{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+}
