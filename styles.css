@@ -749,3 +749,27 @@ body.x2-active .toast-wrap{bottom:120px}
   .gn-thundergod{animation:tgNameShimmer 1.8s linear infinite!important}
   .gn-solaremperor{animation:seNameShimmer 3s linear infinite!important}
 }
+
+/* [perf 8] Keep the gacha/profile frames visibly alive on mobile, but throttled
+   to ~24fps via steps() (updates 24x/sec instead of ~60). Per-theme spin speed is
+   preserved; ONE soft glow is brought back per frame. Heavy bits (particles,
+   blurred 2nd rings, hue-rotate) stay OFF from [perf 5]. steps(N)=24*durationSec. */
+@media (max-width:620px){
+  /* primary conic spin → 24fps (keep each theme's own keyframe + duration) */
+  .gf-void::before{animation-timing-function:steps(72)!important}
+  .gf-halo::before{animation-timing-function:steps(96)!important}
+  .gf-blaze::before{animation-timing-function:steps(60)!important}
+  .gf-ice::before{animation-timing-function:steps(120)!important}
+  .gf-champion::before{animation-timing-function:steps(72)!important}
+  .gf-thundergod::before{animation-timing-function:steps(43)!important}
+  .gf-solaremperor .se-sweep{animation-timing-function:steps(132)!important}
+  /* rainbow: spin the rainbow ring via transform (not costly hue-rotate) at 24fps */
+  .gf-rainbow::before{animation:gVoidSpin 2.5s steps(60) infinite!important}
+  /* bring back one soft glow per frame, also at 24fps (particles stay off) */
+  .gf-void .gf-glow{display:block!important;animation:gVoidPulse 2s steps(48) infinite!important}
+  .gf-halo .gf-glow{display:block!important;animation:gHaloGlow 2.5s steps(60) infinite!important}
+  .gf-blaze .gf-glow{display:block!important;animation:gBlazeFlicker 1.2s steps(29) infinite!important}
+  .gf-ice .gf-glow{display:block!important;animation:gIcePulse 3s steps(72) infinite!important}
+  .gf-champion .gf-glow{display:block!important;animation:champPulse 2s steps(48) infinite!important}
+  .gf-thundergod .gf-glow{display:block!important;animation:tgPulse 1.4s steps(34) infinite!important}
+}
