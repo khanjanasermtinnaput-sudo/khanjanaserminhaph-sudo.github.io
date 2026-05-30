@@ -1376,6 +1376,7 @@ async function renderTournamentSection() {
                 <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px"></div>
               </div>
             </div>
+            <div style="margin-bottom:10px"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>
             ${cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, true)}
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
               ${cfg.drawPreview
@@ -1399,7 +1400,7 @@ async function renderTournamentSection() {
             ${renderRewardCards(t.id, t.tier)}
             ${await renderTournamentBracket(t, groups)}
             <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button>
+              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button>
               <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
             </div>
           </div>`;
@@ -2098,20 +2099,149 @@ function _renderDrawPreview(cfg) {
   </div>`;
 }
 
-// All users: open the read-only bracket tree in a modal overlay
+// ── Dedicated 3-column bracket modal (Semi Finals → Grand Final → Champion) ──
+// Connector columns (CSS borders, no SVG) — percentage-positioned so they scale.
+const _BRM_MERGE = `<div class="brm-conn"><i class="h" style="left:0;top:25%;width:50%"></i><i class="h" style="left:0;top:75%;width:50%"></i><i class="v" style="left:calc(50% - 1px);top:25%;height:50%"></i><i class="h" style="left:50%;top:50%;width:50%"></i></div>`;
+const _BRM_PASS  = `<div class="brm-conn"><i class="h" style="left:0;top:50%;width:100%"></i></div>`;
+
+// Team-aware label for a raw competitor id (anchor for 2v2)
+function _brmLabelForId(id, matchType, groups) {
+  if (id == null) return '—';
+  if (matchType === '2v2') {
+    const team = getTeamByAnchor(groups, id);
+    if (team) return getTeamDisplayName(team, db.players);
+  }
+  return db.players.find(p => p.id === id)?.name || `#${id}`;
+}
+
+// One player/team row. state: 'win' | 'pending' | 'normal'. isGF swaps ✓→👑 + gold.
+function _brmRow(label, score, state, isGF) {
+  if (state === 'pending') return `<div class="brm-row pending"><span class="brm-nm">รอผล</span><span class="brm-sc">—</span></div>`;
+  if (state === 'win') {
+    const mark = isGF ? `<span class="brm-crown">👑</span>` : `<span class="brm-tick">✓</span>`;
+    return `<div class="brm-row win${isGF ? ' gfwin' : ''}"><span class="brm-nm">${label}</span>${mark}<span class="brm-sc">${score}</span></div>`;
+  }
+  return `<div class="brm-row"><span class="brm-nm">${label}</span><span class="brm-sc">${score}</span></div>`;
+}
+
+// One knockout match box. left/right are entry objects ({id,label}) or null (TBD).
+function _brmMatchBox(t, tMatches, stageId, left, right, matchType, groups, isAdmin, headerLabel, isGF) {
+  const m = tMatches.find(x => x.group_letter === stageId);
+  const boxCls = isGF ? 'brm-box gf' : 'brm-box';
+  let rows = '';
+  if (m) {
+    const lId = left ? left.id : m.player_a;
+    const rId = right ? right.id : m.player_b;
+    const lLabel = left ? left.label : _brmLabelForId(m.player_a, matchType, groups);
+    const rLabel = right ? right.label : _brmLabelForId(m.player_b, matchType, groups);
+    const ls = m.player_a === lId ? m.score_a : m.score_b;
+    const rs = m.player_a === lId ? m.score_b : m.score_a;
+    rows = _brmRow(lLabel, ls, m.winner_id === lId ? 'win' : 'normal', isGF)
+         + _brmRow(rLabel, rs, m.winner_id === rId ? 'win' : 'normal', isGF);
+  } else {
+    rows = _brmRow(left ? left.label : '', '—', left ? 'normal' : 'pending', isGF)
+         + _brmRow(right ? right.label : '', '—', right ? 'normal' : 'pending', isGF);
+    // Grand Final, admin, both entries known, not yet recorded → Referee scorer
+    if (isGF && isAdmin && left && right) {
+      rows += `<button class="brm-ref" onclick="openReferee(${t.id},'${stageId}',${left.id},${right.id},'${matchType}')">🎯 นับคะแนน (Referee)</button>`;
+    }
+  }
+  return `<div class="${boxCls}"><div class="brm-box-h">${headerLabel}</div>${rows}</div>`;
+}
+
+// Single-competitor feeder chip (group winner / bye)
+function _brmChip(entry, sub) {
+  return `<div class="brm-chip">${entry ? entry.label : 'รอผล'}${sub ? `<span class="brm-sub2">${sub}</span>` : ''}</div>`;
+}
+
+// Champion card
+function _brmChampion(entry) {
+  const pending = !entry;
+  return `<div class="brm-champ${pending ? ' pending' : ''}">
+    <div class="brm-champ-tr">🏆</div>
+    <div class="brm-champ-cap">CHAMPION</div>
+    <div class="brm-champ-nm">${entry ? entry.label : 'รอผล'}</div>
+  </div>`;
+}
+
+// Build the 3-column bracket body from live Supabase data
+function _renderBracketModalBody(t, groups, tMatches, isAdmin) {
+  const matchType = getTournamentMatchType(groups);
+  const realGroups = getTournamentGroups(groups);
+  const cfg = getTournamentConfig(groups);
+  const started = realGroups.length > 0;
+  let nGroups = started ? realGroups.length : (cfg?.numGroups || 2);
+  if (nGroups > 4) nGroups = 4;
+
+  // Group winner = current leader, but only once that group has a recorded match
+  const winners = [];
+  for (let i = 0; i < nGroups; i++) {
+    const grp = realGroups[i];
+    if (!grp) { winners.push(null); continue; }
+    const has = tMatches.some(m => m.group_letter === grp.letter);
+    const st = calculateGroupStandings(grp, tMatches, matchType);
+    winners.push(has && st[0] ? st[0] : null);
+  }
+
+  // Map a recorded stage match's winner onto one of its two entries
+  const mw = (sid, a, b) => {
+    const m = tMatches.find(x => x.group_letter === sid);
+    if (!m) return null;
+    if (a && m.winner_id === a.id) return a;
+    if (b && m.winner_id === b.id) return b;
+    return { id: m.winner_id, label: _brmLabelForId(m.winner_id, matchType, groups) };
+  };
+
+  // Single group → champion decided by group ranking (no knockout)
+  if (nGroups <= 1) {
+    let champ = null;
+    if (realGroups[0]) {
+      const st = calculateGroupStandings(realGroups[0], tMatches, matchType);
+      if (st[0] && st[0].wins > 0) champ = st[0];
+    }
+    return `<div class="brm-wrap"><div class="brm-scroll"><div class="brm-grid" style="justify-content:center">
+      <div class="brm-col champ"><div class="brm-col-label">Champion</div>${_brmChampion(champ)}</div>
+    </div></div><div class="brm-note">แชมป์ตัดสินจากอันดับในกลุ่ม</div></div>`;
+  }
+
+  let semiHtml = '', gfLeft = null, gfRight = null;
+  if (nGroups === 2) {
+    gfLeft = winners[0]; gfRight = winners[1];
+    semiHtml = `${_brmChip(winners[0], 'ผู้ชนะกลุ่ม A')}${_brmChip(winners[1], 'ผู้ชนะกลุ่ม B')}`;
+  } else if (nGroups === 3) {
+    gfLeft = mw('SF', winners[0], winners[1]); gfRight = winners[2];
+    semiHtml = `${_brmMatchBox(t, tMatches, 'SF', winners[0], winners[1], matchType, groups, isAdmin, 'Semi Final', false)}${_brmChip(winners[2], '🎟️ บายเข้ารอบ')}`;
+  } else { // 4 groups → SF1 + SF2
+    gfLeft = mw('SF1', winners[0], winners[1]); gfRight = mw('SF2', winners[2], winners[3]);
+    semiHtml = `${_brmMatchBox(t, tMatches, 'SF1', winners[0], winners[1], matchType, groups, isAdmin, 'Semi Final 1', false)}${_brmMatchBox(t, tMatches, 'SF2', winners[2], winners[3], matchType, groups, isAdmin, 'Semi Final 2', false)}`;
+  }
+
+  const gfBox = _brmMatchBox(t, tMatches, 'GF', gfLeft, gfRight, matchType, groups, isAdmin, 'Grand Final', true);
+  const champ = mw('GF', gfLeft, gfRight);
+
+  return `<div class="brm-wrap"><div class="brm-scroll"><div class="brm-grid">
+    <div class="brm-col semi"><div class="brm-col-label">Semi Finals</div>${semiHtml}</div>
+    ${_BRM_MERGE}
+    <div class="brm-col final"><div class="brm-col-label">Grand Final</div>${gfBox}</div>
+    ${_BRM_PASS}
+    <div class="brm-col champ"><div class="brm-col-label">Champion</div>${_brmChampion(champ)}</div>
+  </div></div></div>`;
+}
+
+// All users: open the bracket in a full-screen modal (role-aware — admin gets GF Referee)
 async function openBracketModal(tournamentId) {
   document.getElementById('tBracketModal')?.remove();
   const modal = document.createElement('div');
   modal.id = 'tBracketModal';
-  modal.className = 't-bk-modal-bg';
+  modal.className = 'brm-bg';
   modal.innerHTML = `
-    <div class="t-bk-modal">
-      <div class="t-bk-modal-head">
-        <div class="t-bk-modal-title">📊 ตารางการแข่งขัน</div>
-        <button class="t-bk-modal-x" onclick="document.getElementById('tBracketModal').remove()">✕</button>
+    <div class="brm-modal">
+      <div class="brm-head">
+        <div class="brm-title">🏆 ตารางการแข่งขัน</div>
+        <button class="brm-x" onclick="document.getElementById('tBracketModal').remove()">✕</button>
       </div>
-      <div id="tBracketModalBody" class="t-bk-modal-body">
-        <div style="text-align:center;color:var(--muted);padding:28px">⏳ กำลังโหลด...</div>
+      <div id="tBracketModalBody" class="brm-body">
+        <div style="text-align:center;color:#888;padding:30px">⏳ กำลังโหลด...</div>
       </div>
     </div>`;
   modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
@@ -2120,11 +2250,15 @@ async function openBracketModal(tournamentId) {
     const t = await dbGetTournamentById(tournamentId);
     let groups = []; try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
     _tourStore[t.id] = { groups, matchType: getTournamentMatchType(groups), tier: t.tier, name: t.name };
+    const tMatches = await dbGetTournamentMatches(t.id);
+    const isAdmin = isAdminUser();
+    const tierCls = t.tier === 'Super 1000' ? 's1000' : t.tier === 'Super 500' ? 's500' : t.tier === 'Regular' ? 'reg' : 'custom';
+    const sub = `<div class="brm-sub"><span class="brm-tname">${t.name}</span><span class="brm-tier ${tierCls}">${t.tier}</span></div>`;
     const body = document.getElementById('tBracketModalBody');
-    if (body) body.innerHTML = `<div class="t-bk-modal-name">${t.name}</div>` + await renderTournamentBracket(t, groups, true);
+    if (body) body.innerHTML = sub + _renderBracketModalBody(t, groups, tMatches, isAdmin);
   } catch(e) {
     const body = document.getElementById('tBracketModalBody');
-    if (body) body.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px">โหลดไม่ได้: ${e.message}</div>`;
+    if (body) body.innerHTML = `<div style="color:var(--red);text-align:center;padding:22px">โหลดไม่ได้: ${e.message}</div>`;
   }
 }
 
@@ -2189,6 +2323,7 @@ async function renderTournamentTab() {
               <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px;transition:width .3s"></div>
             </div>
           </div>`;
+          html += `<div style="margin:6px 0 10px"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>`;
           if (!currentUser) {
             html += `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px">เข้าสู่ระบบเพื่อสมัครแข่ง</div>`;
           }
@@ -2215,12 +2350,12 @@ async function renderTournamentTab() {
             html += renderRewardCards(t.id, t.tier);
             html += await renderTournamentBracket(t, groups, false);
             html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button>
+              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button>
               <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
             </div>`;
           } else {
             html += header;
-            html += `<div style="margin:8px 0"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button></div>`;
+            html += `<div style="margin:8px 0"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>`;
             html += await renderTournamentBracket(t, groups, true);
           }
         }

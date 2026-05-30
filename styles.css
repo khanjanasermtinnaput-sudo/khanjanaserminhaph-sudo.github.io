@@ -619,17 +619,59 @@ body.x2-active .toast-wrap{bottom:120px}
 .t-viewbracket-btn:hover{background:rgba(240,192,64,.16)}
 .t-rounds-preview{font-size:0.72rem;color:var(--muted);margin-bottom:10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
 .t-round-chip{display:inline-block;padding:2px 8px;border-radius:20px;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);color:#f0c040;font-size:0.68rem;font-weight:600}
-/* read-only bracket modal */
-.t-bk-modal-bg{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px}
-.t-bk-modal{background:var(--bg2);border:1px solid rgba(240,192,64,.3);border-radius:22px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 60px rgba(240,192,64,.12)}
-.t-bk-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;flex-shrink:0}
-.t-bk-modal-title{font-family:'Rajdhani',sans-serif;font-size:1.2rem;font-weight:700;color:#f0c040}
-.t-bk-modal-x{width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer}
-.t-bk-modal-body{overflow-y:auto;flex:1;padding:0 16px 18px}
-.t-bk-modal-name{font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:6px;text-align:center}
-/* winner bg #1a3a1a + gold accent applied only inside the new modal */
-.t-bk-modal .t-bk-row.win{background:#1a3a1a}
-.t-bk-modal .t-bk-row.win.gold{background:rgba(240,192,64,.12)}
-.t-bk-modal .t-bk-row.win .t-bk-nm,.t-bk-modal .t-bk-row.win .t-bk-sc,.t-bk-modal .t-bk-tick{color:#7ee07e}
-.t-bk-modal .t-bk-row.win.gold .t-bk-nm,.t-bk-modal .t-bk-row.win.gold .t-bk-sc,.t-bk-modal .t-bk-rl.gf,.t-bk-modal .t-bk-champ-cap,.t-bk-modal .t-bk-champ-nm{color:#f0c040}
-.t-bk-modal .t-bk-champ{border-color:rgba(240,192,64,.5);background:linear-gradient(160deg,rgba(240,192,64,.16),rgba(240,192,64,.04))}
+/* ── Dedicated bracket modal: Semi Finals → Grand Final → Champion ──
+   bg #0d1117, gold #f0c040, SF winner #4caf50/#1a3a1a, champion #1a1500 */
+.brm-bg{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:12px}
+.brm-modal{background:#0d1117;border:1px solid rgba(240,192,64,.3);border-radius:18px;width:100%;max-width:680px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 60px rgba(240,192,64,.12)}
+.brm-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid rgba(240,192,64,.15);flex-shrink:0}
+.brm-title{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;color:#f0c040}
+.brm-x{width:32px;height:32px;border-radius:50%;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#ccc;cursor:pointer;font-size:0.9rem}
+.brm-x:hover{background:rgba(255,255,255,.12)}
+.brm-body{overflow:auto;flex:1;padding:14px 16px 18px}
+.brm-sub{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.brm-tname{font-size:0.95rem;font-weight:700;color:#fff}
+.brm-tier{font-size:0.62rem;font-weight:700;padding:2px 10px;border-radius:20px;letter-spacing:.04em}
+.brm-tier.s1000{background:rgba(240,192,64,.15);border:1px solid rgba(240,192,64,.5);color:#f0c040}
+.brm-tier.s500{background:rgba(192,192,192,.12);border:1px solid rgba(192,192,192,.4);color:#cfcfcf}
+.brm-tier.reg{background:rgba(205,127,50,.12);border:1px solid rgba(205,127,50,.4);color:#d8965a}
+.brm-tier.custom{background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.35);color:#f0c040}
+.brm-note{text-align:center;color:#888;font-size:0.72rem;margin-top:8px}
+.brm-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+.brm-grid{display:flex;align-items:stretch;min-width:max-content;padding:4px}
+.brm-col{display:flex;flex-direction:column;justify-content:center;gap:18px}
+.brm-col.semi,.brm-col.final{flex:0 0 196px}
+.brm-col.champ{flex:0 0 168px;justify-content:center}
+.brm-col-label{font-size:0.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#f0c040;text-align:center;margin-bottom:8px}
+.brm-box{border:1px solid rgba(240,192,64,.25);border-radius:12px;background:rgba(255,255,255,.03);overflow:hidden}
+.brm-box.gf{border-color:rgba(240,192,64,.5);background:rgba(240,192,64,.04)}
+.brm-box-h{font-size:0.56rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888;padding:5px 11px 3px;background:rgba(255,255,255,.02)}
+.brm-box.gf .brm-box-h{color:#f0c040}
+.brm-row{display:flex;align-items:center;gap:8px;padding:9px 11px;font-size:0.8rem;border-left:3px solid transparent}
+.brm-row+.brm-row{border-top:1px solid rgba(255,255,255,.06)}
+.brm-row .brm-nm{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#e6e6e6}
+.brm-row .brm-sc{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:0.95rem;min-width:18px;text-align:center;color:#aaa}
+.brm-row.win{background:rgba(26,58,26,0.8);border-left:3px solid #4caf50}
+.brm-row.win .brm-nm{font-weight:700;color:#fff}
+.brm-row.win .brm-sc{color:#7ee07e}
+.brm-row.win .brm-tick{color:#4caf50;font-size:0.72rem}
+.brm-row.win.gfwin{background:rgba(240,192,64,.12);border-left:3px solid #f0c040}
+.brm-row.win.gfwin .brm-nm{color:#f0c040}
+.brm-row.win.gfwin .brm-sc{color:#f0c040}
+.brm-row.win.gfwin .brm-crown{font-size:0.85rem}
+.brm-row.pending .brm-nm{color:#888}
+.brm-row.pending .brm-sc{color:#888}
+.brm-ref{display:block;width:100%;font-size:0.68rem;font-weight:700;text-align:center;padding:8px;border:none;border-top:1px solid rgba(240,192,64,.3);background:rgba(240,192,64,.14);color:#f0c040;cursor:pointer}
+.brm-ref:hover{background:rgba(240,192,64,.24)}
+.brm-chip{border:1px dashed rgba(240,192,64,.3);border-radius:10px;padding:9px 11px;font-size:0.78rem;color:#e6e6e6;background:rgba(255,255,255,.02);text-align:center}
+.brm-chip .brm-sub2{font-size:0.58rem;color:#888;display:block;margin-top:2px}
+.brm-champ{border:2px solid #f0c040;border-radius:16px;background:#1a1500;padding:18px 14px;text-align:center;box-shadow:0 0 30px rgba(240,192,64,.18)}
+.brm-champ-tr{font-size:2.4rem;filter:drop-shadow(0 0 12px rgba(240,192,64,.6));line-height:1}
+.brm-champ-cap{font-size:0.6rem;letter-spacing:.18em;color:rgba(240,192,64,.75);margin:6px 0 4px;font-weight:700}
+.brm-champ-nm{font-family:'Rajdhani',sans-serif;font-size:1.15rem;font-weight:700;color:#f0c040;line-height:1.15;text-shadow:0 0 14px rgba(240,192,64,.4)}
+.brm-champ.pending{border-color:rgba(240,192,64,.3);background:rgba(255,255,255,.02);box-shadow:none}
+.brm-champ.pending .brm-champ-nm{color:#888}
+.brm-champ.pending .brm-champ-tr{filter:none;opacity:.5}
+.brm-conn{flex:0 0 34px;position:relative;align-self:stretch}
+.brm-conn i{position:absolute;background:rgba(240,192,64,.35)}
+.brm-conn i.h{height:2px}
+.brm-conn i.v{width:2px}
