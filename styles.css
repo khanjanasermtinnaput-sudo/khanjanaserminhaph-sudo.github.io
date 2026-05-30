@@ -558,3 +558,48 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .reward-card,[data-style="lite"] .gf-bracket{animation:none!important;box-shadow:none!important;border:1px solid var(--border)!important}
 [data-style="lite"] .reward-title{color:var(--gold)!important}
 [data-style="lite"] .champ-decided-name{text-shadow:none!important}
+
+/* ── Stats page: personal rank + score race chart ── */
+.sr-loading{text-align:center;color:var(--muted);padding:48px 0;font-size:0.9rem}
+.sr-card{margin-top:16px}
+.sr-sub{font-size:0.76rem;color:var(--muted);margin:-4px 0 12px}
+.sr-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.sr-controls .rk-range{margin-bottom:4px}
+.sr-chart-wrap{position:relative;width:100%}
+.sr-legend{display:flex;flex-wrap:wrap;gap:6px 12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--glass-border)}
+.sr-leg{display:flex;align-items:center;gap:6px;font-size:0.76rem;color:var(--muted)}
+.sr-leg-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.sr-leg-name{color:var(--text);font-weight:500}
+.sr-leg-pts{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--text)}
+.sr-leg-me{background:rgba(0,245,160,0.1);border:1px solid rgba(0,245,160,0.3);border-radius:20px;padding:1px 10px}
+.sr-leg-me .sr-leg-name{color:var(--neon)}
+
+/* personal rank card */
+.sr-me{margin-top:4px}
+.sr-me-head{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.sr-me-av{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;flex-shrink:0;box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 4px 12px rgba(0,0,0,.25)}
+.sr-me-info{flex:1;min-width:0}
+.sr-me-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+.sr-me-name{font-family:'Rajdhani',sans-serif;font-size:1.45rem;font-weight:700;line-height:1.1;margin:2px 0 5px}
+.sr-me-pos{text-align:center;flex-shrink:0;line-height:1}
+.sr-me-pos-num{font-family:'Rajdhani',sans-serif;font-size:2.1rem;font-weight:800;color:var(--neon);line-height:1}
+.sr-me-pos-total{font-size:0.72rem;color:var(--muted)}
+.sr-me-delta{font-family:'Rajdhani',sans-serif;font-size:0.85rem;font-weight:700;margin-top:3px}
+.sr-up{color:var(--neon)}
+.sr-down{color:var(--red)}
+.sr-flat{color:var(--muted)}
+.sr-me-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.sr-me-stat{background:var(--card);border:1px solid var(--glass-border);border-radius:12px;padding:10px 6px;text-align:center}
+[data-style="glass"] .sr-me-stat{backdrop-filter:blur(10px)}
+.sr-me-stat-n{font-family:'Rajdhani',sans-serif;font-size:1.3rem;font-weight:700;color:var(--text)}
+.sr-me-stat-l{font-size:0.66rem;color:var(--muted);margin-top:1px}
+.sr-gap{font-size:0.8rem;color:var(--muted);text-align:center;padding:9px 12px;border-radius:12px;background:rgba(0,245,160,0.06);border:1px solid rgba(0,245,160,0.18)}
+.sr-gap b{color:var(--text);font-family:'Rajdhani',sans-serif}
+.sr-gap-top{background:rgba(255,215,0,0.07);border-color:rgba(255,215,0,0.25);color:var(--gold)}
+.sr-me-chart-label{font-size:0.72rem;font-weight:700;letter-spacing:0.04em;color:var(--muted);margin:16px 0 8px}
+@media(max-width:620px){
+  .sr-me-stats{grid-template-columns:repeat(2,1fr)}
+  .sr-me-pos-num{font-size:1.7rem}
+  .sr-me-av{width:52px;height:52px;font-size:1.2rem}
+  .sr-controls{justify-content:flex-start}
+}

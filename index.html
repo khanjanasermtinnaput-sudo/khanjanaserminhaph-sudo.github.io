@@ -34,6 +34,7 @@
   <div class="nav-inner">
     <div class="nav-logo">🏸</div>
     <button class="nav-btn active" id="navLb" onclick="showSection('leaderboard')">🏆 อันดับ</button>
+    <button class="nav-btn" id="navStats" onclick="showSection('stats')">📊 สถิติ</button>
     <button class="nav-btn" id="navMatch" onclick="showSection('match')">⚔️ แมตช์</button>
     <button class="nav-btn" id="navTour" onclick="showSection('tournament')">🏸 Tournament</button>
     <button class="nav-btn" id="navHist" onclick="showSection('history')">📋 ประวัติ</button>
@@ -237,6 +238,12 @@
     </div>
     <div class="hof-body" id="hofBody"></div>
   </div>
+</div>
+
+<!-- STATS -->
+<div id="statsSection" class="section">
+  <div class="lb-deco">📊</div>
+  <div class="lb-deco2">📈</div>
 </div>
 
 <!-- MATCH -->
@@ -737,6 +744,7 @@ END $$;</pre>
 <script src="js/auth.js?v=20260529l"></script>
 <script src="js/leaderboard.js?v=20260529l"></script>
 <script src="js/profile.js?v=20260529l"></script>
+<script src="js/stats.js?v=20260530a"></script>
 <script src="js/season.js?v=20260529l"></script>
 <script src="js/achievements.js?v=20260529l"></script>
 <script src="js/rankup.js?v=20260529l"></script>
@@ -745,7 +753,7 @@ END $$;</pre>
 <script src="js/gacha.js?v=20260529l"></script>
 <script src="js/mailbox.js?v=20260529l"></script>
 <script src="js/tournament.js?v=20260529l"></script>
-<script src="js/utils.js?v=20260529l"></script>
+<script src="js/utils.js?v=20260530a"></script>
 <script>
 // ── COIN AWARDS IN SAVE MATCH ─────────────────────────────
 const _saveMatchForCoins = saveMatch;
