@@ -724,3 +724,28 @@ body.x2-active .toast-wrap{bottom:120px}
   /* ring-pulse decorations (box-shadow loops) on framed avatars → static ring */
   .gf-thundergod .gf-ring,.gf-thundergod .gf-ring2,.gf-solaremperor .se-ring{animation:none!important}
 }
+
+/* [perf 5] Mobile: each gacha frame stacks 3-9 simultaneous animations (spins,
+   blurred 2nd rings, particles, glows). Keep ONE primary conic spin per frame
+   and drop the decorative extra layers + blur. A leaderboard full of framed
+   avatars goes from dozens of live animations to a handful. Desktop unchanged. */
+@media (max-width:620px){
+  /* drop blurred secondary rings, particles, crackle/aura, bolts */
+  .gf-void::after,.gf-halo::after,.gf-blaze::after,.gf-ice::after,.gf-champion::after,.gf-thundergod::after,.gf-rainbow::after,
+  .gf-void .gf-glow,.gf-halo .gf-glow,.gf-blaze .gf-glow,.gf-ice .gf-glow,.gf-champion .gf-glow,.gf-thundergod .gf-glow,
+  .gf-p,.gf-crackle,.gf-aura,.gf-bolt{animation:none!important;display:none!important}
+  /* rainbow ::before animates filter:hue-rotate (expensive) → freeze to a static rainbow ring */
+  .gf-rainbow::before{animation:none!important}
+  /* solar emperor: keep crown + main sweep, drop star fields / extra sweeps / flares / sparkles */
+  .gf-solaremperor::after,.gf-solaremperor .se-stars,.gf-solaremperor .se-stars2,
+  .gf-solaremperor .se-sweep2,.gf-solaremperor .se-flare,.gf-solaremperor .se-sp,
+  .gf-solaremperor::before{animation:none!important}
+  .gf-solaremperor .se-stars,.gf-solaremperor .se-stars2,.gf-solaremperor .se-sp,.gf-solaremperor .se-flare{display:none!important}
+  /* name effects: keep the moving shimmer gradient, drop the filter drop-shadow glow/flicker loops */
+  .gn-void{animation:gNameVoidGlitch 5s ease-in-out infinite!important}
+  .gn-halo{animation:gNameHaloShimmer 3s linear infinite!important}
+  .gn-blaze{animation:gNameBlazeShimmer 2s linear infinite!important}
+  .gn-ice{animation:gNameIceShimmer 3.5s linear infinite!important}
+  .gn-thundergod{animation:tgNameShimmer 1.8s linear infinite!important}
+  .gn-solaremperor{animation:seNameShimmer 3s linear infinite!important}
+}
