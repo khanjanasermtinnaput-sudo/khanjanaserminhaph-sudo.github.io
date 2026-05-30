@@ -675,3 +675,18 @@ body.x2-active .toast-wrap{bottom:120px}
 .brm-conn i{position:absolute;background:rgba(240,192,64,.35)}
 .brm-conn i.h{height:2px}
 .brm-conn i.v{width:2px}
+
+/* ════════════════════════════════════════════════════════════
+   PERFORMANCE OPTIMIZATIONS (animation/paint) — visual-only, no layout/logic change
+   ════════════════════════════════════════════════════════════ */
+
+/* [perf 1] Respect OS "reduce motion": snap infinite/decorative animations to
+   their end state and shorten transitions. Keeps everything visible & usable. */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.12s!important;
+    scroll-behavior:auto!important;
+  }
+}
