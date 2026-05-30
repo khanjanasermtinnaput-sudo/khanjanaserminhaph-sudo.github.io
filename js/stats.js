@@ -129,25 +129,36 @@ function _srPtsAt(tl, t) {
   return v;
 }
 
-// Window-clipped {t,v} series for a player, anchored at t0 (left) and now (right)
-function _srSeries(p, t0, now) {
-  const tl = _srTimeline(p);
-  const out = [{ t: t0, v: _srPtsAt(tl, t0) }];
-  tl.pts.forEach(pt => { if (pt.t > t0 && pt.t < now) out.push({ t: pt.t, v: pt.v }); });
-  out.push({ t: now, v: p.pts });
-  return out;
-}
-
-// Catmull-Rom → cubic-bezier smoothing for a list of {x,y}
-function _srSmooth(pts, tension) {
-  if (pts.length < 2) return pts.length ? `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}` : '';
-  const T = tension == null ? 0.18 : tension;
+// Monotone cubic Hermite interpolation (Fritsch–Carlson) for a list of {x,y}.
+// Unlike Catmull-Rom this never overshoots between data points, so flat stretches
+// stay flat and sharp single-match jumps don't create loops/tangles.
+function _srMonotone(pts) {
+  const n = pts.length;
+  if (n < 2) return n ? `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}` : '';
+  if (n === 2) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
+  const dx = [], dy = [], slope = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx[i] = pts[i + 1].x - pts[i].x;
+    dy[i] = pts[i + 1].y - pts[i].y;
+    slope[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
+  }
+  const m = new Array(n);
+  m[0] = slope[0];
+  m[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    m[i] = (slope[i - 1] * slope[i] <= 0) ? 0 : (slope[i - 1] + slope[i]) / 2;
+  }
+  // Limit tangents so each segment stays monotone (no overshoot)
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / slope[i], b = m[i + 1] / slope[i], s = a * a + b * b;
+    if (s > 9) { const tau = 3 / Math.sqrt(s); m[i] = tau * a * slope[i]; m[i + 1] = tau * b * slope[i]; }
+  }
   let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1.x + (p2.x - p0.x) * T, c1y = p1.y + (p2.y - p0.y) * T;
-    const c2x = p2.x - (p3.x - p1.x) * T, c2y = p2.y - (p3.y - p1.y) * T;
-    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const c1x = pts[i].x + dx[i] / 3, c1y = pts[i].y + m[i] * dx[i] / 3;
+    const c2x = pts[i + 1].x - dx[i] / 3, c2y = pts[i + 1].y - m[i + 1] * dx[i] / 3;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${pts[i + 1].x.toFixed(1)},${pts[i + 1].y.toFixed(1)}`;
   }
   return d;
 }
@@ -197,23 +208,35 @@ function _buildScoreRaceInner(rangeDays, topN) {
   if (rangeDays > 0) {
     t0 = now - rangeDays * 86400000;
   } else {
-    // all-time: earliest match across the shown players
+    // all-time: just before the earliest match across the shown players
     let earliest = now;
     players.forEach(p => { const ms = _srPlayerMatches(p.id); if (ms.length) earliest = Math.min(earliest, ms[0].date); });
-    t0 = earliest < now ? earliest : now - 7 * 86400000;
+    t0 = earliest < now ? earliest - 1000 : now - 7 * 86400000;
   }
   if (now - t0 < 60000) t0 = now - 86400000; // guard against zero-width window
+
+  // Reconstruct each player's pts timeline once
+  const timelines = players.map(p => _srTimeline(p));
+
+  // Unified ORDINAL axis: a slot for the window start (t0), every distinct match
+  // time inside the window, and "now". Slots are spaced EVENLY (by event order,
+  // not by real clock time) so clustered recent matches don't squash into a
+  // vertical tangle at the right edge.
+  const eventSet = new Set();
+  timelines.forEach(tl => tl.pts.forEach(pt => { if (pt.t > t0 && pt.t < now) eventSet.add(pt.t); }));
+  const slotTimes = [t0, ...[...eventSet].sort((a, b) => a - b), now];
+  const S = slotTimes.length;
 
   const seriesList = players.map((p, i) => ({
     player: p,
     color: SR_COLORS[i % SR_COLORS.length],
     isMe: p.id === currentUser.id,
-    pts: _srSeries(p, t0, now)
+    vals: slotTimes.map(t => _srPtsAt(timelines[i], t))
   }));
 
   // y-range across every series, with headroom
   let yMin = Infinity, yMax = -Infinity;
-  seriesList.forEach(s => s.pts.forEach(pt => { if (pt.v < yMin) yMin = pt.v; if (pt.v > yMax) yMax = pt.v; }));
+  seriesList.forEach(s => s.vals.forEach(v => { if (v < yMin) yMin = v; if (v > yMax) yMax = v; }));
   if (!isFinite(yMin)) { yMin = 0; yMax = 100; }
   const padV = Math.max((yMax - yMin) * 0.14, 12);
   yMax += padV; yMin = Math.max(0, yMin - padV);
@@ -221,7 +244,7 @@ function _buildScoreRaceInner(rangeDays, topN) {
 
   const W = 540, H = 320, padL = 46, padR = 92, padT = 18, padB = 30;
   const chartW = W - padL - padR, chartH = H - padT - padB;
-  const toX = t => padL + ((t - t0) / (now - t0)) * chartW;
+  const toXi = j => padL + (S < 2 ? 0 : (j / (S - 1)) * chartW);
   const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
 
   // grid + y-axis
@@ -232,23 +255,23 @@ function _buildScoreRaceInner(rangeDays, topN) {
   const yAxisSVG = [...new Set(yTicks)].map(v =>
     `<text x="${padL - 7}" y="${(toY(v) + 3.5).toFixed(1)}" fill="rgba(255,255,255,0.35)" font-size="9" text-anchor="end" font-family="Rajdhani,sans-serif" font-weight="600">${v}</text>`).join('');
 
-  // x-axis date labels
+  // x-axis labels at evenly-spaced slots (date of that slot)
   const fmtDate = t => new Date(t).toLocaleDateString(isEn ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'short' });
-  const xTicks = 5;
+  const xTickCount = Math.min(5, S);
   let xAxisSVG = '';
-  for (let i = 0; i < xTicks; i++) {
-    const t = t0 + (i / (xTicks - 1)) * (now - t0);
-    const label = i === xTicks - 1 ? (isEn ? 'now' : 'ล่าสุด') : fmtDate(t);
-    const anchor = i === 0 ? 'start' : i === xTicks - 1 ? 'end' : 'middle';
-    xAxisSVG += `<text x="${toX(t).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.32)" font-size="8" text-anchor="${anchor}" font-family="Rajdhani,sans-serif">${label}</text>`;
+  for (let k = 0; k < xTickCount; k++) {
+    const j = xTickCount < 2 ? S - 1 : Math.round(k * (S - 1) / (xTickCount - 1));
+    const label = j === S - 1 ? (isEn ? 'now' : 'ล่าสุด') : fmtDate(slotTimes[j]);
+    const anchor = k === 0 ? 'start' : k === xTickCount - 1 ? 'end' : 'middle';
+    xAxisSVG += `<text x="${toXi(j).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.32)" font-size="8" text-anchor="${anchor}" font-family="Rajdhani,sans-serif">${label}</text>`;
   }
 
   // lines + current-value dots + end labels
   let linesSVG = '', dotsSVG = '';
   const endLabels = [];
   seriesList.forEach(s => {
-    const xy = s.pts.map(pt => ({ x: toX(pt.t), y: toY(pt.v) }));
-    const d = _srSmooth(xy, 0.18);
+    const xy = s.vals.map((v, j) => ({ x: toXi(j), y: toY(v) }));
+    const d = _srMonotone(xy);
     const w = s.isMe ? 3.4 : 2.4;
     linesSVG += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${s.isMe ? 1 : 0.9}" clip-path="url(#srClip)"${s.isMe ? ' filter="url(#srGlow)"' : ''}/>`;
     const last = xy[xy.length - 1];
