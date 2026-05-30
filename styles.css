@@ -603,3 +603,33 @@ body.x2-active .toast-wrap{bottom:120px}
   .sr-me-av{width:52px;height:52px;font-size:1.2rem}
   .sr-controls{justify-content:flex-start}
 }
+
+/* ── [NEW] Tournament: BWF draw preview · bracket modal · designer ──
+   Scoped colours — gold #f0c040, winner bg #1a3a1a (do not touch global --gold) */
+.t-draw-wrap{margin:10px 0 12px;border:1px solid rgba(240,192,64,.35);border-radius:14px;background:rgba(240,192,64,.05);padding:12px}
+.t-draw-heading{font-size:0.74rem;font-weight:700;letter-spacing:.06em;color:#f0c040;margin-bottom:10px}
+.t-draw-grid{display:grid;gap:8px}
+.t-draw-col-h{font-size:0.7rem;font-weight:700;color:#f0c040;text-align:center;padding:4px;margin-bottom:5px;background:rgba(240,192,64,.1);border-radius:6px;letter-spacing:.06em}
+.t-draw-cell{padding:6px 9px;border-radius:8px;margin-bottom:4px;font-size:0.76rem;background:rgba(255,255,255,.04);border:1px solid var(--glass-border);color:var(--text)}
+.t-draw-btn{font-size:0.78rem;background:rgba(240,192,64,.14);border:1px solid rgba(240,192,64,.5);color:#f0c040;font-weight:700}
+.t-draw-redraw{font-size:0.74rem;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);color:var(--muted)}
+.t-draw-confirm{font-size:0.78rem;background:#1a3a1a;border:1px solid rgba(120,220,120,.5);color:#7ee07e;font-weight:700}
+.t-draw-confirm:hover{filter:brightness(1.18)}
+.t-viewbracket-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:50px;border:1px solid rgba(240,192,64,.4);background:rgba(240,192,64,.08);color:#f0c040;font-size:0.78rem;font-weight:700;cursor:pointer}
+.t-viewbracket-btn:hover{background:rgba(240,192,64,.16)}
+.t-rounds-preview{font-size:0.72rem;color:var(--muted);margin-bottom:10px;display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.t-round-chip{display:inline-block;padding:2px 8px;border-radius:20px;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.3);color:#f0c040;font-size:0.68rem;font-weight:600}
+/* read-only bracket modal */
+.t-bk-modal-bg{position:fixed;inset:0;z-index:9500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px}
+.t-bk-modal{background:var(--bg2);border:1px solid rgba(240,192,64,.3);border-radius:22px;width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 0 60px rgba(240,192,64,.12)}
+.t-bk-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 10px;flex-shrink:0}
+.t-bk-modal-title{font-family:'Rajdhani',sans-serif;font-size:1.2rem;font-weight:700;color:#f0c040}
+.t-bk-modal-x{width:32px;height:32px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer}
+.t-bk-modal-body{overflow-y:auto;flex:1;padding:0 16px 18px}
+.t-bk-modal-name{font-size:0.95rem;font-weight:700;color:var(--text);margin-bottom:6px;text-align:center}
+/* winner bg #1a3a1a + gold accent applied only inside the new modal */
+.t-bk-modal .t-bk-row.win{background:#1a3a1a}
+.t-bk-modal .t-bk-row.win.gold{background:rgba(240,192,64,.12)}
+.t-bk-modal .t-bk-row.win .t-bk-nm,.t-bk-modal .t-bk-row.win .t-bk-sc,.t-bk-modal .t-bk-tick{color:#7ee07e}
+.t-bk-modal .t-bk-row.win.gold .t-bk-nm,.t-bk-modal .t-bk-row.win.gold .t-bk-sc,.t-bk-modal .t-bk-rl.gf,.t-bk-modal .t-bk-champ-cap,.t-bk-modal .t-bk-champ-nm{color:#f0c040}
+.t-bk-modal .t-bk-champ{border-color:rgba(240,192,64,.5);background:linear-gradient(160deg,rgba(240,192,64,.16),rgba(240,192,64,.04))}

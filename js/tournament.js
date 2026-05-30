@@ -929,8 +929,10 @@ function onTournamentModeChange() { _updateTournamentCreateForm(); }
 function _updateTournamentCreateForm() {
   const tier = document.getElementById('tournamentTier')?.value || 'Regular';
   const mode = document.getElementById('tournamentMatchType')?.value || '1v1';
-  // Registration mode: Regular/Super 500 (both 1v1 and 2v2 use open registration)
-  const isRegMode = (tier === 'Regular' || tier === 'Super 500');
+  // Registration mode: Regular/Super 500/Custom (both 1v1 and 2v2 use open registration)
+  const isRegMode = (tier === 'Regular' || tier === 'Super 500' || tier === 'custom');
+  const cf = document.getElementById('tournamentCustomFields');
+  if (cf) cf.style.display = tier === 'custom' ? 'block' : 'none';
   const d1  = document.getElementById('tournamentPlayerSelect1v1');
   const d2  = document.getElementById('tournamentPlayerSelect2v2');
   const dr  = document.getElementById('tournamentRegDesign');
@@ -940,7 +942,18 @@ function _updateTournamentCreateForm() {
   if (!isRegMode && mode === '2v2') _init2v2Teams();
   const lbl = document.getElementById('tourPerGroupLabel');
   if (lbl) lbl.textContent = mode === '2v2' ? 'ทีมต่อกลุ่ม' : 'คนต่อกลุ่ม';
-  if (isRegMode) _updateRegTotal();
+  if (isRegMode) { _updateRegTotal(); _updateRoundTypes(); }
+}
+
+// Auto-derived round types from group count (Group → SF → GF). Shown in the designer.
+function _updateRoundTypes() {
+  const el = document.getElementById('tourRoundTypes');
+  if (!el) return;
+  const ng = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
+  const rounds = ['รอบกลุ่ม (Group)'];
+  if (ng >= 3) rounds.push('รอบรอง (SF)');
+  if (ng >= 2) rounds.push('ชิงชนะเลิศ (GF)');
+  el.innerHTML = `🧭 รอบแข่ง: ` + rounds.map(r => `<span class="t-round-chip">${r}</span>`).join(' <span style="color:var(--muted)">→</span> ');
 }
 
 function _updateRegTotal() {
@@ -954,6 +967,7 @@ function _updateRegTotal() {
   } else {
     el.textContent = `รับสมัคร: ${ng * pp} คน (${ng} กลุ่ม × ${pp} คน)`;
   }
+  _updateRoundTypes();
 }
 
 function _init2v2Teams() {
@@ -1258,11 +1272,21 @@ async function renderTournamentSection() {
       <option value="Regular">Regular</option>
       <option value="Super 500">Super 500</option>
       <option value="Super 1000">Super 1000</option>
+      <option value="custom">⚙️ Custom</option>
     </select>
     <select class="inp" id="tournamentMatchType" style="margin-bottom:10px" onchange="_updateTournamentCreateForm()">
       <option value="1v1">🏸 1v1 — Singles</option>
       <option value="2v2">⚔️ 2v2 — Doubles</option>
     </select>
+
+    <!-- Custom level config -->
+    <div id="tournamentCustomFields" style="display:none;margin-bottom:10px">
+      <input class="inp" id="tournamentCustomName" placeholder="ชื่อระดับ (เช่น Club Night)" style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <input class="inp" type="number" id="tournamentCustomCoins" placeholder="เหรียญรางวัลแชมป์" min="0" value="300" style="flex:1">
+        <span style="font-size:0.75rem;color:var(--muted)">🪙 / แชมป์</span>
+      </div>
+    </div>
 
     <!-- Registration design: Regular/Super 500 + 1v1 only -->
     <div id="tournamentRegDesign">
@@ -1289,7 +1313,8 @@ async function renderTournamentSection() {
           </select>
         </div>
       </div>
-      <div id="tourRegTotal" style="font-size:0.75rem;color:var(--neon);margin-bottom:10px">รับสมัคร: 8 คน (2 กลุ่ม × 4 คน)</div>
+      <div id="tourRegTotal" style="font-size:0.75rem;color:var(--neon);margin-bottom:8px">รับสมัคร: 8 คน (2 กลุ่ม × 4 คน)</div>
+      <div id="tourRoundTypes" class="t-rounds-preview"></div>
     </div>
 
     <!-- Super 1000 admin-picks: 1v1 checkboxes -->
@@ -1351,9 +1376,12 @@ async function renderTournamentSection() {
                 <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px"></div>
               </div>
             </div>
-            ${_renderRegSlotTable(cfg, t.id, true)}
+            ${cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, true)}
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              <button class="btn btn-primary btn-sm" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
+              ${cfg.drawPreview
+                ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
+                   <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
+                : `<button class="btn btn-sm t-draw-btn" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
               <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
               <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
             </div>
@@ -1370,7 +1398,10 @@ async function renderTournamentSection() {
             </div>
             ${renderRewardCards(t.id, t.tier)}
             ${await renderTournamentBracket(t, groups)}
-            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:flex-end">${rewardBtn}${champBtn}</div>
+            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button>
+              <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
+            </div>
           </div>`;
         }
       }
@@ -1609,9 +1640,15 @@ async function createTournament() {
   const matchType = document.getElementById('tournamentMatchType')?.value || '1v1';
   if (!name) return toast('กรุณากรอกชื่อทัวร์นาเมนต์', 'error');
 
+  // Custom level: admin-defined label + champion coin reward (open-registration like Regular)
+  const isCustom = tier === 'custom';
+  const customName  = (document.getElementById('tournamentCustomName')?.value || '').trim();
+  const customCoins = parseInt(document.getElementById('tournamentCustomCoins')?.value) || 100;
+  const effectiveTier = isCustom ? (customName || 'Custom') : tier;
+
   let groups = [];
 
-  if (tier === 'Regular' || tier === 'Super 500') {
+  if (tier === 'Regular' || tier === 'Super 500' || isCustom) {
     // ── Regular/Super 500: slot-based open registration ──
     const numGroups = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
     const perGroup = parseInt(document.getElementById('tourPlayersPerGroup')?.value) || 4;
@@ -1656,7 +1693,12 @@ async function createTournament() {
 
   try {
     toast('กำลังสร้าง...', 'info');
-    await dbCreateTournament(name, tier, groups);
+    const created = await dbCreateTournament(name, effectiveTier, groups);
+    // Custom tier has no entry in TOUR_COIN_REWARDS — persist the chosen reward so
+    // declareChampion pays it out (reward manager reads this same store).
+    if (isCustom && created?.id) {
+      try { saveTournamentRewards(created.id, { baseCoins: customCoins, bonusCoins: 0, bonusPts: 0 }); } catch(e) {}
+    }
     toast('สร้าง Tournament แล้ว! 🏆', 'success');
     renderTournamentSection();
   } catch(e) { toast('สร้างไม่ได้: ' + e.message, 'error'); }
@@ -1946,6 +1988,146 @@ async function startTournament(tournamentId) {
   } catch(e) { toast('เริ่มไม่ได้: ' + e.message, 'error'); }
 }
 
+// ════════════════════════════════════════════════════════════
+// [NEW] BWF-STYLE RANDOM DRAW + READ-ONLY BRACKET MODAL
+// Source of truth = Supabase config (so preview is synced to all
+// users); localStorage holds an admin-side draft copy only.
+// ════════════════════════════════════════════════════════════
+
+// Fisher-Yates shuffle (returns a new array)
+function _shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Build a random group assignment from a registration config's filled slots.
+// 1v1 → { A:[pid,...], B:[...] }   ·   2v2 → { A:[[p,p],...], ... }
+function _drawAssign(cfg) {
+  const is2v2 = cfg.matchType === '2v2';
+  const letters = Object.keys(cfg.slots || {}).sort();
+  const preview = {};
+  letters.forEach(l => { preview[l] = []; });
+  if (!letters.length) return preview;
+  if (is2v2) {
+    const teams = [];
+    Object.values(cfg.slots).forEach(g => g.forEach(tm => { if (tm[0] && tm[1]) teams.push([tm[0], tm[1]]); }));
+    _shuffle(teams).forEach((tm, i) => preview[letters[i % letters.length]].push(tm));
+  } else {
+    const players = [];
+    Object.values(cfg.slots).forEach(g => g.forEach(pid => { if (pid != null) players.push(pid); }));
+    _shuffle(players).forEach((pid, i) => preview[letters[i % letters.length]].push(pid));
+  }
+  return preview;
+}
+
+// Admin: run / re-run the random draw → store preview on Supabase + localStorage draft
+async function runDraw(tournamentId) {
+  if (!isAdminUser()) return;
+  try {
+    const t = await dbGetTournamentById(tournamentId);
+    let gs = []; try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+    const cfg = getTournamentConfig(gs);
+    if (!cfg) return toast('ไม่พบการตั้งค่า', 'error');
+    const preview = _drawAssign(cfg);
+    const total = Object.values(preview).reduce((s, g) => s + g.length, 0);
+    if (total < 2) return toast('ต้องมีอย่างน้อย 2 ฝ่าย', 'error');
+    cfg.drawPreview = preview;
+    cfg.drawLocked = false;
+    await _patchTournamentConfig(tournamentId, cfg);
+    try { localStorage.setItem(`tournament_draw_${tournamentId}`, JSON.stringify(preview)); } catch(e) {}
+    delete _tourStore[tournamentId];
+    toast('🎲 สุ่มสายแล้ว — ตรวจดูก่อนกดยืนยัน', 'success');
+    renderTournamentTab();
+    if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
+  } catch(e) { toast('สุ่มไม่ได้: ' + e.message, 'error'); }
+}
+
+// Admin: confirm the previewed draw → lock bracket (commit groups, close registration)
+async function confirmDraw(tournamentId) {
+  if (!isAdminUser()) return;
+  try {
+    const t = await dbGetTournamentById(tournamentId);
+    let gs = []; try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+    const cfg = getTournamentConfig(gs);
+    if (!cfg?.drawPreview) return toast('ยังไม่ได้สุ่มสาย', 'error');
+    const is2v2 = cfg.matchType === '2v2';
+    const groupEntries = Object.entries(cfg.drawPreview).sort().map(([letter, members]) =>
+      is2v2
+        ? { letter, matchType: '2v2', teams: members.map(tm => ({ playerIds: tm })) }
+        : { letter, playerIds: members }
+    );
+    const finalCfg = { ...cfg, registrationOpen: false, drawLocked: true };
+    delete finalCfg.drawPreview;
+    const newGs = [ ...gs.filter(g => g._meta), finalCfg, ...groupEntries ];
+    await supaFetch(`tournaments?id=eq.${tournamentId}`, {
+      method: 'PATCH', body: JSON.stringify({ groups: JSON.stringify(newGs) }), prefer: 'return=minimal'
+    });
+    try { localStorage.removeItem(`tournament_draw_${tournamentId}`); } catch(e) {}
+    delete _tourStore[tournamentId];
+    toast('🔒 ยืนยันสายแล้ว เริ่มการแข่งขัน! 🏆', 'success');
+    renderTournamentTab();
+    if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
+  } catch(e) { toast('ยืนยันไม่ได้: ' + e.message, 'error'); }
+}
+
+// Read-only matchup preview shown to ALL users before the bracket is locked
+function _renderDrawPreview(cfg) {
+  const preview = cfg.drawPreview;
+  if (!preview) return '';
+  const is2v2 = cfg.matchType === '2v2';
+  const pName = id => db.players.find(p => p.id === id)?.name || `#${id}`;
+  const letters = Object.keys(preview).sort();
+  const cols = Math.min(letters.length, 4);
+  let body = `<div class="t-draw-grid" style="grid-template-columns:repeat(${cols},1fr)">`;
+  for (const l of letters) {
+    body += `<div class="t-draw-col"><div class="t-draw-col-h">สาย ${l}</div>`;
+    (preview[l] || []).forEach((m, i) => {
+      const label = is2v2 ? (Array.isArray(m) ? m.map(pName).join(' + ') : pName(m)) : pName(m);
+      body += `<div class="t-draw-cell">${i + 1}. ${label}</div>`;
+    });
+    body += `</div>`;
+  }
+  body += `</div>`;
+  return `<div class="t-draw-wrap">
+    <div class="t-draw-heading">🎲 ผลการสุ่มสาย (รอ Admin ยืนยัน)</div>
+    ${body}
+  </div>`;
+}
+
+// All users: open the read-only bracket tree in a modal overlay
+async function openBracketModal(tournamentId) {
+  document.getElementById('tBracketModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'tBracketModal';
+  modal.className = 't-bk-modal-bg';
+  modal.innerHTML = `
+    <div class="t-bk-modal">
+      <div class="t-bk-modal-head">
+        <div class="t-bk-modal-title">📊 ตารางการแข่งขัน</div>
+        <button class="t-bk-modal-x" onclick="document.getElementById('tBracketModal').remove()">✕</button>
+      </div>
+      <div id="tBracketModalBody" class="t-bk-modal-body">
+        <div style="text-align:center;color:var(--muted);padding:28px">⏳ กำลังโหลด...</div>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+  try {
+    const t = await dbGetTournamentById(tournamentId);
+    let groups = []; try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
+    _tourStore[t.id] = { groups, matchType: getTournamentMatchType(groups), tier: t.tier, name: t.name };
+    const body = document.getElementById('tBracketModalBody');
+    if (body) body.innerHTML = `<div class="t-bk-modal-name">${t.name}</div>` + await renderTournamentBracket(t, groups, true);
+  } catch(e) {
+    const body = document.getElementById('tBracketModalBody');
+    if (body) body.innerHTML = `<div style="color:var(--red);text-align:center;padding:20px">โหลดไม่ได้: ${e.message}</div>`;
+  }
+}
+
 // ── Tournament Tab (public view for all users) ────────────────────────────────
 async function renderTournamentTab() {
   const container = document.getElementById('tournamentTabContent');
@@ -2010,11 +2192,14 @@ async function renderTournamentTab() {
           if (!currentUser) {
             html += `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px">เข้าสู่ระบบเพื่อสมัครแข่ง</div>`;
           }
-          html += _renderRegSlotTable(cfg, t.id, isAdmin);
+          html += cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, isAdmin);
           if (isAdmin) {
             const canStart = filled === totalSlots && totalSlots >= 2;
             html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              <button class="btn btn-sm" style="width:auto;font-size:0.78rem;background:rgba(0,245,160,.1);border:1px solid rgba(0,245,160,.35);color:var(--neon)${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="startTournament(${t.id})">▶ เริ่มการแข่งขัน (${filled} ${unitLabel})</button>
+              ${cfg.drawPreview
+                ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
+                   <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
+                : `<button class="btn btn-sm t-draw-btn" style="width:auto${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
               <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
               <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
             </div>`;
@@ -2029,9 +2214,13 @@ async function renderTournamentTab() {
             html += `<div class="tournament-group-title" style="padding-right:60px">${tierBadge} ${t.name} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
             html += renderRewardCards(t.id, t.tier);
             html += await renderTournamentBracket(t, groups, false);
-            html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:flex-end">${rewardBtn}${champBtn}</div>`;
+            html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button>
+              <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
+            </div>`;
           } else {
             html += header;
+            html += `<div style="margin:8px 0"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">📊 ดูตารางการแข่งขัน</button></div>`;
             html += await renderTournamentBracket(t, groups, true);
           }
         }
