@@ -226,9 +226,17 @@ function setStyle(style) {
   document.getElementById('styleLite').classList.toggle('active', style === 'lite');
   localStorage.setItem('badminton_style', style);
 }
+// Heuristic: weak CPU/RAM → default to the lightweight "lite" style for smoothness.
+// Only used when the user has NOT explicitly chosen a style; their toggle always wins.
+function _isLowEndDevice() {
+  const cores = navigator.hardwareConcurrency;
+  const mem = navigator.deviceMemory;
+  return (typeof cores === 'number' && cores <= 4) || (typeof mem === 'number' && mem <= 4);
+}
 function loadTheme() {
   const t = localStorage.getItem('badminton_theme') || 'dark';
-  const sRaw = localStorage.getItem('badminton_style') || 'glass';
+  let sRaw = localStorage.getItem('badminton_style');
+  if (sRaw === null) sRaw = _isLowEndDevice() ? 'lite' : 'glass'; // soft default, not persisted
   const s = sRaw === 'classic' ? 'glass' : sRaw;
   document.documentElement.setAttribute('data-theme', t);
   document.documentElement.setAttribute('data-style', s);
