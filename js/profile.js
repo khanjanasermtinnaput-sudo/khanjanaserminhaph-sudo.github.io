@@ -473,6 +473,24 @@ function _buildRankingChartInner(playerId, rangeDays) {
     series = fullSeries.slice(from);
     dates  = fullDates.slice(from);
   }
+
+  // Collapse multiple matches on the same calendar day into one point (the
+  // last result of that day) so a busy session shows as one clean step
+  // instead of a jagged near-vertical zig-zag.
+  {
+    const bS = [series[0]], bD = [dates[0]];
+    for (let i = 1; i < series.length; i++) {
+      const d = dates[i], prev = bD[bD.length - 1];
+      if (bS.length > 1 && d && prev && d.toDateString() === prev.toDateString()) {
+        bS[bS.length - 1] = series[i];
+        bD[bD.length - 1] = d;
+      } else {
+        bS.push(series[i]);
+        bD.push(d);
+      }
+    }
+    series = bS; dates = bD;
+  }
   const n = series.length;
   if (n < 2)
     return toggle + _msg(_lang === 'en' ? 'Not enough data in this period' : 'ข้อมูลในช่วงนี้ไม่พอแสดงกราฟ');
@@ -503,8 +521,12 @@ function _buildRankingChartInner(playerId, rangeDays) {
   const toX = i => padL + (i / (n - 1)) * chartW;
   const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
 
-  const pathPts = series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`);
-  const pathD   = 'M' + pathPts.join(' L');
+  // Smooth, overshoot-free line (monotone cubic) — falls back to straight
+  // segments if the shared helper from stats.js isn't loaded.
+  const xy = series.map((v, i) => ({ x: toX(i), y: toY(v) }));
+  const pathD = (typeof _srMonotone === 'function')
+    ? _srMonotone(xy)
+    : 'M' + series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' L');
 
   // Area fill below the line
   const lx = toX(n - 1).toFixed(1), ly = toY(curPts).toFixed(1);
