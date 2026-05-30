@@ -350,7 +350,7 @@ body.x2-active .toast-wrap{bottom:120px}
 /* ── Thunder God Cinematic ── */
 #tgCinematic{position:fixed;inset:0;z-index:10000;display:none;overflow:hidden;cursor:pointer}
 #tgCinematic.active{display:block}
-.tc-bg{position:absolute;inset:0;background:#000510;will-change:transform}
+.tc-bg{position:absolute;inset:0;background:#000510}
 .tc-storm{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 58%,rgba(0,60,150,.32) 0%,rgba(0,20,60,.14) 40%,transparent 70%);animation:tgPulse 1.2s ease-in-out infinite;will-change:opacity}
 .tc-flash{position:absolute;inset:0;background:rgba(150,225,255,.96);pointer-events:none;opacity:0;will-change:opacity;mix-blend-mode:screen}
 .tc-scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.2) 2px,rgba(0,0,0,.2) 4px);opacity:.22;z-index:20}
