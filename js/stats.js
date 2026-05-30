@@ -135,19 +135,57 @@ function _srSeries(p, t0, now) {
   const out = [{ t: t0, v: _srPtsAt(tl, t0) }];
   tl.pts.forEach(pt => { if (pt.t > t0 && pt.t < now) out.push({ t: pt.t, v: pt.v }); });
   out.push({ t: now, v: p.pts });
+  out.sort((a, b) => a.t - b.t); // guarantee chronological order so the line never folds back
   return out;
 }
 
-// Catmull-Rom → cubic-bezier smoothing for a list of {x,y}
-function _srSmooth(pts, tension) {
+// Monotone cubic (Fritsch–Carlson) → cubic-bezier smoothing for a list of {x,y}.
+// Unlike Catmull-Rom this never overshoots or loops back, so lines stay smooth
+// even when points cluster tightly in time (e.g. the "all-time" view).
+function _srSmooth(pts) {
   if (pts.length < 2) return pts.length ? `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}` : '';
-  const T = tension == null ? 0.18 : tension;
-  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-  for (let i = 0; i < pts.length - 1; i++) {
-    const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
-    const c1x = p1.x + (p2.x - p0.x) * T, c1y = p1.y + (p2.y - p0.y) * T;
-    const c2x = p2.x - (p3.x - p1.x) * T, c2y = p2.y - (p3.y - p1.y) * T;
-    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)}`;
+
+  // Force strictly-increasing x: merge points that share (near) the same x so
+  // the spline can't blow up on vertical/duplicate-timestamp samples.
+  const P = [];
+  for (const p of pts) {
+    const prev = P[P.length - 1];
+    if (prev && p.x - prev.x < 0.01) { prev.x = p.x; prev.y = p.y; }
+    else P.push({ x: p.x, y: p.y });
+  }
+  const n = P.length;
+  if (n < 2) return `M${P[0].x.toFixed(1)},${P[0].y.toFixed(1)}`;
+
+  // Segment widths and slopes.
+  const dx = [], slope = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx.push(P[i + 1].x - P[i].x);
+    slope.push((P[i + 1].y - P[i].y) / dx[i]);
+  }
+
+  // Tangents: endpoints take the adjacent slope; interior uses a weighted
+  // harmonic mean, flattened to 0 at local extrema (Fritsch–Carlson).
+  const m = new Array(n);
+  m[0] = slope[0];
+  m[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    if (slope[i - 1] * slope[i] <= 0) { m[i] = 0; continue; }
+    const w1 = 2 * dx[i] + dx[i - 1], w2 = dx[i] + 2 * dx[i - 1];
+    m[i] = (w1 + w2) / (w1 / slope[i - 1] + w2 / slope[i]);
+  }
+  // Limiter: clamp tangents so each segment stays monotone (no overshoot).
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+    const a = m[i] / slope[i], b = m[i + 1] / slope[i], h = Math.hypot(a, b);
+    if (h > 3) { const t = 3 / h; m[i] = t * a * slope[i]; m[i + 1] = t * b * slope[i]; }
+  }
+
+  // Emit cubic béziers; control points keep x inside each segment → no looping.
+  let d = `M${P[0].x.toFixed(1)},${P[0].y.toFixed(1)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const c1x = P[i].x + dx[i] / 3, c1y = P[i].y + m[i] * dx[i] / 3;
+    const c2x = P[i + 1].x - dx[i] / 3, c2y = P[i + 1].y - m[i + 1] * dx[i] / 3;
+    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${P[i + 1].x.toFixed(1)},${P[i + 1].y.toFixed(1)}`;
   }
   return d;
 }
@@ -248,7 +286,7 @@ function _buildScoreRaceInner(rangeDays, topN) {
   const endLabels = [];
   seriesList.forEach(s => {
     const xy = s.pts.map(pt => ({ x: toX(pt.t), y: toY(pt.v) }));
-    const d = _srSmooth(xy, 0.18);
+    const d = _srSmooth(xy);
     const w = s.isMe ? 3.4 : 2.4;
     linesSVG += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" opacity="${s.isMe ? 1 : 0.9}" clip-path="url(#srClip)"${s.isMe ? ' filter="url(#srGlow)"' : ''}/>`;
     const last = xy[xy.length - 1];
