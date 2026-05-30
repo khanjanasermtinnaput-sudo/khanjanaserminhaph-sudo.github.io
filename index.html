@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260530d">
+<link rel="stylesheet" href="styles.css?v=20260531a">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -262,15 +262,13 @@
         <button class="tab" onclick="switchMatchTab('doubles')">Doubles</button>
       </div>
       <div id="singlesSetup">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div><div class="text-muted" style="font-size:0.76rem;margin-bottom:5px">ผู้เล่น A</div><select class="inp" id="singleA"><option value="">-- เลือก --</option></select></div>
-          <div><div class="text-muted" style="font-size:0.76rem;margin-bottom:5px">ผู้เล่น B</div><select class="inp" id="singleB"><option value="">-- เลือก --</option></select></div>
-        </div>
+        <div class="player-slot-row" id="singlesSlots"></div>
+        <div class="player-grid" id="singlesGrid"></div>
         <button class="btn btn-primary" onclick="startSingles()">▶ เริ่มแมตช์</button>
       </div>
       <div id="doublesSetup" class="hidden">
-        <div class="text-muted" style="font-size:0.76rem;margin-bottom:8px">เลือกทีม A (2 คน) และ ทีม B (2 คน)</div>
-        <div id="doublesPlayerList" style="max-height:280px;overflow-y:auto"></div>
+        <div class="player-slot-row" style="grid-template-columns:1fr 1fr" id="doublesSlots"></div>
+        <div class="player-grid" id="doublesGrid"></div>
         <button class="btn btn-primary mt-12" onclick="startDoubles()">▶ เริ่มแมตช์</button>
       </div>
     </div>
@@ -312,6 +310,40 @@
       <!-- STEP 2B: Referee Mode → เปิดเป็น fullscreen overlay แทน -->
     </div>
   </main>
+</div>
+
+<!-- NUMPAD BOTTOM SHEET -->
+<div id="numpadSheet">
+  <div class="np-inner">
+    <div class="np-handle"></div>
+    <div class="np-matchup">
+      <div class="np-side np-active" id="npSideA" onclick="npSetActive('A')">
+        <div class="np-side-name" id="npNameA">ทีม A</div>
+        <div class="np-score-disp np-active-score" id="npScoreA">—</div>
+      </div>
+      <div class="np-vs">VS</div>
+      <div class="np-side" id="npSideB" onclick="npSetActive('B')">
+        <div class="np-side-name" id="npNameB">ทีม B</div>
+        <div class="np-score-disp" id="npScoreB">—</div>
+      </div>
+    </div>
+    <div class="np-grid">
+      <button class="np-key" onclick="npKey(1)">1</button>
+      <button class="np-key" onclick="npKey(2)">2</button>
+      <button class="np-key" onclick="npKey(3)">3</button>
+      <button class="np-key" onclick="npKey(4)">4</button>
+      <button class="np-key" onclick="npKey(5)">5</button>
+      <button class="np-key" onclick="npKey(6)">6</button>
+      <button class="np-key" onclick="npKey(7)">7</button>
+      <button class="np-key" onclick="npKey(8)">8</button>
+      <button class="np-key" onclick="npKey(9)">9</button>
+      <button class="np-key np-zero" onclick="npKey(0)">0</button>
+      <button class="np-key np-back" onclick="npBack()">⌫</button>
+    </div>
+    <div class="np-winner-hint" id="npWinHint"></div>
+    <button class="np-action np-next" id="npAction">→ ถัดไป กรอก B</button>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px;font-size:0.82rem" onclick="cancelMatch()">← ยกเลิก</button>
+  </div>
 </div>
 
 <!-- REFEREE FULLSCREEN OVERLAY (แยกออกมาจาก matchSection) -->
@@ -748,7 +780,7 @@ END $$;</pre>
 <script src="js/db.js?v=20260529l"></script>
 <script src="js/elo.js?v=20260529l"></script>
 <script src="js/auth.js?v=20260529l"></script>
-<script src="js/leaderboard.js?v=20260530c"></script>
+<script src="js/leaderboard.js?v=20260531a"></script>
 <script src="js/profile.js?v=20260530a"></script>
 <script src="js/stats.js?v=20260530d"></script>
 <script src="js/season.js?v=20260529l"></script>
@@ -759,7 +791,7 @@ END $$;</pre>
 <script src="js/gacha.js?v=20260529l"></script>
 <script src="js/mailbox.js?v=20260529l"></script>
 <script src="js/tournament.js?v=20260530b"></script>
-<script src="js/utils.js?v=20260530c"></script>
+<script src="js/utils.js?v=20260531a"></script>
 <script>
 // ── COIN AWARDS IN SAVE MATCH ─────────────────────────────
 const _saveMatchForCoins = saveMatch;

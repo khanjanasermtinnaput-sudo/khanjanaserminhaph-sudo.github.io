@@ -820,3 +820,51 @@ body.x2-active .toast-wrap{bottom:120px}
   .liquid-frame > .lf-glow{animation-duration:7s}
   [data-style="glass"] .lb-glass{backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   MATCH TAB — tap-to-select player cards + numpad score sheet
+   (ported from badminton_v6-4.html so the live app matches)
+   ═══════════════════════════════════════════════════════════════ */
+.player-slot-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.slot-chip{min-height:52px;border-radius:12px;border:1.5px dashed rgba(240,192,64,0.3);background:rgba(240,192,64,0.04);display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;transition:all 0.18s;position:relative;overflow:hidden}
+.slot-chip.filled{border-style:solid;border-color:rgba(240,192,64,0.55);background:rgba(240,192,64,0.09)}
+.slot-chip-label{font-size:0.64rem;font-weight:700;letter-spacing:0.08em;margin-bottom:2px}
+.slot-chip-name{font-size:0.84rem;font-weight:700;color:#f0c040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px}
+.slot-chip-clear{position:absolute;right:7px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;background:rgba(255,71,87,0.15);border:1px solid rgba(255,71,87,0.3);color:#ff4757;font-size:0.65rem;display:flex;align-items:center;justify-content:center}
+.slot-chip-empty-txt{font-size:0.78rem;color:var(--muted)}
+.player-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;max-height:300px;overflow-y:auto;padding-bottom:4px;margin-bottom:10px}
+.player-card{border-radius:13px;border:1.5px solid var(--glass-border);background:var(--card);padding:9px 10px;display:flex;align-items:center;gap:9px;cursor:pointer;transition:border-color 0.15s,background 0.15s,box-shadow 0.15s;min-height:56px;position:relative;user-select:none;-webkit-tap-highlight-color:transparent}
+.player-card:active{transform:scale(0.95)}
+.player-card.selected{border-color:#f0c040;background:rgba(240,192,64,0.09);box-shadow:0 0 0 2px rgba(240,192,64,0.22),0 0 14px rgba(240,192,64,0.12)}
+.player-card.disabled{opacity:0.35;pointer-events:none}
+.pc-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.88rem;font-weight:700;flex-shrink:0}
+.pc-info{flex:1;min-width:0}
+.pc-name{font-size:0.8rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-pts{font-size:0.65rem;color:var(--muted);margin-top:1px}
+.pc-sel-badge{position:absolute;top:-5px;right:-5px;width:20px;height:20px;border-radius:50%;background:#f0c040;color:#000;font-size:0.58rem;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(240,192,64,0.45)}
+#numpadSheet{position:fixed;bottom:0;left:0;right:0;z-index:3000;display:none;flex-direction:column;align-items:center;justify-content:flex-end}
+#numpadSheet.np-open{display:flex;animation:npSheetUp 0.28s steps(8,end)}
+@keyframes npSheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.np-inner{width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -24px 64px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.1)}
+[data-style="glass"] .np-inner{background:rgba(8,12,28,0.97);border:1px solid rgba(255,255,255,0.14);border-bottom:none}
+[data-style="lite"] .np-inner,[data-theme="light"] .np-inner{background:var(--bg);border:1px solid var(--border);border-bottom:none}
+.np-handle{width:38px;height:4px;border-radius:4px;background:var(--glass-border);margin:0 auto 13px}
+.np-matchup{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}
+.np-side{flex:1;text-align:center;cursor:pointer;border-radius:12px;padding:10px 6px;border:2px solid transparent;transition:all 0.15s}
+.np-side.np-active{border-color:#f0c040;background:rgba(240,192,64,0.07);box-shadow:0 0 14px rgba(240,192,64,0.18)}
+.np-side-name{font-size:0.72rem;color:var(--muted);font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.np-score-disp{font-family:'Rajdhani',sans-serif;font-size:2.8rem;font-weight:700;line-height:1;color:var(--text)}
+.np-score-disp.np-active-score{color:#f0c040}
+@keyframes npPop{0%{transform:scale(1.3)}100%{transform:scale(1)}}
+.np-pop{animation:npPop 0.1s steps(3,end)}
+.np-vs{font-size:0.9rem;color:var(--muted);font-weight:700;flex-shrink:0}
+.np-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:6px}
+.np-key{border-radius:12px;border:1px solid var(--glass-border);background:rgba(255,255,255,0.07);color:var(--text);font-family:'Rajdhani',sans-serif;font-size:1.5rem;font-weight:700;height:52px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.08s}
+.np-key:active{background:rgba(240,192,64,0.18);transform:scale(0.92)}
+.np-zero{grid-column:span 2}
+.np-back{font-size:1.15rem}
+.np-winner-hint{text-align:center;font-size:0.74rem;color:#f0c040;font-weight:600;min-height:1.3em;margin-bottom:4px}
+.np-action{width:100%;border-radius:12px;border:none;height:52px;font-family:'Sarabun',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.np-action:active{transform:scale(0.97)}
+.np-next{background:rgba(255,255,255,0.09);border:1px solid var(--glass-border);color:var(--text)}
+.np-submit{background:linear-gradient(135deg,#4caf50,#2e7d32);color:#fff;box-shadow:0 4px 18px rgba(76,175,80,0.28)}

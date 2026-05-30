@@ -246,42 +246,87 @@ function lbParticles(id, r, g, b) {
 }
 
 function renderMatchSetup() {
-  const opts = db.players.map(p => `<option value="${p.id}">${p.name} (${p.pts}pts)</option>`).join('');
-  document.getElementById('singleA').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
-  document.getElementById('singleB').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
+  window._matchSel = { mode: 'singles', A: [], B: [] };
+  renderPlayerGrid();
 }
-function renderDoublesPlayers() {
-  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name"><span class="${getGachaNameClass(p)}">${p.name}</span> <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || `<div class="text-muted">${t('no_players')}</div>`;
-  document.getElementById('doublesPlayerList').innerHTML = html;
-  window._doublesSelected = { A: [], B: [] };
-}
-function toggleDoubles(id) {
-  const sel = window._doublesSelected || { A: [], B: [] };
-  if (sel.A.includes(id)) sel.A = sel.A.filter(x=>x!==id);
-  else if (sel.B.includes(id)) sel.B = sel.B.filter(x=>x!==id);
-  else if (sel.A.length < 2) sel.A.push(id);
-  else if (sel.B.length < 2) sel.B.push(id);
-  else { toast(t('max_2'), 'error'); return; }
-  window._doublesSelected = sel;
-  db.players.forEach(p => {
-    const chk = document.getElementById('chk_' + p.id), dteam = document.getElementById('dteam_' + p.id);
-    if (!chk) return;
+function renderPlayerGrid() {
+  const sel = window._matchSel || (window._matchSel = { mode: 'singles', A: [], B: [] });
+  const isDoubles = sel.mode === 'doubles';
+  const allSelected = [...sel.A, ...sel.B];
+  const slotEl = document.getElementById(isDoubles ? 'doublesSlots' : 'singlesSlots');
+  if (slotEl) {
+    if (isDoubles) {
+      slotEl.innerHTML = _renderSlotChip('A1', sel.A[0]) + _renderSlotChip('A2', sel.A[1])
+                       + _renderSlotChip('B1', sel.B[0]) + _renderSlotChip('B2', sel.B[1]);
+    } else {
+      slotEl.innerHTML = _renderSlotChip('A', sel.A[0]) + _renderSlotChip('B', sel.B[0]);
+    }
+  }
+  const gridEl = document.getElementById(isDoubles ? 'doublesGrid' : 'singlesGrid');
+  if (!gridEl) return;
+  const maxTotal = isDoubles ? 4 : 2;
+  gridEl.innerHTML = db.players.map(p => {
+    const colors = getAvatarColor(p.id);
     const inA = sel.A.includes(p.id), inB = sel.B.includes(p.id);
-    chk.classList.toggle('checked', inA || inB);
-    chk.textContent = inA ? 'A' : inB ? 'B' : '';
-    dteam.textContent = inA ? t('team_a') : inB ? t('team_b') : '';
-    dteam.style.color = inA ? 'var(--neon)' : inB ? 'var(--red)' : 'var(--muted)';
-  });
+    const selected = inA || inB;
+    const disabled = !selected && allSelected.length >= maxTotal;
+    let badge = '';
+    if (selected) {
+      const label = inA ? (isDoubles ? (sel.A.indexOf(p.id)===0?'A1':'A2') : 'A')
+                        : (isDoubles ? (sel.B.indexOf(p.id)===0?'B1':'B2') : 'B');
+      badge = `<div class="pc-sel-badge">${label}</div>`;
+    }
+    return `<div class="player-card${selected?' selected':''}${disabled?' disabled':''}" onclick="tapPlayerCard(${p.id})">
+      <div class="pc-av" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div>
+      <div class="pc-info"><div class="pc-name">${p.name}</div><div class="pc-pts">${p.pts} pts</div></div>
+      ${badge}
+    </div>`;
+  }).join('') || `<div class="text-muted" style="grid-column:span 2;padding:12px;text-align:center">${t('no_players')}</div>`;
 }
+function _renderSlotChip(label, playerId) {
+  const p = playerId ? db.players.find(x => x.id === playerId) : null;
+  const isA = label.startsWith('A');
+  const accentColor = isA ? 'var(--neon)' : '#ff6b81';
+  return `<div class="slot-chip${p?' filled':''}" onclick="${p?`clearSlot('${label}')`:''}" style="cursor:${p?'pointer':'default'}">
+    <div style="flex:1;min-width:0">
+      <div class="slot-chip-label" style="color:${accentColor}">${label}</div>
+      ${p ? `<div class="slot-chip-name">${p.name}</div>` : '<div class="slot-chip-empty-txt">แตะเลือก</div>'}
+    </div>
+    ${p ? '<div class="slot-chip-clear">✕</div>' : ''}
+  </div>`;
+}
+function tapPlayerCard(id) {
+  const sel = window._matchSel || { mode: 'singles', A: [], B: [] };
+  if (sel.A.includes(id)) { sel.A = sel.A.filter(x=>x!==id); }
+  else if (sel.B.includes(id)) { sel.B = sel.B.filter(x=>x!==id); }
+  else {
+    const maxPer = sel.mode === 'doubles' ? 2 : 1;
+    if (sel.A.length < maxPer) sel.A.push(id);
+    else if (sel.B.length < maxPer) sel.B.push(id);
+    else { toast('เลือกครบทุก slot แล้ว', 'error'); return; }
+  }
+  window._matchSel = sel;
+  renderPlayerGrid();
+}
+function clearSlot(label) {
+  const sel = window._matchSel || { mode: 'singles', A: [], B: [] };
+  if      (label==='A'||label==='A1') sel.A.splice(0,1);
+  else if (label==='A2')              sel.A.splice(1,1);
+  else if (label==='B'||label==='B1') sel.B.splice(0,1);
+  else if (label==='B2')              sel.B.splice(1,1);
+  window._matchSel = sel;
+  renderPlayerGrid();
+}
+function renderDoublesPlayers() { renderPlayerGrid(); } // legacy shim
 function startSingles() {
-  const aId = parseInt(document.getElementById('singleA').value), bId = parseInt(document.getElementById('singleB').value);
-  if (!aId || !bId) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
-  if (aId === bId) return toast('เลือกผู้เล่นคนละคน', 'error');
-  currentMatch = { type: 'singles', teamA: [db.players.find(p=>p.id===aId)], teamB: [db.players.find(p=>p.id===bId)], scoreA: 0, scoreB: 0 };
+  const sel = window._matchSel || { A: [], B: [] };
+  if (!sel.A[0] || !sel.B[0]) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
+  if (sel.A[0] === sel.B[0]) return toast('เลือกผู้เล่นคนละคน', 'error');
+  currentMatch = { type: 'singles', teamA: [db.players.find(p=>p.id===sel.A[0])], teamB: [db.players.find(p=>p.id===sel.B[0])], scoreA: 0, scoreB: 0 };
   showMatchPlaying();
 }
 function startDoubles() {
-  const sel = window._doublesSelected || { A: [], B: [] };
+  const sel = window._matchSel || { A: [], B: [] };
   if (sel.A.length !== 2 || sel.B.length !== 2) return toast('ต้องเลือกทีมละ 2 คน', 'error');
   currentMatch = { type: 'doubles', teamA: sel.A.map(id => db.players.find(p=>p.id===id)), teamB: sel.B.map(id => db.players.find(p=>p.id===id)), scoreA: 0, scoreB: 0 };
   showMatchPlaying();
@@ -321,7 +366,7 @@ function showMatchPlaying() {
 function selectPlayMode(mode) {
   document.getElementById('modePicker').classList.add('hidden');
   if (mode === 'classic') {
-    document.getElementById('classicMode').classList.remove('hidden');
+    npOpen();
   } else {
     // เปิด fullscreen overlay
     const overlay = document.getElementById('refOverlay');
@@ -395,6 +440,7 @@ function changeScore(team, delta) {
 
 function cancelMatch() {
   currentMatch = null;
+  npClose();
   // ปิด fullscreen overlay
   document.getElementById('refOverlay').style.display = 'none';
   delete document.body.dataset.refLock;
@@ -414,6 +460,103 @@ function closeRefOverlay() {
   if (!document.body.dataset.ruLock && !document.body.dataset.ppLock) document.body.style.overflow = '';
   document.getElementById('mainNav').style.display = '';
   document.getElementById('themeControls').style.display = '';
+}
+
+// ── NUMPAD BOTTOM SHEET (replaces classic +/- score entry) ──
+window._np = { active: 'A', a: '', b: '' };
+function npOpen() {
+  if (!currentMatch) return;
+  window._np = { active: 'A', a: '', b: '' };
+  document.getElementById('npNameA').textContent = currentMatch.teamA.map(p=>p.name).join(' & ');
+  document.getElementById('npNameB').textContent = currentMatch.teamB.map(p=>p.name).join(' & ');
+  _npRender(false);
+  const sheet = document.getElementById('numpadSheet');
+  sheet.style.display = 'flex';
+  sheet.classList.add('np-open');
+  document.body.style.overflow = 'hidden';
+}
+function npClose() {
+  const sheet = document.getElementById('numpadSheet');
+  if (!sheet) return;
+  sheet.style.display = 'none';
+  sheet.classList.remove('np-open');
+  if (!document.body.dataset.refLock && !document.body.dataset.ruLock && !document.body.dataset.ppLock) {
+    document.body.style.overflow = '';
+  }
+}
+function npKey(d) {
+  const np = window._np;
+  const cur = np.active === 'A' ? np.a : np.b;
+  if (cur.length >= 2) return;
+  const next = cur + String(d);
+  if (parseInt(next) > 30) return;
+  if (np.active === 'A') np.a = next; else np.b = next;
+  _npRender(true);
+}
+function npBack() {
+  const np = window._np;
+  if (np.active === 'A') np.a = np.a.slice(0,-1); else np.b = np.b.slice(0,-1);
+  _npRender(false);
+}
+function npSetActive(side) {
+  window._np.active = side;
+  _npRender(false);
+}
+function _npRender(pop) {
+  const np = window._np;
+  const sideA = document.getElementById('npSideA');
+  const sideB = document.getElementById('npSideB');
+  const scoreA = document.getElementById('npScoreA');
+  const scoreB = document.getElementById('npScoreB');
+  const actionBtn = document.getElementById('npAction');
+  const winHint = document.getElementById('npWinHint');
+  if (sideA) sideA.classList.toggle('np-active', np.active==='A');
+  if (sideB) sideB.classList.toggle('np-active', np.active==='B');
+  if (scoreA) {
+    scoreA.textContent = np.a === '' ? '—' : np.a;
+    scoreA.className = 'np-score-disp' + (np.active==='A'?' np-active-score':'');
+    if (pop && np.active==='A') { scoreA.classList.add('np-pop'); setTimeout(()=>scoreA.classList.remove('np-pop'),120); }
+  }
+  if (scoreB) {
+    scoreB.textContent = np.b === '' ? '—' : np.b;
+    scoreB.className = 'np-score-disp' + (np.active==='B'?' np-active-score':'');
+    if (pop && np.active==='B') { scoreB.classList.add('np-pop'); setTimeout(()=>scoreB.classList.remove('np-pop'),120); }
+  }
+  const hasA = np.a !== '', hasB = np.b !== '';
+  if (actionBtn) {
+    if (hasA && hasB) {
+      actionBtn.textContent = '✅ บันทึกผล';
+      actionBtn.className = 'np-action np-submit';
+      actionBtn.onclick = npSubmit;
+      if (winHint && currentMatch) {
+        const sA = parseInt(np.a), sB = parseInt(np.b);
+        if (!isNaN(sA) && !isNaN(sB) && sA !== sB) {
+          const winName = sA > sB ? currentMatch.teamA.map(p=>p.name).join(' & ') : currentMatch.teamB.map(p=>p.name).join(' & ');
+          winHint.textContent = `🏆 ${winName} ชนะ`;
+        } else { winHint.textContent = ''; }
+      }
+    } else {
+      actionBtn.textContent = '→ ถัดไป กรอก B';
+      actionBtn.className = 'np-action np-next';
+      actionBtn.onclick = hasA ? ()=>npSetActive('B') : null;
+      if (winHint) winHint.textContent = '';
+    }
+  }
+}
+function npSubmit() {
+  const np = window._np;
+  const sA = parseInt(np.a), sB = parseInt(np.b);
+  if (!np.a || !np.b || isNaN(sA) || isNaN(sB)) return toast('กรอกคะแนนให้ครบทั้งสองฝั่ง', 'error');
+  if (sA <= 0 || sB <= 0) return toast('คะแนนต้องมากกว่า 0', 'error');
+  if (sA === sB) return toast('คะแนนเท่ากัน ไม่มีเสมอในแบดมินตัน', 'error');
+  if (sA >= 28 && sB >= 28) {
+    if (!confirm(`คะแนน ${sA}–${sB} ผิดปกติ ยืนยันไหม?`)) return;
+  }
+  currentMatch.scoreA = sA;
+  currentMatch.scoreB = sB;
+  npClose();
+  document.getElementById('modePicker').classList.add('hidden');
+  confirmFinish();
 }
 function confirmFinish() {
   if (!currentMatch) return;

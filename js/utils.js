@@ -281,7 +281,8 @@ function switchMatchTab(tab) {
   document.getElementById('singlesSetup').classList.toggle('hidden', tab !== 'singles');
   document.getElementById('doublesSetup').classList.toggle('hidden', tab !== 'doubles');
   document.querySelectorAll('#matchSection .tab').forEach((b,i) => { b.classList.toggle('active', (i===0 && tab==='singles') || (i===1 && tab==='doubles')); });
-  if (tab === 'doubles') renderDoublesPlayers();
+  window._matchSel = { mode: tab, A: [], B: [] };
+  renderPlayerGrid();
 }
 
 function normalizePlayer(p) {
