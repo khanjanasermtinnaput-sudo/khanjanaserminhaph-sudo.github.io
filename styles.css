@@ -710,3 +710,17 @@ body.x2-active .toast-wrap{bottom:120px}
   /* inputs: drop blur only, keep their own background (contrast) */
   [data-style="glass"] .inp{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
 }
+
+/* [perf 4] Mobile: stop animating box-shadow / filter (forces a full repaint
+   every frame). Replace the looping pulse with an equivalent STATIC glow so the
+   element still looks lit, just not throbbing. Desktop keeps the pulse. */
+@media (max-width:620px){
+  #profileCard.king-profile .profile-avatar{animation:none!important;box-shadow:0 0 0 3px #ffd700,0 0 18px rgba(255,215,0,.6)!important}
+  .lb-king-throne{animation:none!important;box-shadow:0 0 0 1.5px rgba(255,232,110,.85),0 3px 26px rgba(255,205,0,.30),inset 0 1px 0 rgba(255,215,0,.18)!important}
+  .reward-card{animation:none!important;box-shadow:0 0 14px rgba(255,215,0,.22)!important}
+  .champion-badge{animation:none!important;box-shadow:0 0 12px rgba(255,215,0,.45)!important}
+  .secret-badge{animation:none!important;box-shadow:0 0 12px rgba(0,200,255,.45)!important}
+  .prime-ss-crown{animation:none!important;filter:drop-shadow(0 0 8px rgba(255,215,0,.9))!important}
+  /* ring-pulse decorations (box-shadow loops) on framed avatars → static ring */
+  .gf-thundergod .gf-ring,.gf-thundergod .gf-ring2,.gf-solaremperor .se-ring{animation:none!important}
+}
