@@ -631,3 +631,18 @@ function getRankBadgeSVG(pts, playerId, size) {
   return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0;opacity:${op}"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
 }
 
+function getRankBadgeSVGTier(tier, size) {
+  size = size || 36;
+  const nativeMax = tier==='king' ? 90 : (tier==='bronze'||tier==='silver') ? 74 : 84;
+  const scale = (size / nativeMax).toFixed(3);
+  let inner = '';
+  if (tier==='bronze')        inner = _rbShield('#e09040','#8a4010','#6a2800','I','#fffacc');
+  else if (tier==='silver')   inner = _rbShield('#c8d8e8','#405060','#304050','I','#1a2830');
+  else if (tier==='gold')     inner = _rbGold('I');
+  else if (tier==='platinum') inner = _rbPlat('I');
+  else if (tier==='diamond')  inner = _rbDiamond('I');
+  else if (tier==='master')   inner = _rbMaster();
+  else if (tier==='king')     inner = _rbKing();
+  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
+}
+

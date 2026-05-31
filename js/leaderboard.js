@@ -154,13 +154,13 @@ function lbRenderBoard(data, animate = true) {
         </div>
         <div>
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? '<span title="Thunder God ⚡" style="font-size:0.75rem;margin-left:3px;vertical-align:middle">⚡</span>' : ''}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
-          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getRankBadgeSVG(p.pts,p.id,36)}${getPlayerLBBadges(p)}</div>
+          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
       <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>${t('pts_col')}</small></div>
       <div class="lb-rst">${p.wins}/${p.losses}<small>${t('wl_col')}</small></div>
       <div class="lb-rst">${wp}%<small>Win rate</small></div>
-      <div class="lb-rbadge"><div class="lb-bdg">${trendBdg}</div></div>
+      <div class="lb-rbadge">${getRankBadgeSVG(p.pts,p.id,36)}</div>
     `;
     row.addEventListener('click', e => {
       lbAddRipple(row, e);

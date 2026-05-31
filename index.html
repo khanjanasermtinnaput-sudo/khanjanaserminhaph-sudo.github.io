@@ -1170,5 +1170,16 @@ loadAll = async function() {
   window.addEventListener('appinstalled', function(){ if (banner()) banner().style.display = 'none'; });
 })();
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  var tiers = ['bronze','silver','gold','platinum','diamond','master','king'];
+  var icons = document.querySelectorAll('#rankModal .rank-tier-icon');
+  icons.forEach(function(el, i) {
+    if (!tiers[i]) return;
+    el.innerHTML = getRankBadgeSVGTier(tiers[i], 36);
+    el.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:visible;padding:0';
+  });
+});
+</script>
 </body>
 </html>
