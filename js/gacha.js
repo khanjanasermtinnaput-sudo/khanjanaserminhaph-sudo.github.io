@@ -47,10 +47,11 @@ function getGachaInventory(userId) {
   try { ls = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + userId) || '{}'); } catch(e) {}
   const pl = db.players.find(x => x.id === userId);
   const dbInv = pl ? (pl._dbGachaInv || {}) : {};
-  const frames = [...new Set([...(ls.frames||[]), ...(dbInv.frames||[])])];
-  const names  = [...new Set([...(ls.names||[]),  ...(dbInv.names||[])])];
-  const emojis = [...new Set([...(ls.emojis||[]), ...(dbInv.emojis||[])])];
-  return { frames, names, emojis };
+  const frames  = [...new Set([...(ls.frames||[]),  ...(dbInv.frames||[])])];
+  const names   = [...new Set([...(ls.names||[]),   ...(dbInv.names||[])])];
+  const emojis  = [...new Set([...(ls.emojis||[]),  ...(dbInv.emojis||[])])];
+  const effects = [...new Set([...(ls.effects||[]), ...(dbInv.effects||[])])];
+  return { frames, names, emojis, effects };
 }
 
 async function _saveGachaInventoryToDB(userId, inv) {

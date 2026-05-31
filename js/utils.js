@@ -30,6 +30,7 @@ function getLiquidFrameInner() { return LIQUID_FRAME_INNER; }
 // Returns extra class for the avatar element e.g. "gf-void"
 function getGachaFrameClass(player) {
   const raw = player && player.gachaFrame;
+  if (raw === 'thundergod') return ''; // replaced by rotating_arcs avatar effect
   const f = _resolveFrameKey(raw);
   if (!f || !(f in GACHA_FRAME_INNER)) return '';
   return 'gf-' + f;
@@ -37,14 +38,16 @@ function getGachaFrameClass(player) {
 // Returns inner HTML to inject inside the avatar element for particles/glow
 function getGachaFrameInner(player) {
   const raw = player && player.gachaFrame;
+  if (raw === 'thundergod') return ''; // replaced by rotating_arcs avatar effect
   const f = _resolveFrameKey(raw);
   return (f && (f in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[f] : '';
 }
 // Returns extra class for the name element e.g. "gn-void"
 function getGachaNameClass(player) {
   const raw = player && player.gachaName;
+  if (raw === 'thundergod') return ''; // replaced by rotating_arcs avatar effect
   const n = _resolveNameKey(raw);
-  if (!n || !['void','halo','blaze','ice','thundergod','solaremperor'].includes(n)) return '';
+  if (!n || !['void','halo','blaze','ice','solaremperor'].includes(n)) return '';
   return 'gn-' + n;
 }
 // Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
@@ -320,8 +323,13 @@ function normalizePlayer(p) {
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
   let _ownedEffects = [];
   try { _ownedEffects = JSON.parse(p.owned_effects || '[]'); } catch(e) {}
+  // localStorage fallback
   if (!_ownedEffects.length) {
-    try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects) _ownedEffects = _lsInvEf.effects; } catch(e) {}
+    try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects && _lsInvEf.effects.length) _ownedEffects = _lsInvEf.effects; } catch(e) {}
+  }
+  // Auto-migrate: old thundergod frame/name → rotating_arcs
+  if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {
+    _ownedEffects = [..._ownedEffects, 'rotating_arcs'];
   }
   return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects };
 }
