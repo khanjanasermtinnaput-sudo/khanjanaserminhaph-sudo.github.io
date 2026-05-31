@@ -239,12 +239,12 @@ function setStyle(style) {
   document.getElementById('styleLite').classList.toggle('active', style === 'lite');
   localStorage.setItem('badminton_style', style);
 }
-// Heuristic: weak CPU/RAM → default to the lightweight "lite" style for smoothness.
+// Heuristic: very low RAM only → default to lite style for smoothness.
 // Only used when the user has NOT explicitly chosen a style; their toggle always wins.
+// Threshold: <= 1 GB only (old phones/tablets). 4-core PCs / 4 GB RAM = glass by default.
 function _isLowEndDevice() {
-  const cores = navigator.hardwareConcurrency;
   const mem = navigator.deviceMemory;
-  return (typeof cores === 'number' && cores <= 4) || (typeof mem === 'number' && mem <= 4);
+  return typeof mem === 'number' && mem <= 1;
 }
 function loadTheme() {
   const t = localStorage.getItem('badminton_theme') || 'dark';
@@ -630,6 +630,11 @@ function getRankBadgeSVG(pts, playerId, size) {
   const op = (tier==='king'||tier==='master') ? 1 : opacity;
   return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0;opacity:${op}"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
 }
+
+// ── Initialize theme/style (runs last, after all scripts load) ──────────
+// loadTheme() was previously called in leaderboard.js before utils.js loaded,
+// causing ReferenceError. Moved here so it runs once utils.js is ready.
+loadTheme();
 
 function getRankBadgeSVGTier(tier, size) {
   size = size || 36;

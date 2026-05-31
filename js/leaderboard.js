@@ -1255,8 +1255,6 @@ function checkPatchBadge() {
   }
 }
 
-loadTheme();
-setStyle(localStorage.getItem('badminton_style') || 'glass');
 checkPatchBadge();
 applyLang();
 
