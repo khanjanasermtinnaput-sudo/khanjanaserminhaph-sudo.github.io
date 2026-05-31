@@ -130,9 +130,9 @@ async function openPlayerProfile(playerId) {
           <div class="lightning-dot"></div>
           <div class="lightning-avatar" style="font-size:1.6rem">${getInitial(p.name)}</div>
         </div>` : `
-        <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]}">
+        <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">
           ${getGachaFrameInner(p)}${getInitial(p.name)}
-          <div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>
+          ${!getGachaFrameClass(p) ? `<div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>` : ''}
           ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
         </div>`}
         <div class="pp2-hero-text">

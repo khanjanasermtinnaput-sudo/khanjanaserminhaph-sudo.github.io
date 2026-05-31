@@ -148,8 +148,8 @@ function lbRenderBoard(data, animate = true) {
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
-        <div style="position:relative;flex-shrink:0">
-          <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
+        <div style="position:relative;flex-shrink:0;isolation:isolate">
+          <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
         </div>
         <div>
