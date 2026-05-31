@@ -145,15 +145,30 @@ function lbRenderBoard(data, animate = true) {
     const row = document.createElement('div');
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
+    const _hasArcs = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0;isolation:isolate">
+          ${_hasArcs ? `
+          <div class="lightning-avatar-wrap" style="width:48px;height:48px">
+            <div class="lightning-arc lightning-arc-1"></div>
+            <div class="lightning-arc lightning-arc-2"></div>
+            <div class="lightning-arc lightning-arc-3"></div>
+            <div class="lightning-dot"></div><div class="lightning-dot"></div>
+            <div class="lightning-dot"></div><div class="lightning-dot"></div>
+            <div class="lightning-avatar" style="width:36px;height:36px;font-size:16px">${getInitial(p.name)}</div>
+          </div>` : `
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
-          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
+          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}`}
         </div>
         <div>
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? '<span title="Thunder God ⚡" style="font-size:0.75rem;margin-left:3px;vertical-align:middle">⚡</span>' : ''}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
+          ${_hasArcs ? `
+          <div class="lightning-name-wrap lb-rn${rank.id==='king'?' lb-rn-king':''}">
+            <span class="lightning-name" style="font-size:13px;letter-spacing:0.5px;font-weight:600">${p.name}</span>
+            ${isMe ? `<span style="color:var(--neon);font-size:0.7rem;margin-left:4px">${t('me')}</span>` : ''}
+          </div>` : `
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>`}
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
