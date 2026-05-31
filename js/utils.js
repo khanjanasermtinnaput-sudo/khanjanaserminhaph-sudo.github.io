@@ -568,3 +568,66 @@ function declareKingChallenge(challengerId, challengerName) {
   renderLeaderboard();
 }
 
+// ══ SVG RANK BADGE SYSTEM ══════════════════════════════════
+let _rbCnt = 0;
+
+function _rbShield(fill1, fill2, stroke, roman, romanColor) {
+  const id = ++_rbCnt;
+  return `<div class="shield-wrap"><svg class="shield-svg" viewBox="0 0 64 74" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="sg${id}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${fill1}"/><stop offset="100%" stop-color="${fill2}"/></linearGradient></defs><path d="M32 2 L62 12 L62 40 Q62 62 32 72 Q2 62 2 40 L2 12 Z" fill="url(#sg${id})" stroke="${stroke}" stroke-width="2"/><path d="M32 9 L55 17 L55 40 Q55 57 32 65 Q9 57 9 40 L9 17 Z" fill="none" stroke="${fill1}" stroke-width="1.2" opacity="0.5"/><path d="M32 9 L55 17 L55 28 Q44 22 32 22 Q20 22 9 28 L9 17 Z" fill="white" opacity="0.08"/><text x="32" y="44" font-family="Georgia,serif" font-size="18" font-weight="700" text-anchor="middle" fill="${romanColor}" letter-spacing="2">${roman}</text></svg></div>`;
+}
+function _rbGold(roman) {
+  const id = ++_rbCnt;
+  return `<div class="gold-wrap"><svg width="80" height="64" viewBox="0 0 80 64" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="gg${id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ffe060"/><stop offset="50%" stop-color="#f0c040"/><stop offset="100%" stop-color="#a07000"/></linearGradient></defs><path d="M22 32 Q10 20 4 12 Q8 16 12 22 Q6 18 2 8 Q10 14 16 24 Q12 16 14 6 Q18 16 18 28 Z" fill="#f0c040" opacity="0.85"/><path d="M58 32 Q70 20 76 12 Q72 16 68 22 Q74 18 78 8 Q70 14 64 24 Q68 16 66 6 Q62 16 62 28 Z" fill="#f0c040" opacity="0.85"/><rect x="20" y="12" width="40" height="40" rx="5" fill="url(#gg${id})" stroke="#8a6000" stroke-width="1.5"/><rect x="26" y="18" width="28" height="28" rx="3" fill="none" stroke="#ffe060" stroke-width="1" opacity="0.6"/><text x="40" y="38" font-family="Georgia,serif" font-size="16" font-weight="700" text-anchor="middle" fill="#5a3800" letter-spacing="2">${roman}</text></svg></div>`;
+}
+function _rbPlat(roman) {
+  const id = ++_rbCnt;
+  return `<div class="plat-wrap"><svg width="84" height="70" viewBox="0 0 84 70" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pg${id}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#90e8f8"/><stop offset="100%" stop-color="#208898"/></linearGradient></defs><path d="M24 35 Q14 26 6 20 Q10 24 14 30 Q8 26 4 16 Q12 22 18 32 Q14 22 16 12 Q20 22 20 33 Z" fill="#70d0e0" opacity="0.8"/><path d="M60 35 Q70 26 78 20 Q74 24 70 30 Q76 26 80 16 Q72 22 66 32 Q70 22 68 12 Q64 22 64 33 Z" fill="#70d0e0" opacity="0.8"/><polygon points="42,6 68,21 68,49 42,64 16,49 16,21" fill="url(#pg${id})" stroke="#106878" stroke-width="1.5"/><polygon points="42,14 60,24 60,46 42,56 24,46 24,24" fill="none" stroke="#b0f0ff" stroke-width="1" opacity="0.5"/><text x="42" y="40" font-family="Georgia,serif" font-size="16" font-weight="700" text-anchor="middle" fill="#004858" letter-spacing="2">${roman}</text></svg></div>`;
+}
+function _rbDiamond(roman) {
+  const id = ++_rbCnt;
+  const sp = [{x:8,y:8,s:0.0},{x:74,y:8,s:0.3},{x:4,y:50,s:0.6},{x:78,y:50,s:0.9},{x:42,y:2,s:0.15},{x:42,y:66,s:0.5}]
+    .map((p,i)=>`<div class="rb-sparkle" style="left:${p.x}px;top:${p.y}px;width:5px;height:5px;background:#c0a0ff;animation-delay:${p.s}s;animation-duration:${1.2+i*0.15}s"></div>`).join('');
+  return `<div class="diamond-wrap"><svg width="84" height="70" viewBox="0 0 84 70" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="dg${id}" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#c0a0ff"/><stop offset="50%" stop-color="#8060e0"/><stop offset="100%" stop-color="#3020a0"/></linearGradient></defs><path d="M24 35 Q14 26 6 20 Q10 24 14 30 Q8 26 4 16 Q12 22 18 32 Q14 22 16 12 Q20 22 20 33 Z" fill="#9070e0" opacity="0.8"/><path d="M60 35 Q70 26 78 20 Q74 24 70 30 Q76 26 80 16 Q72 22 66 32 Q70 22 68 12 Q64 22 64 33 Z" fill="#9070e0" opacity="0.8"/><polygon points="42,6 68,21 68,49 42,64 16,49 16,21" fill="url(#dg${id})" stroke="#6040c0" stroke-width="1.5"/><polygon points="42,14 60,24 60,46 42,56 24,46 24,24" fill="none" stroke="#e0d0ff" stroke-width="1" opacity="0.5"/><line x1="10" y1="10" x2="16" y2="16" stroke="#e0d0ff" stroke-width="1" opacity="0.6"/><line x1="74" y1="10" x2="68" y2="16" stroke="#e0d0ff" stroke-width="1" opacity="0.6"/><line x1="10" y1="60" x2="16" y2="54" stroke="#e0d0ff" stroke-width="1" opacity="0.6"/><line x1="74" y1="60" x2="68" y2="54" stroke="#e0d0ff" stroke-width="1" opacity="0.6"/><text x="42" y="40" font-family="Georgia,serif" font-size="16" font-weight="700" text-anchor="middle" fill="#f0e8ff" letter-spacing="2">${roman}</text></svg>${sp}</div>`;
+}
+function _rbMaster() {
+  const id = ++_rbCnt;
+  const fires = [{x:20,y:56,d:0.0,dur:0.7},{x:30,y:60,d:0.1,dur:0.9},{x:42,y:62,d:0.2,dur:0.8},{x:54,y:60,d:0.05,dur:1.0},{x:64,y:56,d:0.3,dur:0.75},{x:14,y:46,d:0.4,dur:0.85},{x:70,y:46,d:0.15,dur:0.95}]
+    .map(f=>`<div class="rb-fire" style="left:${f.x}px;top:${f.y}px;width:8px;height:12px;background:linear-gradient(#ffe060,#ff4000);animation-delay:${f.d}s;animation-duration:${f.dur}s"></div>`).join('');
+  return `<div class="master-wrap"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg${id}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff6020"/><stop offset="100%" stop-color="#a01000"/></linearGradient></defs><polygon points="42,8 70,24 70,56 42,72 14,56 14,24" fill="url(#mg${id})" stroke="#601000" stroke-width="2"/><polygon points="42,16 62,28 62,52 42,64 22,52 22,28" fill="none" stroke="#ff8040" stroke-width="1" opacity="0.5"/><polygon points="42,22 46,34 58,34 49,41 52,53 42,46 32,53 35,41 26,34 38,34" fill="#f0c040" stroke="#8a5000" stroke-width="1.2"/></svg>${fires}</div>`;
+}
+function _rbKing() {
+  const sparks = Array.from({length:10},(_,i)=>{
+    const a=i*36, r=38, dx=Math.round(Math.cos(a*Math.PI/180)*r), dy=Math.round(Math.sin(a*Math.PI/180)*r);
+    return `<div class="rb-gold-sparkle" style="left:45px;top:45px;--dx:${dx}px;--dy:${dy}px;animation-delay:${(i*0.12).toFixed(2)}s;animation-duration:${(1.0+i*0.08).toFixed(2)}s"></div>`;
+  }).join('');
+  return `<div class="king-wrap"><div class="king-glow"></div><svg width="90" height="90" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" class="king-swing"><path d="M94.52 21.81c2.44-1.18 4.13-3.67 4.13-6.56a7.28 7.28 0 0 0-14.56 0c0 2.93 1.73 5.44 4.22 6.6c-2.88 15.6-7.3 27.21-23.75 29.69c0 0 4.43 22.15 25.15 22.15s22.82-21.93 22.82-21.93c-16.81.86-18.23-20.27-18.01-29.95z" fill="#f19534"/><path d="M34.74 21.81c-2.44-1.18-4.13-3.67-4.13-6.56a7.28 7.28 0 0 1 14.56 0c0 2.93-1.73 5.44-4.22 6.6c2.88 15.6 7.3 27.21 23.75 29.69c0 0-4.43 22.15-25.15 22.15S16.74 51.77 16.74 51.77c16.8.85 18.22-20.28 18-29.96z" fill="#f19534"/><path d="M119.24 16.86c-3.33-.45-6.51 2.72-7.09 7.06c-.36 2.71.37 5.24 1.78 6.87l-2.4 9.95s-3.67 23.51-22.21 28.15C74.5 72.6 69.13 45.47 67.83 37.09c2.82-1.4 4.77-4.3 4.77-7.67c0-4.73-3.83-8.56-8.56-8.56s-8.56 3.83-8.56 8.56c0 3.39 1.98 6.32 4.85 7.7c-1.03 8.27-5.57 34.5-21.57 31.76c-16.24-2.79-23.33-30.14-24.97-37.58c1.95-1.6 3.04-4.42 2.64-7.45c-.58-4.35-4.02-7.47-7.68-6.98c-3.66.49-6.15 4.41-5.57 8.75c.42 3.16 2.36 5.67 4.79 6.62l12.72 79.03s11.1 8.77 43.35 8.77s43.35-8.77 43.35-8.77l12.75-79.24c2.06-1.08 3.68-3.51 4.08-6.49c.59-4.35-1.64-8.23-4.98-8.68z" fill="#ffca28"/><ellipse cx="64.44" cy="88.3" rx="9.74" ry="11.61" fill="#26a69a"/><path d="M64.44 79.56c.38.42.72 1.19 0 2.69s-4.6 3.53-5.31 3.94c-.71.42-1.18.23-1.4.06c-1.05-.84-.65-2.74.03-3.9c1.46-2.51 4.55-5.1 6.68-2.79z" fill="#69f0ae"/><path d="M118.09 78.8c1.56-8.63-4.24-10.79-4.24-10.79s-3.74-.68-5.5 9.03c-1.76 9.7 1.98 10.38 1.98 10.38s6.19.01 7.76-8.62z" fill="#26a69a"/><path d="M9.76 79.06C8.19 70.44 14 68.27 14 68.27s3.74-.68 5.5 9.03c1.76 9.7-1.98 10.38-1.98 10.38s-6.2.01-7.76-8.62z" fill="#26a69a"/><path d="M99.99 87.16c-.69 3.93-3.84 6.66-7.05 6.1c-3.21-.56-3.65-3.91-2.96-7.84c.69-3.93 2.24-6.94 5.44-6.38c3.21.56 5.26 4.2 4.57 8.12z" fill="#f44336"/><path d="M30.43 87.16c.69 3.93 3.84 6.66 7.05 6.1s3.65-3.91 2.96-7.84c-.69-3.93-2.24-6.94-5.44-6.38s-5.25 4.2-4.57 8.12z" fill="#f44336"/><path d="M109.15 98.21c-5.99 3-19.73 10.99-45.1 10.99s-39.11-7.99-45.1-10.99c0 0-2.15 1.15-2.15 2.35v9.21c0 1.23.65 2.36 1.71 2.99c4.68 2.76 18.94 9.28 45.55 9.28s40.87-6.52 45.55-9.28a3.475 3.475 0 0 0 1.71-2.99v-9.21c-.02-1.2-2.17-2.35-2.17-2.35z" fill="#ffca28"/><path d="M39.6 110.84c2.8.55 3.65.79 3.46 2.35c-.39 3.07-6.76 2.34-10.53 1.35c-7.79-2.05-9.37-4.21-9.37-6.14c0-1.77 1.36-1.98 3.46-1.24c2.51.89 6.39 2.39 12.98 3.68z" fill="#fff59d"/><path d="M109.15 100.23s-16.57 9.38-45.1 9.38s-45.1-9.38-45.1-9.38" fill="none" stroke="#f19534" stroke-width="4" stroke-linecap="round" stroke-miterlimit="10"/></svg>${sparks}</div>`;
+}
+
+function getRankBadgeSVG(pts, playerId, size) {
+  size = size || 36;
+  const rank = getRank(pts, playerId != null ? playerId : -999);
+  const tier = rank.id;
+  let level = 'I';
+  const _dm = {
+    bronze:   [[0,33,'III'],[34,66,'II'],[67,100,'I']],
+    silver:   [[101,166,'III'],[167,233,'II'],[234,300,'I']],
+    gold:     [[301,367,'III'],[368,433,'II'],[434,500,'I']],
+    platinum: [[501,600,'III'],[601,700,'II'],[701,800,'I']],
+    diamond:  [[801,1033,'III'],[1034,1266,'II'],[1267,1499,'I']],
+  };
+  if (_dm[tier]) { for (const [lo,hi,d] of _dm[tier]) { if (pts>=lo && pts<=hi) { level=d; break; } } }
+  const opacity = level==='III' ? 0.7 : level==='II' ? 0.85 : 1.0;
+  const nativeMax = tier==='king' ? 90 : (tier==='bronze'||tier==='silver') ? 74 : 84;
+  const scale = (size / nativeMax).toFixed(3);
+  let inner = '';
+  if (tier==='bronze')        inner = _rbShield('#e09040','#8a4010','#6a2800', level, '#fffacc');
+  else if (tier==='silver')   inner = _rbShield('#c8d8e8','#405060','#304050', level, '#1a2830');
+  else if (tier==='gold')     inner = _rbGold(level);
+  else if (tier==='platinum') inner = _rbPlat(level);
+  else if (tier==='diamond')  inner = _rbDiamond(level);
+  else if (tier==='master')   inner = _rbMaster();
+  else if (tier==='king')     inner = _rbKing();
+  const op = (tier==='king'||tier==='master') ? 1 : opacity;
+  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0;opacity:${op}"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
+}
+

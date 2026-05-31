@@ -894,3 +894,22 @@ body.x2-active .toast-wrap{bottom:120px}
 .lightning-name-wrap::after{content:'⚡';position:absolute;top:-14px;font-size:12px;color:#60c8ff;animation:bolt-run 2.5s steps(20) infinite;pointer-events:none}
 @keyframes bolt-run{0%,44%,56%,100%{opacity:0;left:0}47%{opacity:1;left:20%}50%{opacity:1;left:70%}53%{opacity:0;left:90%}}
 [data-style="lite"] .lightning-arc-1,[data-style="lite"] .lightning-arc-2,[data-style="lite"] .lightning-arc-3,[data-style="lite"] .lightning-dot{animation:none!important}
+/* ══ SVG RANK BADGES ══ */
+.shield-wrap{position:relative;width:64px;height:74px}
+.shield-svg{width:64px;height:74px}
+.gold-wrap{position:relative;width:80px;height:64px;display:flex;align-items:center;justify-content:center}
+.plat-wrap{position:relative;width:84px;height:70px;display:flex;align-items:center;justify-content:center}
+.diamond-wrap{position:relative;width:84px;height:70px;display:flex;align-items:center;justify-content:center}
+.rb-sparkle{position:absolute;border-radius:50%;animation:rb-sparkle-anim 1.5s steps(20) infinite}
+@keyframes rb-sparkle-anim{0%,100%{opacity:0;transform:scale(0)}50%{opacity:1;transform:scale(1)}}
+.master-wrap{position:relative;width:84px;height:84px;display:flex;align-items:center;justify-content:center}
+.rb-fire{position:absolute;border-radius:50% 50% 30% 30%;animation:rb-fire-rise 0.8s steps(12) infinite}
+@keyframes rb-fire-rise{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-24px) scale(0.3)}}
+.king-wrap{position:relative;width:90px;height:90px;display:flex;align-items:center;justify-content:center}
+.king-glow{position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,rgba(240,192,64,0.3),transparent 70%);animation:rb-king-pulse 1.5s steps(30) infinite}
+@keyframes rb-king-pulse{0%,100%{opacity:0.4;transform:scale(0.9)}50%{opacity:1;transform:scale(1.1)}}
+.king-swing{animation:rb-crown-swing 2s steps(40) infinite}
+@keyframes rb-crown-swing{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+.rb-gold-sparkle{position:absolute;width:6px;height:6px;border-radius:50%;background:#ffe680;animation:rb-gs-anim 1.2s steps(15) infinite}
+@keyframes rb-gs-anim{0%{opacity:0;transform:scale(0) translate(0,0)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0.5) translate(var(--dx),var(--dy))}}
+[data-style="lite"] .rb-sparkle,[data-style="lite"] .rb-fire,[data-style="lite"] .king-glow,[data-style="lite"] .king-swing,[data-style="lite"] .rb-gold-sparkle{animation:none!important}

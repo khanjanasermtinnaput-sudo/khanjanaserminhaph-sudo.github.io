@@ -139,18 +139,18 @@ async function openPlayerProfile(playerId) {
           ${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? `
           <div class="lightning-name-wrap"><span class="lightning-name">${p.name}</span></div>` : `
           <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>`}
-          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px"><span class="rank-badge ${rank.class}">${getRankLabel(p.pts,p.id)}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--glass-border)">
               <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('cur_rank_pos')}</div>
               <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--neon);line-height:1">#${rankPos}</div>
-              <span class="rank-badge ${rank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${rank.label}</span>
+              ${getRankBadgeSVG(p.pts,p.id,36)}
             </div>
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid ${peakPos < rankPos?'rgba(255,215,0,0.4)':'var(--glass-border)'}">
               <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('peak_rank_pos')}${peakPos < rankPos?' 👑':''}</div>
               <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--gold);line-height:1">#${peakPos}</div>
-              <span class="rank-badge ${peakRank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${peakRank.label}</span>
+              ${getRankBadgeSVG(peakElo,p.id,36)}
             </div>
           </div>
         </div>

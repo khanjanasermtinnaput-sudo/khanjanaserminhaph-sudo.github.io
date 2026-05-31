@@ -79,7 +79,7 @@ function buildPersonalRankCard(p) {
       <div class="sr-me-info">
         <div class="sr-me-label">${isEn ? 'YOUR RANK' : 'อันดับของคุณ'}</div>
         <div class="sr-me-name">${p.name}</div>
-        <div><span class="rank-badge ${rank.class}">${getRankLabel(p.pts, p.id)}</span></div>
+        <div>${getRankBadgeSVG(p.pts,p.id,36)}</div>
       </div>
       <div class="sr-me-pos">
         <div class="sr-me-pos-num">#${pos}</div>
