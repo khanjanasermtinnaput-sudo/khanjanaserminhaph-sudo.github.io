@@ -159,41 +159,43 @@ async function doGachaPull() {
   let result = null;
 
   if (roll < 0.1) {
-    // ── ⚡ SECRET: THUNDER GOD 0.1% ── HIDDEN FORBIDDEN RARITY ──
-    const val = 'thundergod';
-    // 1. Save to inventory (both frame & name)
+    // ── ⚡ SECRET: THUNDER GOD 0.1% — avatar_effect: rotating_arcs ──
+    const effectId = 'rotating_arcs';
+    // 1. Save to inventory (effects array)
     const invKey = 'bmt_gacha_inv_' + currentUser.id;
     let inv = getGachaInventory(currentUser.id);
-    if (!inv.frames) inv.frames = [];
-    if (!inv.names)  inv.names  = [];
-    if (!inv.frames.includes(val)) inv.frames.push(val);
-    if (!inv.names.includes(val))  inv.names.push(val);
+    if (!inv.effects) inv.effects = [];
+    if (!inv.effects.includes(effectId)) inv.effects.push(effectId);
     localStorage.setItem(invKey, JSON.stringify(inv));
     _saveGachaInventoryToDB(currentUser.id, inv);
-    // 2. Equip both frame AND name in DB
+    // 2. Save owned_effects to DB
     try {
-      await dbUpdatePlayer(currentUser.id, { gacha_frame: val, gacha_name: val });
+      await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify([effectId]) });
       await loadPlayers();
     } catch(e) {
-      const d = JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}');
-      d.gacha_frame = val; d.gacha_name = val;
-      localStorage.setItem('bmt_gacha_'+currentUser.id, JSON.stringify(d));
+      // fallback: persist in localStorage inventory (already saved above)
+      console.warn('owned_effects save failed:', e.message);
     }
-    // 3. localStorage equip
-    try {
-      const lsKey = 'bmt_gacha_' + currentUser.id;
-      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
-      lsData.gacha_frame = val; lsData.gacha_name = val;
-      localStorage.setItem(lsKey, JSON.stringify(lsData));
-    } catch(e) {}
-    result = { type: 'secret', val, text: '⚡ SECRET: THUNDER GOD ⚡' };
-    // 4. Brief flash in pull card then launch cinematic
+    result = { type: 'secret', val: effectId, text: '⚡ THUNDER GOD ⚡' };
+    // 3. Show rotating arcs preview in result card then launch cinematic
     const resultElS = document.getElementById('gachaPullResult');
-    if (resultElS) resultElS.innerHTML = `<div style="font-size:1.8rem;animation:tgNameFlicker .6s ease-in-out infinite">⚡</div><div class="gacha-pull-value" style="color:#00d4ff;font-size:1.1rem;letter-spacing:.12em">⚡ SECRET ⚡</div><div style="font-size:.7rem;color:rgba(0,200,255,.6);margin-top:4px;letter-spacing:.3em">THUNDER GOD</div>`;
+    if (resultElS) resultElS.innerHTML = `
+      <div style="transform:scale(0.65);transform-origin:center top;margin:-8px 0 -26px;pointer-events:none">
+        <div class="lightning-avatar-wrap">
+          <div class="lightning-arc lightning-arc-1"></div>
+          <div class="lightning-arc lightning-arc-2"></div>
+          <div class="lightning-arc lightning-arc-3"></div>
+          <div class="lightning-dot"></div><div class="lightning-dot"></div>
+          <div class="lightning-dot"></div><div class="lightning-dot"></div>
+          <div class="lightning-avatar" style="font-size:1.9rem">${getInitial(currentUser.name)}</div>
+        </div>
+      </div>
+      <div class="gacha-pull-value" style="color:#00d4ff;font-size:1rem;letter-spacing:.1em;margin-top:4px">⚡ THUNDER GOD — 0.1%</div>
+      <div style="font-size:.72rem;color:rgba(0,200,255,.7);margin-top:3px;letter-spacing:.08em">ได้แล้ว!</div>`;
     setTimeout(() => {
       document.getElementById('gachaPullOverlay').classList.remove('show');
       window._tgCinematicOnClose = function() {
-        if (document.getElementById('profileSection') && !document.getElementById('profileSection').classList.contains('hidden')) openAvatarBuilder();
+        if (typeof renderProfile === 'function') renderProfile();
         if (typeof renderGachaInventory === 'function') renderGachaInventory();
       };
       showThunderGodCinematic(currentUser.name);

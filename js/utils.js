@@ -318,7 +318,12 @@ function normalizePlayer(p) {
   const _gName  = p.gacha_name  || _lsGacha.gacha_name  || null;
   const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs };
+  let _ownedEffects = [];
+  try { _ownedEffects = JSON.parse(p.owned_effects || '[]'); } catch(e) {}
+  if (!_ownedEffects.length) {
+    try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects) _ownedEffects = _lsInvEf.effects; } catch(e) {}
+  }
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects };
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
