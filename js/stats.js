@@ -75,7 +75,7 @@ function buildPersonalRankCard(p) {
   return `
   <div class="card lb-glass sr-me">
     <div class="sr-me-head">
-      <div class="sr-me-av" style="background:${av.bg};color:${av.fg};${av.fs ? 'font-size:' + av.fs : ''}">${av.content}</div>
+      <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,28)}<div class="sr-me-av" style="background:${av.bg};color:${av.fg};${av.fs ? 'font-size:' + av.fs : ''}">${av.content}</div></div>
       <div class="sr-me-info">
         <div class="sr-me-label">${isEn ? 'YOUR RANK' : 'อันดับของคุณ'}</div>
         <div class="sr-me-name">${p.name}</div>

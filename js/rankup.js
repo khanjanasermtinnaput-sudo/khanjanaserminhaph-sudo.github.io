@@ -229,7 +229,7 @@ function toggleEloX2(on) {
 const _calcEloBase = calcElo;
 calcElo = function(a,b,c,d,e,f) {
   const r = _calcEloBase(a,b,c,d,e,f);
-  return eloX2Active ? { gain: r.gain * 2, loss: r.loss * 2 } : r;
+  return eloX2Active ? { gain: r.gain * 2, loss: r.loss } : r;
 };
 
 // ── 2. Match Timer ───────────────────────────────

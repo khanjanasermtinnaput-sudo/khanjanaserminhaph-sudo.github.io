@@ -1,6 +1,12 @@
 const AVATAR_COLORS = [['#00f5a0','#004d32'],['#00d9f5','#003d4d'],['#ffd700','#4d3e00'],['#ff6b35','#4d1f0f'],['#b044f0','#3a0d5c'],['#48d1cc','#0d3d3c'],['#ff4757','#4d0d15'],['#7bed9f','#1a4d2d']];
 function getAvatarColor(id) { return AVATAR_COLORS[(id-1) % AVATAR_COLORS.length] }
 function getInitial(name) { return name ? name.charAt(0).toUpperCase() : '?' }
+function mkKingCrownImg(p, size) {
+  if (!p || getRank(p.pts, p.id).id !== 'king') return '';
+  const src = typeof CROWN_SRC !== 'undefined' ? CROWN_SRC : 'assets/crown.png';
+  const s = size || 28;
+  return `<img src="${src}" alt="" style="position:absolute;top:-${Math.round(s*0.52)}px;left:50%;transform:translateX(-50%);width:${s}px;height:${s}px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`;
+}
 
 // ── 3% Gacha frame inner HTML (particles + glow layers) ──
 const GACHA_FRAME_INNER = {
