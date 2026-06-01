@@ -337,7 +337,19 @@ function normalizePlayer(p) {
   if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {
     _ownedEffects = [..._ownedEffects, 'rotating_arcs'];
   }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects };
+  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null };
+}
+
+function getPresenceHTML(player, compact) {
+  if (!player || !player.lastSeen) return '';
+  const diffMin = Math.floor((Date.now() - player.lastSeen) / 60000);
+  const isOnline = diffMin <= 3;
+  const dot = `<span class="presence-dot ${isOnline ? 'online' : 'offline'}"></span>`;
+  if (isOnline) return `<span class="presence-tag online">${dot}ออนไลน์</span>`;
+  let label;
+  if (diffMin < 60) label = `${diffMin} นาที`;
+  else { const h = Math.floor(diffMin / 60), m = diffMin % 60; label = m ? `${h} ชม. ${m} นาที` : `${h} ชม.`; }
+  return `<span class="presence-tag offline">${dot}${label}${compact ? '' : 'ที่แล้ว'}</span>`;
 }
 
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries

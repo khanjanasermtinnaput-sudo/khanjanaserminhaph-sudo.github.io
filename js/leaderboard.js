@@ -147,6 +147,9 @@ function lbRenderBoard(data, animate = true) {
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
     const _hasArcs = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
+    const _presenceHTML = getPresenceHTML(p, true);
+    const _presenceDotCls = p.lastSeen && (Date.now() - p.lastSeen) / 60000 <= 3 ? 'online' : 'offline';
+    const _presenceAvatarDot = p.lastSeen ? `<span class="presence-avatar-dot ${_presenceDotCls}"></span>` : '';
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
@@ -159,9 +162,10 @@ function lbRenderBoard(data, animate = true) {
             <div class="lightning-dot"></div><div class="lightning-dot"></div>
             <div class="lightning-dot"></div><div class="lightning-dot"></div>
             <div class="lightning-avatar" style="width:36px;height:36px;font-size:16px">${getInitial(p.name)}</div>
-          </div>` : `
+          </div>${_presenceAvatarDot}` : `
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:32px;height:32px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`:''}
+          ${_presenceAvatarDot}
         `}
         </div>
         <div>
@@ -171,6 +175,7 @@ function lbRenderBoard(data, animate = true) {
             ${isMe ? `<span style="color:var(--neon);font-size:0.7rem;margin-left:4px">${t('me')}</span>` : ''}
           </div>` : `
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>`}
+          ${_presenceHTML ? `<div style="margin-top:1px">${_presenceHTML}</div>` : ''}
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>

@@ -73,4 +73,7 @@ async function dbDeleteMatchesByPlayer(playerId) {
 async function dbAddMatch(match) {
   await supaFetch('matches', { method: 'POST', body: JSON.stringify({ type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss }), prefer: 'return=minimal' });
 }
+async function dbUpdateLastSeen(id) {
+  try { await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ last_seen: new Date().toISOString() }), prefer: 'return=minimal' }); } catch(e) {}
+}
 

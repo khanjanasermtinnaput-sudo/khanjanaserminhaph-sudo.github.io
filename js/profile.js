@@ -195,6 +195,7 @@ async function openPlayerProfile(playerId) {
           ${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? `
           <div class="lightning-name-wrap"><span class="lightning-name">${p.name}</span></div>` : `
           <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>`}
+          ${getPresenceHTML(p) ? `<div style="margin-top:4px">${getPresenceHTML(p)}</div>` : ''}
           <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">

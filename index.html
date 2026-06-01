@@ -532,6 +532,9 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
 
+      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.0 — Online/Offline Status</div>
+      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE players ADD COLUMN IF NOT EXISTS last_seen timestamptz;</pre>
+
       <div style="font-size:0.78rem;font-weight:700;color:var(--neon);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v6.0 — รันเฉพาะนี้เท่านั้น</div>
       <pre id="newSqlPre" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,245,160,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--neon);overflow-x:auto;white-space:pre-wrap;line-height:1.6">-- เพิ่ม column ใหม่ใน players
 ALTER TABLE players ADD COLUMN IF NOT EXISTS coins integer DEFAULT 0;
