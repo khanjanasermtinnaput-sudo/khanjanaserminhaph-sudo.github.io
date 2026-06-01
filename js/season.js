@@ -112,6 +112,52 @@ async function saveCachCatalog(c) {
 const CACH_FRAME_COLOR = { gold:'#ffd700', silver:'#c8c8c8', bronze:'#cd7f32' };
 const CACH_FRAME_LABEL = { gold:'🥇 ทอง', silver:'🥈 เงิน', bronze:'🥉 ทองแดง' };
 
+async function toggleTourAchAward(achId, playerId, give) {
+  const player = db.players.find(p => p.id === playerId);
+  if (!player) return;
+  const achDef = typeof TOUR_ACH_DEFS !== 'undefined'
+    ? Object.values(TOUR_ACH_DEFS).find(a => a.id === achId) : null;
+  if (!achDef && give) { toast('ไม่พบ Achievement นี้', 'error'); return; }
+  let cur = [...(player.customAch || [])];
+  if (give) {
+    if (!cur.some(a => a.id === achId))
+      cur.push({ id: achDef.id, icon: achDef.icon, title: achDef.title, desc: achDef.desc, frame: achDef.frame });
+  } else {
+    cur = cur.filter(a => a.id !== achId);
+  }
+  saveCachAwardLS(playerId, cur);
+  player.customAch = cur;
+  try {
+    await dbUpdatePlayer(playerId, { prime_titles: buildPlayerPrimeTitles(player, { awards: cur }) });
+  } catch(e) {
+    try { await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
+  }
+  toast(give ? `✅ มอบ "${achDef?.title || achId}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
+  renderCachAdmin();
+}
+
+function buildTourAchItemHTML(achDef, players) {
+  const col = CACH_FRAME_COLOR[achDef.frame] || '#ffd700';
+  const awardedIds = new Set(players.filter(p => (p.customAch||[]).some(a => a.id === achDef.id)).map(p => p.id));
+  const playerChecks = players.map(p => {
+    const has = awardedIds.has(p.id);
+    return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.78rem;padding:5px 9px;border-radius:8px;border:1px solid ${has?col:'var(--glass-border)'};background:${has?`rgba(${achDef.frame==='gold'?'255,215,0':achDef.frame==='silver'?'192,192,192':'205,127,50'},0.08)`:'var(--btn-glass)'};transition:all .15s">
+      <input type="checkbox" ${has?'checked':''} onchange="toggleTourAchAward('${achDef.id}',${p.id},this.checked)" style="accent-color:${col}">
+      <span>${getAvatar(p.id,p.name).content}</span> ${p.name}
+    </label>`;
+  }).join('');
+  return `<div style="border:1px solid ${col}30;border-radius:12px;padding:12px;margin-bottom:10px;background:${col}06">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+      <div class="cach-badge cach-frame-${achDef.frame}" style="pointer-events:none;flex-shrink:0">
+        <span class="cach-icon">${achDef.icon}</span><span class="cach-text">${achDef.title}</span>
+      </div>
+      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${achDef.desc}</div>
+    </div>
+    <div style="font-size:0.7rem;color:var(--muted);margin-bottom:7px">มอบให้ผู้เล่น (${awardedIds.size > 0 ? awardedIds.size + ' คนได้รับแล้ว' : 'ยังไม่ได้มอบ'}):</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${playerChecks}</div>
+  </div>`;
+}
+
 function renderCachAdmin() {
   const body = document.getElementById('cachAdminBody');
   if (!body) return;
@@ -122,7 +168,16 @@ function renderCachAdmin() {
       <input type="radio" name="cachFrame" value="${f}" ${f==='gold'?'checked':''}> <span style="color:${CACH_FRAME_COLOR[f]};font-weight:700">${CACH_FRAME_LABEL[f]}</span>
     </label>`).join('');
 
+  // Tournament achievements section
+  const tourAchHTML = (typeof TOUR_ACH_DEFS !== 'undefined')
+    ? Object.values(TOUR_ACH_DEFS).map(a => buildTourAchItemHTML(a, players)).join('')
+    : '<div class="text-muted" style="font-size:0.8rem;padding:8px">โหลด tournament module ไม่สำเร็จ</div>';
+
   body.innerHTML = `
+    <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--gold);margin-bottom:10px;padding:8px 12px;background:rgba(255,215,0,0.06);border-radius:8px;border-left:3px solid var(--gold)">🏆 Tournament Achievements — มอบ/ยกเลิกได้ทันที</div>
+    ${tourAchHTML}
+    <div style="border-top:1px solid var(--glass-border);margin:18px 0 14px"></div>
+    <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--neon);margin-bottom:12px;padding:8px 12px;background:rgba(0,245,160,0.06);border-radius:8px;border-left:3px solid var(--neon)">🎖️ Custom Achievements — สร้างรางวัลเอง</div>
     <div style="display:grid;grid-template-columns:80px 1fr;gap:8px;margin-bottom:8px">
       <div class="form-group" style="margin:0"><label style="font-size:0.7rem;color:var(--muted)">Icon</label>
         <input class="inp" id="cachIconInp" placeholder="🏆" maxlength="6" style="font-size:1.5rem;text-align:center;padding:8px 4px"></div>
@@ -137,7 +192,7 @@ function renderCachAdmin() {
     </div>
     <button class="btn btn-primary btn-sm" onclick="createCachDef()" style="margin-bottom:18px">➕ สร้าง Achievement</button>
     ${catalog.length ? `
-      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🎖️ Achievements ที่สร้างไว้</div>
+      <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Achievements ที่สร้างไว้</div>
       ${catalog.map(a => buildCachItemHTML(a, players)).join('')}
     ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}
     <details style="margin-top:14px">

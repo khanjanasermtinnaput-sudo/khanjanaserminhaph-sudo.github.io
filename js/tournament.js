@@ -782,6 +782,10 @@ async function executeDeclareChampion(tournamentId) {
 
   // 7. Reload + refresh UI
   try { await loadPlayers(); } catch(e) {}
+  // trigger achievement popup for winners (must run after loadPlayers so customAch is fresh)
+  if (typeof checkNewAchievements === 'function') {
+    for (const pid of winnerPlayerIds) { try { checkNewAchievements(pid); } catch(e) {} }
+  }
   try { if (typeof renderLeaderboard === 'function') renderLeaderboard(); } catch(e) {}
   if (document.getElementById('tournamentTabContent')) renderTournamentTab();
 
