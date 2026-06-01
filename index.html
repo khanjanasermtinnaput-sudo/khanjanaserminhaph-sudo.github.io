@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0">
 <title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260601a">
+<link rel="stylesheet" href="styles.css?v=20260601b">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -558,7 +558,7 @@ END $$;</pre>
     <div class="rank-tier-row"><div class="rank-tier-icon">💎</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-platinum)">Platinum</div><div class="rank-tier-pts">501 – 800 คะแนน</div><div class="rank-condition">ชนะคนต่ำกว่า → ได้น้อย, แพ้ → เสียเยอะ</div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">💠</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-diamond)">Diamond</div><div class="rank-tier-pts">801 – 1,500 คะแนน</div><div class="rank-condition">K=24 · คะแนน stable มาก</div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">🔥</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-master)">Master Player</div><div class="rank-tier-pts">1,500+ คะแนน</div><div class="rank-condition">Elite · ชนะ Bronze ได้น้อยมาก</div></div></div>
-    <div class="rank-tier-row" style="border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.05)"><div class="rank-tier-icon"><span class="crown-anim">👑</span></div><div style="flex:1"><div class="rank-tier-name" style="color:var(--gold)">King of Badminton</div><div class="rank-tier-pts">3,000+ คะแนน</div><div class="rank-condition">✅ ต้องมี 3,000+ คะแนน<br>✅ ต้องเป็นอันดับ #1 บน Leaderboard<br>✅ มีได้แค่ 1 คนเท่านั้นในระบบ</div></div></div>
+    <div class="rank-tier-row" style="border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.05)"><div class="rank-tier-icon"><img src="assets/crown.png?v=1" alt="👑" class="crown-anim rank-crown-img" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'crown-anim',textContent:'👑'}))"></div><div style="flex:1"><div class="rank-tier-name" style="color:var(--gold)">King of Badminton</div><div class="rank-tier-pts">3,000+ คะแนน</div><div class="rank-condition">✅ ต้องมี 3,000+ คะแนน<br>✅ ต้องเป็นอันดับ #1 บน Leaderboard<br>✅ มีได้แค่ 1 คนเท่านั้นในระบบ</div></div></div>
     <div class="divider"></div>
     <div style="font-size:0.76rem;color:var(--muted);line-height:1.7"><strong style="color:var(--text)">📌 สูตร True ELO</strong><br>• E = 1 / (1 + 10^((คู่แข่ง - ผู้เล่น) / 400))<br>• Gain = K × (1 - E) × ScoreMult<br>• Loss = K × E × ScoreMult<br>• King: ต้องมี ≥ 3,000 คะแนน AND เป็นอันดับ #1<br>• คะแนนขั้นต่ำ 0 · ได้/เสียขั้นต่ำ 4 ต่อแมตช์</div>
     <div class="divider"></div>
