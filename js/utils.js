@@ -596,11 +596,8 @@ function _rbMaster() {
   return `<div class="master-wrap"><svg width="84" height="84" viewBox="0 0 84 84" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="mg${id}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#ff6020"/><stop offset="100%" stop-color="#a01000"/></linearGradient></defs><polygon points="42,8 70,24 70,56 42,72 14,56 14,24" fill="url(#mg${id})" stroke="#601000" stroke-width="2"/><polygon points="42,16 62,28 62,52 42,64 22,52 22,28" fill="none" stroke="#ff8040" stroke-width="1" opacity="0.5"/><polygon points="42,22 46,34 58,34 49,41 52,53 42,46 32,53 35,41 26,34 38,34" fill="#f0c040" stroke="#8a5000" stroke-width="1.2"/></svg>${fires}</div>`;
 }
 function _rbKing() {
-  const sparks = Array.from({length:10},(_,i)=>{
-    const a=i*36, r=38, dx=Math.round(Math.cos(a*Math.PI/180)*r), dy=Math.round(Math.sin(a*Math.PI/180)*r);
-    return `<div class="rb-gold-sparkle" style="left:45px;top:45px;--dx:${dx}px;--dy:${dy}px;animation-delay:${(i*0.12).toFixed(2)}s;animation-duration:${(1.0+i*0.08).toFixed(2)}s"></div>`;
-  }).join('');
-  return `<div class="king-wrap"><div class="king-glow"></div><svg width="90" height="90" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg" class="king-swing"><path d="M94.52 21.81c2.44-1.18 4.13-3.67 4.13-6.56a7.28 7.28 0 0 0-14.56 0c0 2.93 1.73 5.44 4.22 6.6c-2.88 15.6-7.3 27.21-23.75 29.69c0 0 4.43 22.15 25.15 22.15s22.82-21.93 22.82-21.93c-16.81.86-18.23-20.27-18.01-29.95z" fill="#f19534"/><path d="M34.74 21.81c-2.44-1.18-4.13-3.67-4.13-6.56a7.28 7.28 0 0 1 14.56 0c0 2.93-1.73 5.44-4.22 6.6c2.88 15.6 7.3 27.21 23.75 29.69c0 0-4.43 22.15-25.15 22.15S16.74 51.77 16.74 51.77c16.8.85 18.22-20.28 18-29.96z" fill="#f19534"/><path d="M119.24 16.86c-3.33-.45-6.51 2.72-7.09 7.06c-.36 2.71.37 5.24 1.78 6.87l-2.4 9.95s-3.67 23.51-22.21 28.15C74.5 72.6 69.13 45.47 67.83 37.09c2.82-1.4 4.77-4.3 4.77-7.67c0-4.73-3.83-8.56-8.56-8.56s-8.56 3.83-8.56 8.56c0 3.39 1.98 6.32 4.85 7.7c-1.03 8.27-5.57 34.5-21.57 31.76c-16.24-2.79-23.33-30.14-24.97-37.58c1.95-1.6 3.04-4.42 2.64-7.45c-.58-4.35-4.02-7.47-7.68-6.98c-3.66.49-6.15 4.41-5.57 8.75c.42 3.16 2.36 5.67 4.79 6.62l12.72 79.03s11.1 8.77 43.35 8.77s43.35-8.77 43.35-8.77l12.75-79.24c2.06-1.08 3.68-3.51 4.08-6.49c.59-4.35-1.64-8.23-4.98-8.68z" fill="#ffca28"/><ellipse cx="64.44" cy="88.3" rx="9.74" ry="11.61" fill="#26a69a"/><path d="M64.44 79.56c.38.42.72 1.19 0 2.69s-4.6 3.53-5.31 3.94c-.71.42-1.18.23-1.4.06c-1.05-.84-.65-2.74.03-3.9c1.46-2.51 4.55-5.1 6.68-2.79z" fill="#69f0ae"/><path d="M118.09 78.8c1.56-8.63-4.24-10.79-4.24-10.79s-3.74-.68-5.5 9.03c-1.76 9.7 1.98 10.38 1.98 10.38s6.19.01 7.76-8.62z" fill="#26a69a"/><path d="M9.76 79.06C8.19 70.44 14 68.27 14 68.27s3.74-.68 5.5 9.03c1.76 9.7-1.98 10.38-1.98 10.38s-6.2.01-7.76-8.62z" fill="#26a69a"/><path d="M99.99 87.16c-.69 3.93-3.84 6.66-7.05 6.1c-3.21-.56-3.65-3.91-2.96-7.84c.69-3.93 2.24-6.94 5.44-6.38c3.21.56 5.26 4.2 4.57 8.12z" fill="#f44336"/><path d="M30.43 87.16c.69 3.93 3.84 6.66 7.05 6.1s3.65-3.91 2.96-7.84c-.69-3.93-2.24-6.94-5.44-6.38s-5.25 4.2-4.57 8.12z" fill="#f44336"/><path d="M109.15 98.21c-5.99 3-19.73 10.99-45.1 10.99s-39.11-7.99-45.1-10.99c0 0-2.15 1.15-2.15 2.35v9.21c0 1.23.65 2.36 1.71 2.99c4.68 2.76 18.94 9.28 45.55 9.28s40.87-6.52 45.55-9.28a3.475 3.475 0 0 0 1.71-2.99v-9.21c-.02-1.2-2.17-2.35-2.17-2.35z" fill="#ffca28"/><path d="M39.6 110.84c2.8.55 3.65.79 3.46 2.35c-.39 3.07-6.76 2.34-10.53 1.35c-7.79-2.05-9.37-4.21-9.37-6.14c0-1.77 1.36-1.98 3.46-1.24c2.51.89 6.39 2.39 12.98 3.68z" fill="#fff59d"/><path d="M109.15 100.23s-16.57 9.38-45.1 9.38s-45.1-9.38-45.1-9.38" fill="none" stroke="#f19534" stroke-width="4" stroke-linecap="round" stroke-miterlimit="10"/></svg>${sparks}</div>`;
+  const src = typeof CROWN_SRC !== 'undefined' ? CROWN_SRC : 'assets/crown.png';
+  return `<img src="${src}" alt="crown" style="width:90px;height:90px;object-fit:contain;display:block;animation:crownSparkleGlow 2.8s ease-in-out infinite">`;
 }
 
 function getRankBadgeSVG(pts, playerId, size) {
@@ -628,7 +625,8 @@ function getRankBadgeSVG(pts, playerId, size) {
   else if (tier==='master')   inner = _rbMaster();
   else if (tier==='king')     inner = _rbKing();
   const op = (tier==='king'||tier==='master') ? 1 : opacity;
-  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0;opacity:${op}"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
+  const ov = tier==='king' ? 'visible' : 'hidden';
+  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:${ov};vertical-align:middle;flex-shrink:0;line-height:0;opacity:${op}"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
 }
 
 // ── Initialize theme/style (runs last, after all scripts load) ──────────
@@ -648,6 +646,7 @@ function getRankBadgeSVGTier(tier, size) {
   else if (tier==='diamond')  inner = _rbDiamond('I');
   else if (tier==='master')   inner = _rbMaster();
   else if (tier==='king')     inner = _rbKing();
-  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:hidden;vertical-align:middle;flex-shrink:0;line-height:0"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
+  const ov = tier==='king' ? 'visible' : 'hidden';
+  return `<span style="display:inline-block;width:${size}px;height:${size}px;overflow:${ov};vertical-align:middle;flex-shrink:0;line-height:0"><span style="display:block;transform:scale(${scale});transform-origin:0 0">${inner}</span></span>`;
 }
 
