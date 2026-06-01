@@ -80,8 +80,12 @@ function _showStandardRankUp({ rc, playerName, gainPts }) {
   document.body.style.overflow = 'hidden';
 }
 
+let _kruSparkleStop = null;
+
 function _showKingRankUp({ playerName, gainPts }) {
   const overlay = document.getElementById('kingRankUpOverlay');
+  // Stop any running sparkle from previous show
+  if (_kruSparkleStop) { _kruSparkleStop(); _kruSparkleStop = null; }
   // Clone entire overlay to reset ALL CSS animations (mirrors demo approach)
   const fresh = overlay.cloneNode(true);
   fresh.querySelector('#kruBeams').innerHTML = '';
@@ -90,12 +94,20 @@ function _showKingRankUp({ playerName, gainPts }) {
   // Set dynamic content
   fresh.querySelector('#kruPlayerName').textContent = playerName;
   fresh.querySelector('#kruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
+  // Set crown image src
+  const crownImg = fresh.querySelector('#kruCrownImg');
+  if (crownImg && typeof CROWN_SRC !== 'undefined') crownImg.src = CROWN_SRC;
   // Spawn beams + embers into the fresh clone
   kruSpawnBeams(fresh.querySelector('#kruBeams'));
   kruSpawnEmbers(fresh.querySelector('#kruEmbers'));
   fresh.classList.add('kru-show');
   document.body.dataset.ruLock = '1';
   document.body.style.overflow = 'hidden';
+  // Init sparkle canvas after overlay is visible
+  const crownCanvas = fresh.querySelector('#kruCrownCanvas');
+  if (crownCanvas && typeof initCrownSparkle === 'function') {
+    requestAnimationFrame(() => { _kruSparkleStop = initCrownSparkle(crownCanvas, 340, 340); });
+  }
 }
 
 function closeRankUp() {
@@ -116,6 +128,7 @@ function closeRankUp() {
 }
 
 function closeKingRankUp() {
+  if (_kruSparkleStop) { _kruSparkleStop(); _kruSparkleStop = null; }
   const overlay = document.getElementById('kingRankUpOverlay');
   overlay.style.transition = 'opacity 0.4s ease';
   overlay.style.opacity = '0';
