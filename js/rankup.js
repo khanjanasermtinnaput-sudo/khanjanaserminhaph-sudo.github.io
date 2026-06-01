@@ -28,7 +28,19 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const newIdx = rankOrder.indexOf(effectiveNewRankId);
   if (newIdx > oldIdx) {
     const rc = RANKS_DATA_RU[effectiveNewRankId];
-    if (rc) showRankUp(rc, playerName, gainPts);
+    if (rc) {
+      // Session dedup: don't show animation twice for the same pts level
+      if (currentUser && currentUser.name === playerName) {
+        if (typeof _ruShownPts !== 'undefined' && _ruShownPts[currentUser.id] >= playerNewPts) {
+          // already shown this session — skip animation but still refresh baseline
+        } else {
+          if (typeof _ruShownPts !== 'undefined') _ruShownPts[currentUser.id] = playerNewPts;
+          showRankUp(rc, playerName, gainPts);
+        }
+      } else {
+        showRankUp(rc, playerName, gainPts);
+      }
+    }
   }
   // Refresh baseline so cross-device check on next loadAll doesn't re-trigger
   if (currentUser && currentUser.name === playerName) {

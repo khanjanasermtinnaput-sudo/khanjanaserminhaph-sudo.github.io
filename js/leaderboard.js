@@ -1,7 +1,6 @@
 async function renderLeaderboard() {
   try {
     await loadAll();
-    checkSelfRankUpFromDB();
     checkKingChange();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;

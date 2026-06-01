@@ -415,6 +415,9 @@ function checkPendingRankUps() {
   }
 }
 
+// Session-level dedup: remember the highest pts level we already showed a rank-up for this session.
+const _ruShownPts = {};
+
 // Cross-device rank-up detection: compares stored pts baseline vs current DB pts.
 // Triggers when admin records a match for the player on a different device.
 function checkSelfRankUpFromDB() {
@@ -428,6 +431,9 @@ function checkSelfRankUpFromDB() {
   localStorage.setItem(key, String(me.pts));
   if (lastPts === null || !Number.isFinite(lastPts)) return;
   if (me.pts <= lastPts) return;
+  // Session dedup: skip if we already showed an animation for this pts level this session
+  if (_ruShownPts[currentUser.id] >= me.pts) return;
+  _ruShownPts[currentUser.id] = me.pts;
   checkAndShowRankUp(lastPts, me.pts, me.name, me.pts - lastPts);
 }
 
