@@ -245,10 +245,23 @@ function createCachDef() {
   toast(`🎖️ สร้าง "${title}" แล้ว!`, 'success');
 }
 
-function deleteCachDef(achId) {
-  saveCachCatalog(getCachCatalog().filter(a=>a.id!==achId));
+async function deleteCachDef(achId) {
+  // 1. ลบออกจาก catalog (localStorage + Supabase)
+  await saveCachCatalog(getCachCatalog().filter(a => a.id !== achId));
+  // 2. ลบออกจาก customAch ของผู้เล่นทุกคน — ไม่งั้น source 4 ใน getCachCatalog จะ reconstruct กลับมา
+  const affected = db.players.filter(p => (p.customAch||[]).some(a => a.id === achId));
+  await Promise.all(affected.map(async player => {
+    const cur = (player.customAch||[]).filter(a => a.id !== achId);
+    saveCachAwardLS(player.id, cur);
+    player.customAch = cur;
+    try {
+      await dbUpdatePlayer(player.id, { prime_titles: buildPlayerPrimeTitles(player, { awards: cur }) });
+    } catch(e) {
+      try { await dbUpdatePlayer(player.id, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
+    }
+  }));
   renderCachAdmin();
-  toast('ลบ Achievement แล้ว', 'info');
+  toast('ลบ Achievement แล้ว' + (affected.length ? ` (ลบออกจาก ${affected.length} ผู้เล่นด้วย)` : ''), 'info');
 }
 
 const CACH_AWARDS_LS = 'badminton_cach_awards';
