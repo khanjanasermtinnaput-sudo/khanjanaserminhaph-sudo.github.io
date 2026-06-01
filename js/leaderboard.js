@@ -147,7 +147,6 @@ function lbRenderBoard(data, animate = true) {
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.style.animationDelay = (i * .06) + 's';
     const _hasArcs = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
-    const _presenceHTML = getPresenceHTML(p, true);
     const _presenceDotCls = p.lastSeen && (Date.now() - p.lastSeen) / 60000 <= 3 ? 'online' : 'offline';
     const _presenceAvatarDot = p.lastSeen ? `<span class="presence-avatar-dot ${_presenceDotCls}"></span>` : '';
     row.innerHTML = `
@@ -173,9 +172,9 @@ function lbRenderBoard(data, animate = true) {
           <div class="lightning-name-wrap lb-rn${rank.id==='king'?' lb-rn-king':''}">
             <span class="lightning-name" style="font-size:13px;letter-spacing:0.5px;font-weight:600">${p.name}</span>
             ${isMe ? `<span style="color:var(--neon);font-size:0.7rem;margin-left:4px">${t('me')}</span>` : ''}
+            ${getPresenceInlineHTML(p)}
           </div>` : `
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>`}
-          ${_presenceHTML ? `<div style="margin-top:1px">${_presenceHTML}</div>` : ''}
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>`}
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>

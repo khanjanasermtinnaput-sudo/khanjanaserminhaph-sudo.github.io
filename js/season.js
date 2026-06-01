@@ -354,9 +354,9 @@ function renderSeasonBanner() {
   daysEl.style.background = days <= 3 ? 'linear-gradient(135deg,#ff4757,#ff0000)' : 'linear-gradient(135deg,#ffd700,#ff8c00)';
   nextEl.textContent = `King→1000 · Master→800 · Diamond→500 · Platinum→300 · Gold→200 · Silver/Bronze ${t('no_reset')}`;
 
-  // Check if today is 1st (season reset day)
+  // Check if today is 1st at 01:00+ (season reset day) — runs once per month via localStorage guard
   const today = new Date();
-  if (today.getDate() === 1) {
+  if (today.getDate() === 1 && today.getHours() >= 1) {
     const lastReset = localStorage.getItem('badminton_season_reset');
     const thisMonth = `${today.getFullYear()}-${today.getMonth()}`;
     if (lastReset !== thisMonth) {

@@ -352,6 +352,16 @@ function getPresenceHTML(player, compact) {
   return `<span class="presence-tag offline">${dot}${label}${compact ? '' : 'ที่แล้ว'}</span>`;
 }
 
+function getPresenceInlineHTML(player) {
+  if (!player || !player.lastSeen) return '';
+  const diffMin = Math.floor((Date.now() - player.lastSeen) / 60000);
+  if (diffMin <= 3) return '<span class="presence-inline online" title="ออนไลน์">●</span>';
+  let label;
+  if (diffMin < 60) label = `${diffMin}น.`;
+  else { const h = Math.floor(diffMin / 60), m = diffMin % 60; label = m ? `${h}ช.${m}น.` : `${h}ช.`; }
+  return `<span class="presence-inline offline" title="${label}ที่แล้ว">● ${label}</span>`;
+}
+
 // Build prime_titles JSON for save, preserving awards + catalog + hof hidden entries
 function buildPlayerPrimeTitles(player, opts) {
   opts = opts || {};
