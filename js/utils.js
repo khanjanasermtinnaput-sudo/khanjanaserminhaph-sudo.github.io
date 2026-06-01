@@ -472,8 +472,7 @@ async function _grantKingCosmetic(king) {
       await loadPlayers();
     } catch(e) { /* non-blocking */ }
 
-    // Show First Ascension cinematic
-    setTimeout(() => showSolarEmperorAscension(king.name, true), 600);
+    // King rank-up animation will fire via checkSelfRankUpFromDB / checkAndShowRankUp
   } else {
     // Already owns — still update reign count if new reign
     hist.reignCount = (hist.reignCount || 1);
