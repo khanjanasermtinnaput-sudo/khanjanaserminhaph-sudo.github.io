@@ -10,8 +10,8 @@ const GACHA_FRAME_INNER = {
   ice: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
   rainbow: '',
   robot: '<div class="gf-robot-gear">⚙️</div>',
-  solaremperor: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-crown"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
-  solar: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-crown"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
+  solaremperor: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
+  solar: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
   thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
 // Backward-compat alias: old 'solar' key maps to new 'solaremperor'

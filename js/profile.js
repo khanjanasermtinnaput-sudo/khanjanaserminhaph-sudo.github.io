@@ -5,8 +5,7 @@ let _kingCrownRaf = null;
 function _kingCrownHTML() {
   return `<div class="king-crown">
     <canvas class="kc-spark" id="kcSparkCanvas"></canvas>
-    <img class="kc-img" src="assets/crown.png?v=1" alt="crown"
-         onerror="this.style.display='none';this.parentElement.classList.add('kc-noimg')">
+    <img class="kc-img" src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="crown">
   </div>`;
 }
 function _initKingCrownSparkles(canvas) {

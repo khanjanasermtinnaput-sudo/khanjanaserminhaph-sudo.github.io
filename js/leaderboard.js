@@ -59,7 +59,7 @@ async function renderLeaderboard() {
       return `<div class="lb-pc lb-glass ${cls}${isSE ? ' lb-king-throne' : ''}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
         <canvas class="lb-pod-canvas" id="${canvasId}"></canvas>
         <div class="lb-pod-shim"></div>
-        ${isFirst ? '<div class="lb-crown"><img src="assets/crown.png?v=1" alt="" class="lb-crown-img" onerror="this.replaceWith(document.createTextNode(\'👑\'))"></div>' : ''}
+        ${isFirst ? `<div class="lb-crown"><img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" class="lb-crown-img"></div>` : ''}
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
         <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
         <div class="lb-pod-name ${getGachaNameClass(p)}">${p.name}</div>
@@ -160,7 +160,8 @@ function lbRenderBoard(data, animate = true) {
             <div class="lightning-avatar" style="width:36px;height:36px;font-size:16px">${getInitial(p.name)}</div>
           </div>` : `
           <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
-          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<img src="assets/crown.png?v=1" alt="" onerror="this.outerHTML=\'<div style=&quot;position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none&quot;>👑</div>\'" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);width:18px;height:18px;object-fit:contain;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">':''}`}
+          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);width:18px;height:18px;object-fit:contain;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">`:''}
+        `}
         </div>
         <div>
           ${_hasArcs ? `
