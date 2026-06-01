@@ -664,9 +664,17 @@ async function executeDeclareChampion(tournamentId) {
   const coins = (savedRewards.baseCoins != null && savedRewards.baseCoins !== '')
     ? Number(savedRewards.baseCoins)
     : (TOUR_COIN_REWARDS[tierName] || 100);
-  const bonusCoins = savedRewards.bonusCoins || 0;
-  const bonusPts   = savedRewards.bonusPts   || 0;
-  const totalCoins = coins + bonusCoins;
+  const bonusCoins     = savedRewards.bonusCoins || 0;
+  const totalCoins     = coins + bonusCoins;
+  const eloPts         = savedRewards.eloPts != null ? Number(savedRewards.eloPts) : Number(savedRewards.bonusPts || 0);
+  const p1Pct          = savedRewards.p1Pct != null ? Number(savedRewards.p1Pct) : 100;
+  const p2Pct          = savedRewards.p2Pct != null ? Number(savedRewards.p2Pct) : 60;
+  const p3Pct          = savedRewards.p3Pct != null ? Number(savedRewards.p3Pct) : 30;
+  const participantPct = savedRewards.participantPct != null ? Number(savedRewards.participantPct) : 20;
+  const elo1 = eloPts > 0 ? Math.round(eloPts * p1Pct / 100) : 0;
+  const elo2 = eloPts > 0 ? Math.round(eloPts * p2Pct / 100) : 0;
+  const elo3 = eloPts > 0 ? Math.round(eloPts * p3Pct / 100) : 0;
+  const eloP = eloPts > 0 ? Math.round(eloPts * participantPct / 100) : 0;
 
   toast('กำลังมอบรางวัล...', 'info');
 
@@ -680,12 +688,12 @@ async function executeDeclareChampion(tournamentId) {
     } catch(e) {}
   }
 
-  // 2. Bonus ELO pts
-  if (bonusPts > 0) {
+  // 2. ELO pts to winner (1st place)
+  if (elo1 > 0) {
     for (const pid of winnerPlayerIds) {
       try {
         const pl = db.players.find(x => x.id === pid);
-        if (pl) { const np = (pl.pts||0)+bonusPts; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
+        if (pl) { const np = (pl.pts||0)+elo1; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
       } catch(e) {}
     }
   }
@@ -715,8 +723,17 @@ async function executeDeclareChampion(tournamentId) {
         try {
           const pl = db.players.find(x => x.id === pid);
           if (pl) await dbSendMail(pid, 'coins', String(runnerCoins),
-            `🥈 รองแชมป์ ${tierName}! +${runnerCoins} 🪙`);
+            `🥈 รองแชมป์ ${tierName}! +${runnerCoins} 🪙${elo2 > 0 ? ` +${elo2} ELO` : ''}`);
         } catch(e) {}
+      }
+      // Runner-up ELO (2nd place)
+      if (elo2 > 0) {
+        for (const pid of loserIds) {
+          try {
+            const pl = db.players.find(x => x.id === pid);
+            if (pl) { const np = (pl.pts||0)+elo2; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
+          } catch(e) {}
+        }
       }
     }
   } catch(e) {}
@@ -761,7 +778,39 @@ async function executeDeclareChampion(tournamentId) {
           try {
             const pl = db.players.find(x => x.id === pid);
             if (pl) await dbSendMail(pid, 'coins', String(thirdCoins),
-              `🥉 อันดับ 3 ${tierName}! +${thirdCoins} 🪙`);
+              `🥉 อันดับ 3 ${tierName}! +${thirdCoins} 🪙${elo3 > 0 ? ` +${elo3} ELO` : ''}`);
+          } catch(e) {}
+        }
+        // 3rd place ELO
+        if (elo3 > 0) {
+          for (const pid of thirdIds) {
+            try {
+              const pl = db.players.find(x => x.id === pid);
+              if (pl) { const np = (pl.pts||0)+elo3; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
+            } catch(e) {}
+          }
+        }
+        // Other participants ELO (everyone who registered but not top 3)
+        if (eloP > 0) {
+          const allPIds = getAllParticipantIds(groups, matchType);
+          const topSet = new Set([...winnerPlayerIds, ...runnerUpIds, ...thirdIds]);
+          const otherIds = allPIds.filter(id => !topSet.has(id));
+          for (const pid of otherIds) {
+            try {
+              const pl = db.players.find(x => x.id === pid);
+              if (pl) { const np = (pl.pts||0)+eloP; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
+            } catch(e) {}
+          }
+        }
+      } else if (eloP > 0) {
+        // No 3rd place found — still give other participants ELO
+        const allPIds = getAllParticipantIds(groups, matchType);
+        const topSet = new Set([...winnerPlayerIds, ...runnerUpIds]);
+        const otherIds = allPIds.filter(id => !topSet.has(id));
+        for (const pid of otherIds) {
+          try {
+            const pl = db.players.find(x => x.id === pid);
+            if (pl) { const np = (pl.pts||0)+eloP; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
           } catch(e) {}
         }
       }
@@ -789,13 +838,13 @@ async function executeDeclareChampion(tournamentId) {
   try { if (typeof renderLeaderboard === 'function') renderLeaderboard(); } catch(e) {}
   if (document.getElementById('tournamentTabContent')) renderTournamentTab();
 
-  const ptsMsg = bonusPts > 0 ? ` +${bonusPts} pts` : '';
+  const ptsMsg = elo1 > 0 ? ` +${elo1} ELO` : '';
   // 🎬 Cinematic champion announcement (reuse Solar Emperor ascension effect)
   if (typeof showSolarEmperorAscension === 'function') {
     try {
       showSolarEmperorAscension(winnerNames, false, {
         title: `${tierName} CHAMPION`,
-        sub: `🏆 แชมป์ ${stored.name || tierName}${bonusPts > 0 ? ` · +${bonusPts} pts` : ''} · +${totalCoins} 🪙`,
+        sub: `🏆 แชมป์ ${stored.name || tierName}${elo1 > 0 ? ` · +${elo1} ELO` : ''} · +${totalCoins} 🪙`,
         crown: '🏆'
       });
     } catch(e) {}
@@ -840,18 +889,22 @@ function openRewardManager(tournamentId, tierName) {
   document.getElementById('tRewardModal')?.remove();
   const saved = getTournamentRewards(tournamentId) || {};
   const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
-  const baseCoins  = (saved.baseCoins != null && saved.baseCoins !== '') ? saved.baseCoins : tierCoins;
-  const bonusCoins = saved.bonusCoins || 0;
-  const bonusPts   = saved.bonusPts   || 0;
-  const hasCup     = saved.hasCup     || false;
-  const hasMvp     = saved.hasMvp     || false;
-  const customNote = saved.customNote || '';
+  const baseCoins      = (saved.baseCoins != null && saved.baseCoins !== '') ? saved.baseCoins : tierCoins;
+  const bonusCoins     = saved.bonusCoins || 0;
+  const eloPts         = saved.eloPts != null ? saved.eloPts : (saved.bonusPts || 0);
+  const p1Pct          = saved.p1Pct != null ? saved.p1Pct : 100;
+  const p2Pct          = saved.p2Pct != null ? saved.p2Pct : 60;
+  const p3Pct          = saved.p3Pct != null ? saved.p3Pct : 30;
+  const participantPct = saved.participantPct != null ? saved.participantPct : 20;
+  const hasCup         = saved.hasCup     || false;
+  const hasMvp         = saved.hasMvp     || false;
+  const customNote     = saved.customNote || '';
 
   const modal = document.createElement('div');
   modal.id = 'tRewardModal';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)';
   modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:22px 18px;max-width:360px;width:92%;box-shadow:0 0 60px rgba(255,215,0,.1)">
+    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:22px 18px;max-width:380px;width:92%;box-shadow:0 0 60px rgba(255,215,0,.1);max-height:90vh;overflow-y:auto">
       <div style="font-size:1rem;font-weight:700;margin-bottom:4px">🎁 จัดการรางวัล</div>
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">Tournament · <span style="color:var(--gold)">${tierName}</span> · ค่าเริ่มต้น <span style="color:var(--gold);font-weight:700">${tierCoins} 🪙</span></div>
 
@@ -865,11 +918,39 @@ function openRewardManager(tournamentId, tierName) {
         <input class="inp" type="number" id="rm_bonusCoins" value="${bonusCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
         <span style="font-size:0.75rem;color:var(--muted)">🪙</span>
       </div>
-      <div class="reward-mgr-row">
-        <div class="reward-mgr-label">⭐ Bonus Pts</div>
-        <input class="inp" type="number" id="rm_bonusPts" value="${bonusPts}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
-        <span style="font-size:0.75rem;color:var(--muted)">pts</span>
+
+      <div style="border-top:1px solid rgba(255,255,255,.08);margin:10px 0;padding-top:10px">
+        <div style="font-size:0.74rem;font-weight:600;color:#a78bfa;margin-bottom:8px;letter-spacing:.3px">⭐ ELO Distribution</div>
+        <div class="reward-mgr-row">
+          <div class="reward-mgr-label">Base ELO</div>
+          <input class="inp" type="number" id="rm_eloPts" value="${eloPts}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
+          <span style="font-size:0.75rem;color:var(--muted)">pts</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
+          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
+            <span style="font-size:1rem">🥇</span>
+            <input class="inp" type="number" id="rm_p1Pct" value="${p1Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
+            <span style="color:var(--muted);font-size:0.75rem">%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
+            <span style="font-size:1rem">🥈</span>
+            <input class="inp" type="number" id="rm_p2Pct" value="${p2Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
+            <span style="color:var(--muted);font-size:0.75rem">%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
+            <span style="font-size:1rem">🥉</span>
+            <input class="inp" type="number" id="rm_p3Pct" value="${p3Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
+            <span style="color:var(--muted);font-size:0.75rem">%</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
+            <span style="font-size:1rem">👥</span>
+            <input class="inp" type="number" id="rm_participantPct" value="${participantPct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
+            <span style="color:var(--muted);font-size:0.75rem">%</span>
+          </div>
+        </div>
+        <div style="font-size:0.65rem;color:var(--muted);margin-top:5px">🥇ที่1 / 🥈ที่2 / 🥉ที่3 / 👥ผู้เข้าร่วม — % ของ Base ELO</div>
       </div>
+
       <div class="reward-mgr-row">
         <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer">
           <input type="checkbox" id="rm_hasCup" ${hasCup ? 'checked' : ''}> 🏆 ถ้วยรางวัล
@@ -895,13 +976,18 @@ function openRewardManager(tournamentId, tierName) {
 }
 
 function _saveRewardsFromModal(tournamentId) {
+  const _pct = (id, def) => { const v = parseInt(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
   const rewards = {
-    baseCoins:   parseInt(document.getElementById('rm_baseCoins')?.value)  || 0,
-    bonusCoins:  parseInt(document.getElementById('rm_bonusCoins')?.value) || 0,
-    bonusPts:    parseInt(document.getElementById('rm_bonusPts')?.value)   || 0,
-    hasCup:      document.getElementById('rm_hasCup')?.checked   || false,
-    hasMvp:      document.getElementById('rm_hasMvp')?.checked   || false,
-    customNote:  (document.getElementById('rm_customNote')?.value || '').trim(),
+    baseCoins:      parseInt(document.getElementById('rm_baseCoins')?.value)  || 0,
+    bonusCoins:     parseInt(document.getElementById('rm_bonusCoins')?.value) || 0,
+    eloPts:         parseInt(document.getElementById('rm_eloPts')?.value)     || 0,
+    p1Pct:          _pct('rm_p1Pct', 100),
+    p2Pct:          _pct('rm_p2Pct', 60),
+    p3Pct:          _pct('rm_p3Pct', 30),
+    participantPct: _pct('rm_participantPct', 20),
+    hasCup:         document.getElementById('rm_hasCup')?.checked  || false,
+    hasMvp:         document.getElementById('rm_hasMvp')?.checked  || false,
+    customNote:     (document.getElementById('rm_customNote')?.value || '').trim(),
   };
   saveTournamentRewards(tournamentId, rewards);
   document.getElementById('tRewardModal')?.remove();
@@ -917,8 +1003,15 @@ function renderRewardCards(tournamentId, tierName) {
   const baseCoins = (saved.baseCoins != null && saved.baseCoins !== '') ? Number(saved.baseCoins) : tierCoins;
   const totalCoins = baseCoins + (saved.bonusCoins || 0);
   let cards = '';
-  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">แชมป์ ${baseCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''}</div></div></div>`;
-  if (saved.bonusPts > 0) cards += `<div class="reward-card"><div class="reward-icon">⭐</div><div class="reward-info"><div class="reward-title">+${saved.bonusPts} ELO Points</div><div class="reward-desc">Bonus rank points สำหรับแชมป์</div></div></div>`;
+  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">แชมป์ ${baseCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''} · รอง ${Math.max(1,Math.floor(totalCoins/2))} · 3rd ${Math.max(1,Math.floor(totalCoins/4))}</div></div></div>`;
+  const _eloPts = saved.eloPts != null ? Number(saved.eloPts) : Number(saved.bonusPts || 0);
+  if (_eloPts > 0) {
+    const _p1 = saved.p1Pct != null ? Number(saved.p1Pct) : 100;
+    const _p2 = saved.p2Pct != null ? Number(saved.p2Pct) : 60;
+    const _p3 = saved.p3Pct != null ? Number(saved.p3Pct) : 30;
+    const _pp = saved.participantPct != null ? Number(saved.participantPct) : 20;
+    cards += `<div class="reward-card"><div class="reward-icon">⭐</div><div class="reward-info"><div class="reward-title">ELO: +${Math.round(_eloPts*_p1/100)} / +${Math.round(_eloPts*_p2/100)} / +${Math.round(_eloPts*_p3/100)} / +${Math.round(_eloPts*_pp/100)}</div><div class="reward-desc">🥇${_p1}% · 🥈${_p2}% · 🥉${_p3}% · 👥${_pp}% ของ Base ${_eloPts} pts</div></div></div>`;
+  }
   if (saved.hasCup) cards += `<div class="reward-card"><div class="reward-icon">🏆</div><div class="reward-info"><div class="reward-title">ถ้วยรางวัล</div><div class="reward-desc">Trophy สำหรับแชมป์</div></div></div>`;
   if (saved.hasMvp) cards += `<div class="reward-card"><div class="reward-icon">🌟</div><div class="reward-info"><div class="reward-title">MVP Award</div><div class="reward-desc">Most Valuable Player of the Tournament</div></div></div>`;
   if (saved.customNote) cards += `<div class="reward-card"><div class="reward-icon">📝</div><div class="reward-info"><div class="reward-title">Special Prize</div><div class="reward-desc">${saved.customNote}</div></div></div>`;
