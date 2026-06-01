@@ -913,3 +913,21 @@ body.x2-active .toast-wrap{bottom:120px}
 .rb-gold-sparkle{position:absolute;width:6px;height:6px;border-radius:50%;background:#ffe680;animation:rb-gs-anim 1.2s steps(15) infinite}
 @keyframes rb-gs-anim{0%{opacity:0;transform:scale(0) translate(0,0)}40%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(0.5) translate(var(--dx),var(--dy))}}
 [data-style="lite"] .rb-sparkle,[data-style="lite"] .rb-fire,[data-style="lite"] .king-glow,[data-style="lite"] .king-swing,[data-style="lite"] .rb-gold-sparkle{animation:none!important}
+
+/* ============================================================
+   KING CROWN BADGE (rank King) — full glow + sparkle, no throttle.
+   Only one player can be King, so it runs at full quality everywhere.
+   ============================================================ */
+.king-crown{position:absolute;top:-34px;left:50%;transform:translateX(-50%);width:120px;height:96px;pointer-events:none;z-index:6}
+.king-crown .kc-spark{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.king-crown .kc-img{position:absolute;left:50%;bottom:4px;width:50px;height:50px;object-fit:contain;z-index:2;transform:translateX(-50%);
+  filter:drop-shadow(0 0 8px rgba(255,215,0,.9)) drop-shadow(0 0 20px rgba(255,180,0,.6));
+  animation:kcFloat 3s ease-in-out infinite,kcGlow 2.6s ease-in-out infinite}
+/* fallback when the PNG is missing: show the 👑 emoji with the same float */
+.king-crown.kc-noimg::after{content:'👑';position:absolute;left:50%;bottom:4px;transform:translateX(-50%);font-size:2rem;line-height:1;z-index:2;
+  filter:drop-shadow(0 0 8px rgba(255,215,0,.9));animation:kcFloat 3s ease-in-out infinite}
+@keyframes kcFloat{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-7px)}}
+@keyframes kcGlow{
+  0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,.85)) drop-shadow(0 0 20px rgba(255,180,0,.55))}
+  50%{filter:drop-shadow(0 0 16px rgba(255,230,0,1)) drop-shadow(0 0 38px rgba(255,200,0,.85))}
+}

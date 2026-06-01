@@ -1,4 +1,61 @@
 // ==================== PLAYER PROFILE BOTTOM SHEET ====================
+// ── King crown badge: glowing PNG crown + full sparkle canvas (rank King) ──
+// Falls back to the 👑 emoji if assets/crown.png isn't present yet.
+let _kingCrownRaf = null;
+function _kingCrownHTML() {
+  return `<div class="king-crown">
+    <canvas class="kc-spark" id="kcSparkCanvas"></canvas>
+    <img class="kc-img" src="assets/crown.png?v=1" alt="crown"
+         onerror="this.style.display='none';this.parentElement.classList.add('kc-noimg')">
+  </div>`;
+}
+function _initKingCrownSparkles(canvas) {
+  if (_kingCrownRaf) { cancelAnimationFrame(_kingCrownRaf); _kingCrownRaf = null; }
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth || 120;
+  const H = canvas.height = canvas.offsetHeight || 96;
+  const CX = W / 2, CY = H * 0.6;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const ps = [];
+  function mk() {
+    const ang = rand(0, Math.PI * 2), rad = rand(8, Math.max(W, H) * 0.52), life = rand(0.5, 2);
+    return {
+      x: CX + Math.cos(ang) * rad, y: CY + Math.sin(ang) * rad * 0.7,
+      size: rand(0.8, 2.8), alpha: rand(0.2, 1), life, age: rand(0, life),
+      vx: rand(-0.25, 0.25), vy: rand(-0.6, -0.08),
+      color: `hsl(${rand(40, 55)},${rand(80, 100)}%,${rand(80, 100)}%)`,
+      star: Math.random() < 0.5
+    };
+  }
+  for (let i = 0; i < 56; i++) ps.push(mk());
+  let last = performance.now();
+  function loop(now) {
+    const dt = (now - last) / 1000; last = now;
+    ctx.clearRect(0, 0, W, H);
+    ps.forEach((p, i) => {
+      p.age += dt; p.x += p.vx; p.y += p.vy;
+      if (p.age >= p.life) { ps[i] = mk(); return; }
+      const t = p.age / p.life;
+      const a = (t < 0.3 ? t / 0.3 : t > 0.7 ? (1 - t) / 0.3 : 1) * p.alpha;
+      ctx.globalAlpha = a; ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+      const s = p.size * (1 - t * 0.4);
+      if (p.star) {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.age * 1.5); ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const r = k % 2 === 0 ? s : s * 0.35, ang = k * Math.PI / 4;
+          k === 0 ? ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r) : ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        }
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    });
+    _kingCrownRaf = requestAnimationFrame(loop);
+  }
+  _kingCrownRaf = requestAnimationFrame(loop);
+}
+
 async function openPlayerProfile(playerId) {
   const p = db.players.find(x => x.id === playerId);
   if (!p) return;
@@ -133,7 +190,7 @@ async function openPlayerProfile(playerId) {
         <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">
           ${getGachaFrameInner(p)}${getInitial(p.name)}
           ${!getGachaFrameClass(p) ? `<div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>` : ''}
-          ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
+          ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? _kingCrownHTML() : ''}
         </div>`}
         <div class="pp2-hero-text">
           ${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? `
@@ -231,10 +288,14 @@ async function openPlayerProfile(playerId) {
   overlay.style.display = 'block';
   document.body.dataset.ppLock = '1';
   document.body.style.overflow = 'hidden';
+  // Start the King crown sparkles once the sheet is in the DOM (King only).
+  const kcCanvas = document.getElementById('kcSparkCanvas');
+  if (kcCanvas) requestAnimationFrame(() => _initKingCrownSparkles(kcCanvas));
 }
 
 function closePlayerProfile(e) {
   if (e && e.target !== document.getElementById('ppOverlayEl')) return;
+  if (_kingCrownRaf) { cancelAnimationFrame(_kingCrownRaf); _kingCrownRaf = null; }
   const overlayEl = document.getElementById('ppOverlayEl');
   const sheet = document.getElementById('ppSheet2');
   if (!overlayEl) return;
