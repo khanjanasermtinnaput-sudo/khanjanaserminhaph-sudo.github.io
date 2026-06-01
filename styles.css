@@ -485,6 +485,8 @@ body.x2-active .toast-wrap{bottom:120px}
 /* ── King throne: combined animation so lbRowIn (opacity) also runs ── */
 .lb-br.lbvis.lb-king-throne{animation:lbRowIn .58s cubic-bezier(.34,1.56,.64,1) forwards,lbKingThroneGlow 2.8s ease-in-out .65s infinite!important}
 [data-style="lite"] .lb-br.lb-king-throne{opacity:1!important;transform:none!important}
+.lb-pc.lbvis.lb-king-throne{animation:lbPodPop .7s cubic-bezier(.34,1.56,.64,1) forwards,lbKingThroneGlow 2.8s ease-in-out .75s infinite!important}
+[data-style="lite"] .lb-pc.lb-king-throne{opacity:1!important;transform:none!important;animation:none!important}
 
 /* ── Tournament reward cards ── */
 .reward-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.3);margin-bottom:8px;position:relative;overflow:hidden;animation:rewardGlow 3s ease-in-out infinite}
