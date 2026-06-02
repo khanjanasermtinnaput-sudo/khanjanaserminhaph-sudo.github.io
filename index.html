@@ -105,6 +105,12 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn btn-sm" id="mailboxNavBtn" onclick="openMailbox()" style="padding:4px 10px;font-size:0.73rem;position:relative;display:none" data-loggedin-show="1">📬 กล่อง<span class="mb-dot" id="mailboxDot"></span></button>
     <button class="nav-btn" id="adminNavBtn" onclick="showSection('admin')">⚙️ Admin</button>
     <div class="nav-user">
+      <!-- NOTIFICATION BELL -->
+      <div class="nf-bell-wrap" id="notifBellWrap" style="display:none" data-loggedin-show="1">
+        <button class="nf-bell-btn" id="notifBellBtn" onclick="toggleNotifPanel()" title="การแจ้งเตือน">
+          🔔<span class="nf-badge" id="notifBadge" style="display:none">0</span>
+        </button>
+      </div>
       <button class="nav-btn btn-sm" id="updateNavBtn" onclick="showPatchNotes()" style="padding:4px 10px;font-size:0.73rem;position:relative">
         📋 อัปเดต<span id="updateBadge" class="update-badge hidden">NEW</span>
       </button>
@@ -114,6 +120,28 @@ function initCrownSparkle(canvas, W, H) {
     </div>
   </div>
 </nav>
+
+<!-- NOTIFICATION PANEL -->
+<div class="nf-panel" id="notifPanel">
+  <div class="nf-panel-head">
+    <span class="nf-panel-title">🔔 การแจ้งเตือน</span>
+    <button class="nf-clear-btn" onclick="clearNotifHistory()">ลบทั้งหมด</button>
+  </div>
+  <div class="nf-list" id="notifList">
+    <div class="nf-empty">ยังไม่มีการแจ้งเตือน</div>
+  </div>
+</div>
+
+<!-- NOTIFICATION PERMISSION PROMPT -->
+<div class="nf-prompt" id="notifPrompt">
+  <div class="nf-prompt-icon">🔔</div>
+  <div class="nf-prompt-text">
+    <div class="nf-prompt-title">เปิดการแจ้งเตือน?</div>
+    <div class="nf-prompt-sub">รับแจ้งทันทีเมื่อมีแมตช์ใหม่ของคุณ</div>
+  </div>
+  <button class="nf-prompt-yes" onclick="requestNotifPermission()">เปิด</button>
+  <button class="nf-prompt-no" onclick="dismissNotifPrompt()">✕</button>
+</div>
 
 <div class="toast-wrap" id="toastWrap"></div>
 
@@ -860,6 +888,7 @@ END $$;</pre>
 <script src="js/mailbox.js?v=20260529l"></script>
 <script src="js/tournament.js?v=20260530b"></script>
 <script src="js/utils.js?v=20260601a"></script>
+<script src="js/notifications.js?v=20260602a"></script>
 <script>
 // ── COIN AWARDS IN SAVE MATCH ─────────────────────────────
 const _saveMatchForCoins = saveMatch;

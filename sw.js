@@ -27,7 +27,8 @@ const ASSETS = [
   '/js/gacha.js',
   '/js/mailbox.js',
   '/js/tournament.js',
-  '/js/utils.js'
+  '/js/utils.js',
+  '/js/notifications.js'
 ];
 
 // ── Install: pre-cache shell (individually, so one 404 won't abort the rest) ──
