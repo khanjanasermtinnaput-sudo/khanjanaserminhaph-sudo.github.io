@@ -356,9 +356,11 @@
     // thin separator line down the middle
     const sep = _mkEl('line', { x1: cx, y1: cy - R - 2, x2: cx, y2: cy + R + 2, stroke: '#88888866', 'stroke-width': 1 });
     svg.appendChild(sep);
-    // 8 floating star ornaments — animate points (not scale) to avoid SMIL distortion
+    // 8 star ornaments orbiting the symbol — group rotates (no distortion), stars twinkle via points
     const starDist = R + Math.round(16 * ext);
     const starSize = Math.max(2, Math.round(4 * ext));
+    const orbit = _mkEl('g');
+    _atAnim(orbit, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '12s', repeatCount: 'indefinite' });
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2, ox = cx + Math.cos(a) * starDist, oy = cy + Math.sin(a) * starDist;
       const ptsBig  = _yyStarPts(ox, oy, 4, starSize,        starSize * 0.38);
@@ -371,8 +373,9 @@
       const delay = (i * 0.28).toFixed(2);
       _anim(star, { attributeName: 'opacity', values: '0.15;1;0.15', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
       _anim(star, { attributeName: 'points',  values: `${ptsBig};${ptsTiny};${ptsBig}`, dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
-      svg.appendChild(star);
+      orbit.appendChild(star);
     }
+    svg.appendChild(orbit);
     return svg;
   }
 
