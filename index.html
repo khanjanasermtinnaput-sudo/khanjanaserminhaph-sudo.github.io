@@ -64,7 +64,7 @@ function initCrownSparkle(canvas, W, H) {
 }
 </script>
 <title>🏸 Badminton Club</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&family=Press+Start+2P&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260602r">
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#f0c040">
@@ -115,6 +115,7 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn" id="navStats" onclick="showSection('stats')">📊 สถิติ</button>
     <button class="nav-btn" id="navMatch" onclick="showSection('match')">⚔️ แมตช์</button>
     <button class="nav-btn" id="navTour" onclick="showSection('tournament')">🏸 Tournament</button>
+    <button class="nav-btn" id="navGacha" onclick="showSection('gacha')">✦ Gacha</button>
     <button class="nav-btn" id="navHist" onclick="showSection('history')">📋 ประวัติ</button>
     <button class="nav-btn" id="navProfile" onclick="showSection('profile')">👤 โปรไฟล์</button>
     <button class="nav-btn btn-sm" id="mailboxNavBtn" onclick="openMailbox()" style="padding:4px 10px;font-size:0.73rem;position:relative;display:none" data-loggedin-show="1">📬 กล่อง<span class="mb-dot" id="mailboxDot"></span></button>
@@ -496,6 +497,9 @@ function initCrownSparkle(canvas, W, H) {
     </div>
   </main>
 </div>
+
+<!-- GACHA ELEMENT TAB -->
+<div id="gachaSection" class="section"></div>
 
 <!-- HISTORY -->
 <div id="historySection" class="section">
@@ -1292,5 +1296,6 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+<script src="js/gacha-element.js?v=1"></script>
 </body>
 </html>
