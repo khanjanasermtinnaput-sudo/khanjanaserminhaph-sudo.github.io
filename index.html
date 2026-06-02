@@ -785,6 +785,15 @@ END $$;</pre>
         <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>💨 <strong>Gacha 70% → ไม่ได้ของ</strong> — โอกาส 70% จะไม่ได้รางวัล (จากเดิมได้ ELO 5-15)</div></div>
         <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>📦 <strong>Gacha Inventory ถาวร</strong> — ทุก item สะสมใน DB ไม่หาย สลับ equip ได้ใน Avatar Builder</div></div>
       </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">✦ Element Gacha System (v6.2)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌍💧🌀🔥⚡☯️ <strong>6 Element สะสม</strong> — ดิน / น้ำ / ลม / ไฟ / สายฟ้า / YIN YANG แต่ละธาตุมีกรอบ SVG animation เฉพาะตัว<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">ใส่ได้ใน Profile · Leaderboard Podium · Board row · แสดงกรอบธาตุรอบ avatar ทุกที่</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚡ <strong>Pull x1 / x10</strong> — ใช้ 5🪙 สุ่ม 1 ครั้ง หรือ 50🪙 สุ่ม 10 ครั้งพร้อมกัน แสดง grid ผล</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>☯️ <strong>YIN YANG Cinematic</strong> — ดึง Secret Element → มี full-screen animation พิเศษ flash + burst + spin ก่อนโชว์การ์ด</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>✦ <strong>Admin เสก Element</strong> — Admin เลือก Element ส่งผ่าน 📬 Mailbox ให้ผู้เล่นคนใดก็ได้ ผู้เล่นกด "รับ" → เข้า inventory ทันที</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🎯 <strong>Frame alignment fix</strong> — SVG กรอบธาตุชิดพอดีกับ avatar ทุกขนาด ไม่เอียง ไม่ออกนอกกรอบอีกต่อไป</div></div>
+      </div>
       </div>
 
       <div style="border-top:1px solid var(--glass-border);margin:18px 0 6px"></div>
@@ -1037,6 +1046,28 @@ renderAdmin = async function() {
     if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('');
     if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   }
+  // Element Gacha Gift section
+  if (!document.getElementById('adminElementSection')) {
+    const ediv = document.createElement('div');
+    ediv.id = 'adminElementSection';
+    ediv.className = 'card';
+    const elOpts = (window._geElements || [
+      {id:'earth',name:'TERRA ดิน'},{id:'water',name:'AQUA น้ำ'},{id:'wind',name:'ZEPHYR ลม'},
+      {id:'fire',name:'IGNIS ไฟ'},{id:'lightning',name:'VOLT สายฟ้า'},{id:'yinyang',name:'YIN YANG'}
+    ]).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+    const plOpts = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    ediv.innerHTML = `<div class="card-title">✦ เสก Element ให้ผู้เล่น</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <select class="inp" id="elemGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">${plOpts}</select>
+        <select class="inp" id="elemGiveEl" style="flex:2;min-width:140px;font-size:0.82rem">${elOpts}</select>
+        <input class="inp" id="elemGiveMsg" placeholder="ข้อความ (optional)" style="flex:3;min-width:140px;font-size:0.82rem">
+        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveElement()">✦ เสก</button>
+      </div>`;
+    main.insertBefore(ediv, main.children[1] || main.firstChild);
+  } else {
+    const esel = document.getElementById('elemGivePlayer');
+    if (esel) esel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  }
   // Tournament section — always re-render when admin is opened
   if (!document.getElementById('tournamentAdminSection')) {
     const tdiv = document.createElement('div');
@@ -1057,6 +1088,19 @@ async function adminGiveCoins() {
     toast(`🪙 ให้ ${amount} เหรียญแล้ว!`, 'success');
     renderAdmin();
   } catch(e) { toast('ให้เหรียญไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminGiveElement() {
+  const pid  = parseInt(document.getElementById('elemGivePlayer')?.value);
+  const elId = (document.getElementById('elemGiveEl')?.value || '').trim();
+  const msg  = (document.getElementById('elemGiveMsg')?.value  || '').trim();
+  if (!pid || !elId) return toast('กรุณาเลือกผู้เล่นและ Element', 'error');
+  const elNames = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
+  try {
+    await dbSendMail(pid, 'gacha_element', elId, msg || `Admin เสก Element ${elNames[elId] || elId} ให้คุณ ✦`);
+    toast(`✦ เสก ${elNames[elId] || elId} ให้เรียบร้อย! ผู้เล่นรับได้จาก 📬`, 'success');
+    document.getElementById('elemGiveMsg').value = '';
+  } catch(e) { toast('เสกไม่ได้: ' + e.message, 'error'); }
 }
 
 async function adminSendMail() {

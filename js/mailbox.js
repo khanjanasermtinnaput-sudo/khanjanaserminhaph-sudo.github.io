@@ -46,13 +46,15 @@ async function renderMailboxList() {
       list.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">ไม่มีไอเทมในกล่องของขวัญ</div>';
       return;
     }
-    const typeIcon = { coins: '🪙', elo: '📈', gacha_frame: '🖼️', gacha_emoji: '😎' };
+    const typeIcon = { coins: '🪙', elo: '📈', gacha_frame: '🖼️', gacha_emoji: '😎', gacha_element: '✦' };
+    const elNames  = { earth: 'TERRA ดิน', water: 'AQUA น้ำ', wind: 'ZEPHYR ลม', fire: 'IGNIS ไฟ', lightning: 'VOLT สายฟ้า', yinyang: 'YIN YANG' };
     list.innerHTML = items.map(item => {
       const icon = typeIcon[item.item_type] || '🎁';
       const label = item.item_type === 'coins' ? `+${item.item_value} 🪙`
         : item.item_type === 'elo' ? `+${item.item_value} ELO`
         : item.item_type === 'gacha_frame' ? `Frame: ${item.item_value}`
         : item.item_type === 'gacha_emoji' ? `Emoji: ${item.item_value}`
+        : item.item_type === 'gacha_element' ? `✦ Element: ${elNames[item.item_value] || item.item_value}`
         : item.item_value;
       return `<div class="mailbox-item" id="mail_${item.id}">
         <div class="mailbox-item-icon">${icon}</div>
@@ -91,6 +93,12 @@ async function claimMailItem(mailId, itemType, itemValue) {
         sv.emoji = itemValue;
         localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
         toast(`${itemValue} รับ Emoji Avatar แล้ว!`, 'success');
+      } else if (itemType === 'gacha_element') {
+        const elNames = { earth: 'TERRA ดิน', water: 'AQUA น้ำ', wind: 'ZEPHYR ลม', fire: 'IGNIS ไฟ', lightning: 'VOLT สายฟ้า', yinyang: 'YIN YANG' };
+        if (typeof window._geAdminGrant === 'function') {
+          window._geAdminGrant(currentUser.id, itemValue);
+        }
+        toast(`✦ รับ Element: ${elNames[itemValue] || itemValue} แล้ว!`, 'success');
       }
     }
     await loadPlayers();
