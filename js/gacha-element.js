@@ -361,14 +361,12 @@
     const starSize = Math.max(2, Math.round(4 * ext));
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2, ox = cx + Math.cos(a) * starDist, oy = cy + Math.sin(a) * starDist;
-      const isWhite = i % 2 === 0;
       const ptsBig  = _yyStarPts(ox, oy, 4, starSize,        starSize * 0.38);
       const ptsTiny = _yyStarPts(ox, oy, 4, starSize * 0.18, starSize * 0.08);
       const star = _mkEl('polygon', {
         points: ptsBig,
-        fill:   isWhite ? '#ffffff' : '#111111',
-        stroke: isWhite ? '#111111' : '#eeeeee',
-        'stroke-width': 0.6, opacity: '0.85'
+        fill: i % 2 === 0 ? '#ffffff' : '#c4b5fd',
+        opacity: '0.85'
       });
       const delay = (i * 0.28).toFixed(2);
       _anim(star, { attributeName: 'opacity', values: '0.15;1;0.15', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
