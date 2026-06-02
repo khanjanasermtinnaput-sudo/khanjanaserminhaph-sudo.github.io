@@ -277,10 +277,7 @@ body.x2-active .toast-wrap{bottom:120px}
 @keyframes seSweepRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes seSweepRotR{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}
 @keyframes seFlareGlow{0%,100%{opacity:.1}40%{opacity:.82}60%{opacity:.6}100%{opacity:.1}}
-@keyframes seCrownFloat{0%,100%{transform:translateX(-50%) translateY(0) rotate(-6deg) scale(1)}50%{transform:translateX(-50%) translateY(-6px) rotate(6deg) scale(1.06)}}
-@keyframes seCrownGlow{0%,100%{filter:drop-shadow(0 0 7px rgba(255,215,0,.98)) drop-shadow(0 0 16px rgba(255,200,0,.72)) drop-shadow(0 0 30px rgba(255,180,0,.4))}50%{filter:drop-shadow(0 0 14px rgba(255,252,190,1)) drop-shadow(0 0 30px rgba(255,220,0,1)) drop-shadow(0 0 60px rgba(255,190,0,.75)) drop-shadow(0 0 100px rgba(255,160,0,.45))}}
 @keyframes seSpTwinkle{0%,100%{opacity:.1;transform:scale(.7)}45%{opacity:1;transform:scale(1.7);box-shadow:0 0 5px rgba(255,235,120,.95),0 0 12px rgba(255,215,0,.6)}}
-@keyframes seSpCross{0%,100%{opacity:0;transform:scale(.5) rotate(0deg)}45%{opacity:1;transform:scale(1) rotate(45deg)}}
 @keyframes seNameShimmer{0%{background-position:-400% center}100%{background-position:400% center}}
 @keyframes seNameGlow{0%,100%{filter:drop-shadow(0 0 8px rgba(255,215,0,.97)) drop-shadow(0 0 18px rgba(255,195,0,.68)) drop-shadow(0 0 38px rgba(255,170,0,.32))}50%{filter:drop-shadow(0 0 16px rgba(255,252,185,1)) drop-shadow(0 0 36px rgba(255,220,0,.98)) drop-shadow(0 0 72px rgba(255,175,0,.60)) drop-shadow(0 0 130px rgba(255,150,0,.32))}}
 @keyframes seNameGlowLight{0%,100%{filter:drop-shadow(0 0 5px rgba(180,118,0,.92)) drop-shadow(0 0 12px rgba(148,90,0,.60))}50%{filter:drop-shadow(0 0 10px rgba(215,152,0,1)) drop-shadow(0 0 26px rgba(178,118,0,.85))}}
@@ -996,8 +993,10 @@ html.perf-anim-paused *::before,
 html.perf-anim-paused *::after{animation-play-state:paused!important}
 /* (2) Skip rendering (layout/paint/blur/animation) of off-screen list rows.
    `auto` in contain-intrinsic-size makes the browser remember each row's real size
-   after its first render, so scrollbar length stays stable and nothing shifts. */
-.lb-item{content-visibility:auto;contain-intrinsic-size:auto 64px}
+   after its first render, so scrollbar length stays stable and nothing shifts.
+   `.lb-item` also gets contain:paint so each row's backdrop-filter blur repaint
+   stays clipped to itself while scrolling the leaderboard (rows are overflow:hidden). */
+.lb-item{content-visibility:auto;contain-intrinsic-size:auto 64px;contain:paint}
 .hist-item{content-visibility:auto;contain-intrinsic-size:auto 62px}
 .ach-list-item{content-visibility:auto;contain-intrinsic-size:auto 64px}
 
@@ -1024,8 +1023,3 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 
 /* --- background-position shine (kingTitleShine) --- */
 .king-banner,.lb-rn-king{will-change:background-position}
-
-/* contain:paint on lb-item (already overflow:hidden) —
-   backdrop-filter: blur() repaint is now clipped inside each row;
-   scrolling through the leaderboard no longer dirties the whole viewport. */
-.lb-item{contain:paint}
