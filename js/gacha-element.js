@@ -38,7 +38,8 @@
 @keyframes geBlink{0%,100%{opacity:1}50%{opacity:0}}
 @keyframes gePopIn{from{opacity:0;transform:scale(.3) rotate(-8deg)}to{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes geBadgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
-.ge-idle-orb{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2a2a5a,#0e0e1a);border:3px solid #2a2a4a;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 0 6px #1a1a3022,0 8px 24px #00000088}
+@keyframes geIdleBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.ge-idle-orb{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2a2a5a,#0e0e1a);border:3px solid #2a2a4a;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 0 6px #1a1a3022,0 8px 24px #00000088;animation:geIdleBob 2.5s ease-in-out infinite}
 .ge-pull-btn{font-family:'Fredoka One',cursive;font-size:20px;letter-spacing:3px;padding:14px 52px;background:linear-gradient(180deg,#4a4aff,#2a2acf);color:#fff;border:none;border-radius:12px;cursor:pointer;width:100%;box-shadow:0 6px 0 #1a1a8f,0 8px 20px #4a4aff44,inset 0 1px 0 rgba(255,255,255,.3);transition:transform .08s,box-shadow .08s;-webkit-text-stroke:1px #1a1a8f;paint-order:stroke fill}
 .ge-pull-btn:hover{transform:translateY(-2px);box-shadow:0 8px 0 #1a1a8f,0 12px 28px #4a4aff55,inset 0 1px 0 rgba(255,255,255,.3)}
 .ge-pull-btn:active{transform:translateY(4px);box-shadow:0 2px 0 #1a1a8f,0 4px 12px #4a4aff33,inset 0 1px 0 rgba(255,255,255,.3)}
@@ -170,14 +171,14 @@
     _anim(ring, { attributeName: 'stroke-width', values: '5;10;5', dur: '0.8s', repeatCount: 'indefinite' });
     _anim(ring, { attributeName: 'stroke', values: '#f97316;#dc2626;#fbbf24;#f97316', dur: '1.2s', repeatCount: 'indefinite' });
     svg.appendChild(ring);
-    // 6 morphing flames
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2, tipR = r + 18 + (i % 2) * 6;
+    // 8 big morphing flames
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, tipR = r + 20 + (i % 2) * 8;
       const tx = cx + Math.cos(a) * tipR, ty = cy + Math.sin(a) * tipR;
       const b1x = cx + Math.cos(a - 0.28) * (r - 2), b1y = cy + Math.sin(a - 0.28) * (r - 2);
       const b2x = cx + Math.cos(a + 0.28) * (r - 2), b2y = cy + Math.sin(a + 0.28) * (r - 2);
       const mx  = cx + Math.cos(a + 0.12) * (r + 10), my = cy + Math.sin(a + 0.12) * (r + 10);
-      const t2x = cx + Math.cos(a + 0.08) * (tipR - 5), t2y = cy + Math.sin(a + 0.08) * (tipR - 5);
+      const t2x = cx + Math.cos(a + 0.08) * (tipR - 6), t2y = cy + Math.sin(a + 0.08) * (tipR - 6);
       const m2x = cx + Math.cos(a - 0.1)  * (r + 8),   m2y = cy + Math.sin(a - 0.1)  * (r + 8);
       const flm = _mkEl('polygon', {
         points: `${tx},${ty} ${mx},${my} ${b1x},${b1y} ${b2x},${b2y}`,
@@ -190,18 +191,30 @@
       _anim(flm, { attributeName: 'opacity', values: '0.8;1;0.6;1;0.8', dur: '0.6s', begin: `${d}s`, repeatCount: 'indefinite' });
       svg.appendChild(flm);
     }
-    // 4 ember sparks
-    ['#fbbf24', '#f97316', '#ffffff', '#fde68a'].forEach((color, i) => {
-      const a = (i / 4) * Math.PI * 2;
+    // 8 inner small flames interleaved
+    for (let i = 0; i < 8; i++) {
+      const a = ((i + 0.5) / 8) * Math.PI * 2;
+      const tx = cx + Math.cos(a) * (r + 10), ty = cy + Math.sin(a) * (r + 10);
+      const b1x = cx + Math.cos(a - 0.18) * (r - 1), b1y = cy + Math.sin(a - 0.18) * (r - 1);
+      const b2x = cx + Math.cos(a + 0.18) * (r - 1), b2y = cy + Math.sin(a + 0.18) * (r - 1);
+      const flm2 = _mkEl('polygon', { points: `${tx},${ty} ${b1x},${b1y} ${b2x},${b2y}`, fill: '#fbbf24', stroke: '#0e0e1a', 'stroke-width': 1 });
+      const d2 = (i * 0.08 + 0.05).toFixed(2);
+      _anim(flm2, { attributeName: 'opacity', values: '0.5;1;0.3;0.9;0.5', dur: '0.5s', begin: `${d2}s`, repeatCount: 'indefinite' });
+      svg.appendChild(flm2);
+    }
+    // 12 ember sparks
+    const eColors = ['#fbbf24', '#f97316', '#ffffff', '#fde68a'];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
       const sx = cx + Math.cos(a) * (r + 4), sy = cy + Math.sin(a) * (r + 4);
-      const ex = cx + Math.cos(a + 0.3) * (r + 26), ey = cy + Math.sin(a + 0.3) * (r + 26);
-      const em = _mkCirc(sx, sy, 2, color, 'none', 0);
-      const d = (i * 0.2).toFixed(2);
+      const ex = cx + Math.cos(a + 0.3) * (r + 28), ey = cy + Math.sin(a + 0.3) * (r + 28);
+      const em = _mkCirc(sx, sy, 2, eColors[i % 4], 'none', 0);
+      const d = (i * 0.15).toFixed(2);
       _atAnim(em, { attributeName: 'transform', type: 'translate', values: `0,0;${ex - sx},${ey - sy}`, dur: '0.8s', begin: `${d}s`, repeatCount: 'indefinite' });
       _anim(em, { attributeName: 'opacity', values: '0;1;1;0', dur: '0.8s', begin: `${d}s`, repeatCount: 'indefinite' });
       _anim(em, { attributeName: 'r', values: '2;1;0', dur: '0.8s', begin: `${d}s`, repeatCount: 'indefinite' });
       svg.appendChild(em);
-    });
+    }
     return svg;
   }
 
@@ -210,17 +223,23 @@
     const glowBig = _mkCirc(cx, cy, r + 8, 'none', '#fbbf24', 20);
     glowBig.setAttribute('opacity', '0.15'); glowBig.style.filter = 'blur(10px)';
     _anim(glowBig, { attributeName: 'opacity', values: '0.08;0.25;0.04;0.2;0.08', dur: '1.5s', repeatCount: 'indefinite' });
+    _anim(glowBig, { attributeName: 'stroke-width', values: '16;28;10;24;16', dur: '1.5s', repeatCount: 'indefinite' });
     svg.appendChild(glowBig);
+    const glowIn = _mkCirc(cx, cy, r, 'none', '#ffffff', 8);
+    glowIn.setAttribute('opacity', '0.1'); glowIn.style.filter = 'blur(4px)';
+    _anim(glowIn, { attributeName: 'opacity', values: '0.05;0.2;0.02;0.15;0.05', dur: '0.8s', repeatCount: 'indefinite' });
+    svg.appendChild(glowIn);
     svg.appendChild(_mkCirc(cx, cy, r + 3, 'none', '#0e0e1a', 5));
     const ring = _mkCirc(cx, cy, r, 'none', el.c.ring, 5);
     ring.setAttribute('stroke-dasharray', '6 8');
     ring.setAttribute('stroke-linecap', 'square');
     _atAnim(ring, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '1.5s', repeatCount: 'indefinite' });
     _anim(ring, { attributeName: 'opacity', values: '1;0.05;1;1;0.1;1;0.6;1', dur: '1.2s', repeatCount: 'indefinite' });
+    _anim(ring, { attributeName: 'stroke', values: `${el.c.ring};#ffffff;${el.c.ring};${el.c.ring2};${el.c.ring}`, dur: '1.2s', repeatCount: 'indefinite' });
     svg.appendChild(ring);
-    // 4 zigzag bolts
-    for (let i = 0; i < 4; i++) {
-      const a = (i / 4) * Math.PI * 2;
+    // 6 zigzag bolts
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * Math.PI * 2;
       const sx = cx + Math.cos(a) * (r - 2), sy = cy + Math.sin(a) * (r - 2);
       const z1x = cx + Math.cos(a + 0.18) * (r + 7),   z1y = cy + Math.sin(a + 0.18) * (r + 7);
       const z2x = cx + Math.cos(a - 0.14) * (r + 14),  z2y = cy + Math.sin(a - 0.14) * (r + 14);
@@ -228,8 +247,9 @@
       const pts = `${sx},${sy} ${z1x},${z1y} ${z2x},${z2y} ${ex},${ey}`;
       svg.appendChild(_mkEl('polyline', { points: pts, fill: 'none', stroke: '#0e0e1a', 'stroke-width': 5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' }));
       const bEl = _mkEl('polyline', { points: pts, fill: 'none', stroke: '#fef9c3', 'stroke-width': 2.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' });
-      const d = (i * 0.22).toFixed(2);
+      const d = (i * 0.18).toFixed(2);
       _anim(bEl, { attributeName: 'opacity', values: '0;1;1;0;0;0.8;1;0', dur: '1s', begin: `${d}s`, repeatCount: 'indefinite' });
+      _anim(bEl, { attributeName: 'stroke-width', values: '1.5;3;1.5;2.5', dur: '1s', begin: `${d}s`, repeatCount: 'indefinite' });
       _anim(bEl, { attributeName: 'stroke', values: '#fef9c3;#ffffff;#fbbf24;#fef9c3', dur: '1s', begin: `${d}s`, repeatCount: 'indefinite' });
       svg.appendChild(bEl);
       const spark = _mkCirc(ex, ey, 4, '#ffffff', '#fbbf24', 1.5);
@@ -237,21 +257,63 @@
       _anim(spark, { attributeName: 'r', values: '2;5;2', dur: '1s', begin: `${d}s`, repeatCount: 'indefinite' });
       svg.appendChild(spark);
     }
+    // 12 small spike ornaments on ring
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const ox = cx + Math.cos(a) * (r + 1), oy = cy + Math.sin(a) * (r + 1);
+      const ix = cx + Math.cos(a) * (r - 8),  iy = cy + Math.sin(a) * (r - 8);
+      const lx = cx + Math.cos(a - 0.22) * (r - 4), ly = cy + Math.sin(a - 0.22) * (r - 4);
+      const spike = _mkEl('polygon', { points: `${ox},${oy} ${lx},${ly} ${ix},${iy}`, fill: i % 2 === 0 ? el.c.ring : '#fff', stroke: '#0e0e1a', 'stroke-width': 1 });
+      const d2 = (i % 4 * 0.15).toFixed(2);
+      _anim(spike, { attributeName: 'opacity', values: '1;0.05;1;0.5;1', dur: '1.4s', begin: `${d2}s`, repeatCount: 'indefinite' });
+      svg.appendChild(spike);
+    }
+    // 8 electric arc dots scattered around ring
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + 0.2;
+      const ox = cx + Math.cos(a) * (r + 16), oy = cy + Math.sin(a) * (r + 16);
+      const arc = _mkCirc(ox, oy, 3, '#fef9c3', '#fbbf24', 1);
+      const d3 = (i * 0.13).toFixed(2);
+      _anim(arc, { attributeName: 'opacity', values: '0;0;1;0;0;1;1;0', dur: '1.2s', begin: `${d3}s`, repeatCount: 'indefinite' });
+      _anim(arc, { attributeName: 'r', values: '1;3;1', dur: '1.2s', begin: `${d3}s`, repeatCount: 'indefinite' });
+      svg.appendChild(arc);
+    }
     return svg;
   }
 
   function _frameYinYang(el, W) {
     const uid = _uid(), svg = _mkRoot(W), cx = W / 2, cy = W / 2, R = W / 2 - 6;
     const idYY = `geYY_${uid}`, idL = `geL_${uid}`, idR = `geR_${uid}`;
-    // aura layers
+    // aura layer 1: big soft purple glow, slow breathe
     const a1 = _mkCirc(cx, cy, R + 18, 'none', '#a78bfa', 28);
     a1.setAttribute('opacity', '0.07'); a1.style.filter = 'blur(8px)';
     _anim(a1, { attributeName: 'opacity', values: '0.04;0.13;0.04', dur: '3s', repeatCount: 'indefinite' });
+    _anim(a1, { attributeName: 'stroke-width', values: '22;36;22', dur: '3s', repeatCount: 'indefinite' });
     svg.appendChild(a1);
-    const a2 = _mkCirc(cx, cy, R + 8, 'none', '#e9d5ff', 3);
-    a2.setAttribute('stroke-dasharray', '12 8'); a2.setAttribute('opacity', '0.25');
-    _atAnim(a2, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '6s', repeatCount: 'indefinite' });
+    // aura layer 2: white glow ring, faster
+    const a2 = _mkCirc(cx, cy, R + 10, 'none', '#ffffff', 14);
+    a2.setAttribute('opacity', '0.1'); a2.style.filter = 'blur(4px)';
+    _anim(a2, { attributeName: 'opacity', values: '0.06;0.2;0.06', dur: '2s', repeatCount: 'indefinite' });
+    _anim(a2, { attributeName: 'stroke-width', values: '10;20;10', dur: '2s', repeatCount: 'indefinite' });
     svg.appendChild(a2);
+    // aura layer 3: purple sharp ring, shimmer
+    const a3 = _mkCirc(cx, cy, R + 4, 'none', '#c4b5fd', 4);
+    a3.setAttribute('opacity', '0.35');
+    _anim(a3, { attributeName: 'opacity', values: '0.2;0.6;0.2', dur: '1.6s', repeatCount: 'indefinite' });
+    _anim(a3, { attributeName: 'stroke-width', values: '3;6;3', dur: '1.6s', repeatCount: 'indefinite' });
+    svg.appendChild(a3);
+    // aura layer 4: spinning dashed ring
+    const a4 = _mkCirc(cx, cy, R + 8, 'none', '#e9d5ff', 3);
+    a4.setAttribute('stroke-dasharray', '12 8'); a4.setAttribute('opacity', '0.25');
+    _atAnim(a4, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '6s', repeatCount: 'indefinite' });
+    _anim(a4, { attributeName: 'opacity', values: '0.1;0.35;0.1', dur: '2.5s', repeatCount: 'indefinite' });
+    svg.appendChild(a4);
+    // aura layer 5: counter-spinning dashed ring
+    const a5 = _mkCirc(cx, cy, R + 12, 'none', '#f1f5f9', 2);
+    a5.setAttribute('stroke-dasharray', '8 16'); a5.setAttribute('opacity', '0.15');
+    _atAnim(a5, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `-360 ${cx} ${cy}`, dur: '4s', repeatCount: 'indefinite' });
+    _anim(a5, { attributeName: 'opacity', values: '0.08;0.22;0.08', dur: '3s', repeatCount: 'indefinite' });
+    svg.appendChild(a5);
     // comic outline
     svg.appendChild(_mkCirc(cx, cy, R + 4, 'none', '#0e0e1a', 6));
     // defs — unique IDs per instance prevent clipPath collisions
@@ -274,11 +336,16 @@
     // split ring: black left / white right
     const rBk = _mkCirc(cx, cy, R, 'none', '#111', 5); rBk.setAttribute('clip-path', `url(#${idL})`); svg.appendChild(rBk);
     const rWh = _mkCirc(cx, cy, R, 'none', '#eee', 5); rWh.setAttribute('clip-path', `url(#${idR})`); svg.appendChild(rWh);
-    // floating star ornaments
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2, ox = cx + Math.cos(a) * (R + 16), oy = cy + Math.sin(a) * (R + 16);
+    // thin separator line down the middle
+    const sep = _mkEl('line', { x1: cx, y1: cy - R - 2, x2: cx, y2: cy + R + 2, stroke: '#88888866', 'stroke-width': 1 });
+    svg.appendChild(sep);
+    // 8 floating star ornaments with opacity + scale pulse
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2, ox = cx + Math.cos(a) * (R + 16), oy = cy + Math.sin(a) * (R + 16);
       const star = _mkEl('polygon', { points: _yyStarPts(ox, oy, 4, 4, 1.8), fill: i % 2 === 0 ? '#fff' : '#c4b5fd', opacity: '0.7' });
-      _anim(star, { attributeName: 'opacity', values: '0.3;1;0.3', dur: '2s', begin: `${(i * 0.28).toFixed(2)}s`, repeatCount: 'indefinite' });
+      const delay = (i * 0.25).toFixed(2);
+      _anim(star, { attributeName: 'opacity', values: '0.3;1;0.3', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
+      _atAnim(star, { attributeName: 'transform', type: 'scale', additive: 'sum', values: '1;1.4;1', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite', 'transform-origin': `${ox} ${oy}` });
       svg.appendChild(star);
     }
     return svg;
