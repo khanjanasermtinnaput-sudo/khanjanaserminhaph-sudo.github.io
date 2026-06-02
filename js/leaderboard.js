@@ -60,9 +60,8 @@ async function renderLeaderboard() {
       return `<div class="lb-pc lb-glass ${cls}${isSE ? ' lb-king-throne' : ''}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
         <canvas class="lb-pod-canvas" id="${canvasId}"></canvas>
         <div class="lb-pod-shim"></div>
-        ${(isFirst && getRank(p.pts, p.id).id === 'king') ? `<div class="lb-crown"><img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" class="lb-crown-img crown-sparkle-img" style="width:32px;height:32px"></div>` : ''}
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
-        <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
+        <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
         <div class="lb-pod-name ${getGachaNameClass(p)}">${p.name}</div>
         <div class="lb-pod-score" id="lbpscore${p.id}">${p.pts.toLocaleString()}</div>
         <div class="lb-pod-wins">ชนะ ${p.wins} · แพ้ ${p.losses} · ${wr}%</div>
