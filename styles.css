@@ -1000,3 +1000,32 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .lb-item{content-visibility:auto;contain-intrinsic-size:auto 64px}
 .hist-item{content-visibility:auto;contain-intrinsic-size:auto 62px}
 .ach-list-item{content-visibility:auto;contain-intrinsic-size:auto 64px}
+
+/* ===== Performance pass #3 — compositor-layer hints ===== */
+/* Rule: only add will-change for the EXACT property animated in the keyframe.
+   Wrong will-change is worse than none — it wastes VRAM allocating unneeded layers. */
+
+/* --- transform-only → compositor thread, zero main-thread paint cost --- */
+.lb-deco,.lb-deco2,.lb-crown,.live-dot,
+.kru-spark,.crown-sparkle-wrap{will-change:transform}
+
+/* --- transform + filter (kruCrownPulse animates both) --- */
+.kru-crown{will-change:transform,filter}
+
+/* --- filter-only → own composited layer, filter repaint stays isolated --- */
+.crown-sparkle-img{will-change:filter}
+
+/* --- transform + box-shadow (kru-ring rotates AND glows) --- */
+.kru-ring{will-change:transform,box-shadow}
+
+/* --- box-shadow only → isolated layer, glow repaints don't touch neighbours --- */
+.rank-king,.profile-avatar,.update-badge,
+.streak-fire,.lb-king-throne{will-change:box-shadow}
+
+/* --- background-position shine (kingTitleShine) --- */
+.king-banner,.lb-rn-king{will-change:background-position}
+
+/* contain:paint on lb-item (already overflow:hidden) —
+   backdrop-filter: blur() repaint is now clipped inside each row;
+   scrolling through the leaderboard no longer dirties the whole viewport. */
+.lb-item{contain:paint}
