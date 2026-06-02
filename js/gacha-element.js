@@ -39,6 +39,16 @@
 @keyframes gePopIn{from{opacity:0;transform:scale(.3) rotate(-8deg)}to{opacity:1;transform:scale(1) rotate(0)}}
 @keyframes geBadgePulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @keyframes geIdleBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes geOvIn{from{opacity:0}to{opacity:1}}
+@keyframes geOvOut{from{opacity:1}to{opacity:0}}
+@keyframes geYYSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes geYYPulse{0%,100%{text-shadow:0 0 10px #c4b5fd,0 0 24px #7c3aed}50%{text-shadow:0 0 24px #fff,0 0 48px #c4b5fd,0 0 72px #7c3aed}}
+@keyframes geYYBeam{0%,100%{opacity:.15;transform:scaleY(1)}50%{opacity:.5;transform:scaleY(1.08)}}
+.ge-yy-overlay{position:fixed;inset:0;z-index:10000;background:radial-gradient(ellipse at center,#1a0a2e 0%,#080812 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;animation:geOvIn .5s ease-out forwards}
+.ge-yy-secret-txt{font-family:'Press Start 2P',monospace;font-size:9px;color:#a78bfa;letter-spacing:5px;opacity:0;animation:gePopIn .4s .5s ease-out forwards}
+.ge-yy-name-txt{font-family:'Fredoka One',cursive;font-size:34px;letter-spacing:4px;color:#fff;opacity:0;animation:gePopIn .4s 1.2s ease-out forwards;paint-order:stroke fill;-webkit-text-stroke:2px #0e0e1a;animation-fill-mode:both}
+.ge-yy-name-txt.ge-yy-pulse{animation:gePopIn .4s 1.2s ease-out forwards,geYYPulse 2s 1.6s ease-in-out infinite;animation-fill-mode:both}
+.ge-yy-tap{font-family:'Press Start 2P',monospace;font-size:7px;color:#c4b5fd;letter-spacing:3px;opacity:0;animation:gePopIn .3s 2.2s ease-out forwards,geBlink 1s 2.5s step-end infinite;animation-fill-mode:both}
 .ge-idle-orb{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2a2a5a,#0e0e1a);border:3px solid #2a2a4a;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 0 6px #1a1a3022,0 8px 24px #00000088;animation:geIdleBob 2.5s ease-in-out infinite}
 .ge-pull-btn{font-family:'Fredoka One',cursive;font-size:20px;letter-spacing:3px;padding:14px 52px;background:linear-gradient(180deg,#4a4aff,#2a2acf);color:#fff;border:none;border-radius:12px;cursor:pointer;width:100%;box-shadow:0 6px 0 #1a1a8f,0 8px 20px #4a4aff44,inset 0 1px 0 rgba(255,255,255,.3);transition:transform .08s,box-shadow .08s;-webkit-text-stroke:1px #1a1a8f;paint-order:stroke fill}
 .ge-pull-btn:hover{transform:translateY(-2px);box-shadow:0 8px 0 #1a1a8f,0 12px 28px #4a4aff55,inset 0 1px 0 rgba(255,255,255,.3)}
@@ -501,8 +511,64 @@
     });
   }
 
+  // ── YinYang cinematic ─────────────────────────────────────────────────────────
+  function _geYinYangCinematic(onDone) {
+    const el = GACHA_ELEMENTS.find(e => e.id === 'yinyang');
+
+    // big flash
+    let flash = document.getElementById('geFlash');
+    if (!flash) { flash = document.createElement('div'); flash.id = 'geFlash'; flash.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0;'; document.body.appendChild(flash); }
+    flash.style.background = '#c4b5fd'; flash.style.transition = 'none'; flash.style.opacity = '0.9';
+    setTimeout(() => { flash.style.transition = 'opacity .8s ease-out'; flash.style.opacity = '0'; }, 100);
+
+    // overlay
+    const ov = document.createElement('div');
+    ov.className = 'ge-yy-overlay';
+
+    // light beam behind symbol
+    const beam = document.createElement('div');
+    beam.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(196,181,253,.12),transparent 70%);animation:geYYBeam 2s .8s ease-in-out infinite;pointer-events:none';
+    ov.appendChild(beam);
+
+    // star dust burst
+    _geBurst(el);
+
+    // spinning frame wrap
+    const fwrap = document.createElement('div');
+    fwrap.style.cssText = 'position:relative;width:200px;height:200px;opacity:0;animation:gePopIn .6s .7s cubic-bezier(.34,1.56,.64,1) forwards;animation-fill-mode:both;flex-shrink:0';
+    const avatar = document.createElement('div');
+    avatar.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:154px;height:154px;border-radius:50%;background:#0a0a12;display:flex;align-items:center;justify-content:center;font-size:62px;z-index:2;box-shadow:0 0 0 3px #0e0e1a,0 0 32px #a78bfa44';
+    avatar.textContent = '☯️';
+    fwrap.appendChild(avatar);
+    const frameSvg = _frameYinYang(el, 200);
+    fwrap.appendChild(frameSvg);
+    ov.appendChild(fwrap);
+
+    const secretTxt = document.createElement('div'); secretTxt.className = 'ge-yy-secret-txt'; secretTxt.textContent = '✦ SECRET ELEMENT ✦'; ov.appendChild(secretTxt);
+    const nameTxt   = document.createElement('div'); nameTxt.className   = 'ge-yy-name-txt ge-yy-pulse'; nameTxt.textContent = 'YIN YANG'; ov.appendChild(nameTxt);
+    const tapTxt    = document.createElement('div'); tapTxt.className    = 'ge-yy-tap';       tapTxt.textContent = '— TAP TO CONTINUE —'; ov.appendChild(tapTxt);
+
+    document.body.appendChild(ov);
+
+    const dismiss = () => {
+      if (!document.body.contains(ov)) return;
+      ov.style.animation = 'geOvOut .4s ease-in forwards';
+      setTimeout(() => { ov.remove(); if (onDone) onDone(); }, 400);
+    };
+    ov.addEventListener('click', dismiss, { once: true });
+    setTimeout(dismiss, 5000);
+  }
+
   // ── Show result card ──────────────────────────────────────────────────────────
   function _geShowResult(el) {
+    if (el.id === 'yinyang') {
+      _geYinYangCinematic(() => _geShowResultCard(el));
+      return;
+    }
+    _geShowResultCard(el);
+  }
+
+  function _geShowResultCard(el) {
     // flash (CSS transition — no rAF loop)
     let flash = document.getElementById('geFlash');
     if (!flash) {
@@ -593,13 +659,15 @@
 
     const rarityRank = { Secret: 0, Mythic: 1, Uncommon: 2, Common: 3 };
     const best = [...results].sort((a, b) => rarityRank[a.rarity] - rarityRank[b.rarity])[0];
-    _geBurst(best);
-    let flash = document.getElementById('geFlash');
-    if (!flash) { flash = document.createElement('div'); flash.id = 'geFlash'; flash.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0;'; document.body.appendChild(flash); }
-    flash.style.background = best.c.glow; flash.style.transition = 'none'; flash.style.opacity = '0.5';
-    setTimeout(() => { flash.style.transition = 'opacity .7s ease-out'; flash.style.opacity = '0'; }, 80);
 
-    result.style.display = 'block';
+    const renderGrid = () => {
+      let flash = document.getElementById('geFlash');
+      if (!flash) { flash = document.createElement('div'); flash.id = 'geFlash'; flash.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0;'; document.body.appendChild(flash); }
+      flash.style.background = best.c.glow; flash.style.transition = 'none'; flash.style.opacity = '0.5';
+      setTimeout(() => { flash.style.transition = 'opacity .7s ease-out'; flash.style.opacity = '0'; }, 80);
+      _geBurst(best);
+      if (!result) return;
+      result.style.display = 'block';
     result.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%">
         ${results.map((el, i) => {
@@ -618,14 +686,21 @@
         ${best.rarity !== 'Common' ? `<span style="color:${best.c.glow}"> · ${best.rarityTh}</span>` : ''}
       </div>`;
 
-    requestAnimationFrame(() => {
-      results.forEach((el, i) => {
-        const wrap = document.getElementById(`geR10F_${i}`);
-        if (!wrap || wrap.querySelector('svg')) return;
-        const svgF = renderElementFrame(el.id, 56);
-        if (svgF) wrap.appendChild(svgF);
+      requestAnimationFrame(() => {
+        results.forEach((el, i) => {
+          const wrap = document.getElementById(`geR10F_${i}`);
+          if (!wrap || wrap.querySelector('svg')) return;
+          const svgF = renderElementFrame(el.id, 56);
+          if (svgF) wrap.appendChild(svgF);
+        });
       });
-    });
+    };
+
+    if (best.id === 'yinyang') {
+      _geYinYangCinematic(renderGrid);
+    } else {
+      renderGrid();
+    }
   }
 
   // ── Pull ──────────────────────────────────────────────────────────────────────
