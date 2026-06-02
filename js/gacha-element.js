@@ -42,13 +42,14 @@
 @keyframes geOvIn{from{opacity:0}to{opacity:1}}
 @keyframes geOvOut{from{opacity:1}to{opacity:0}}
 @keyframes geYYSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-@keyframes geYYPulse{0%,100%{text-shadow:0 0 10px #c4b5fd,0 0 24px #7c3aed}50%{text-shadow:0 0 24px #fff,0 0 48px #c4b5fd,0 0 72px #7c3aed}}
-@keyframes geYYBeam{0%,100%{opacity:.15;transform:scaleY(1)}50%{opacity:.5;transform:scaleY(1.08)}}
-.ge-yy-overlay{position:fixed;inset:0;z-index:10000;background:radial-gradient(ellipse at center,#1a0a2e 0%,#080812 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;animation:geOvIn .5s ease-out forwards}
-.ge-yy-secret-txt{font-family:'Press Start 2P',monospace;font-size:9px;color:#a78bfa;letter-spacing:5px;opacity:0;animation:gePopIn .4s .5s ease-out forwards}
+@keyframes geYYPulse{0%,100%{text-shadow:0 0 12px #fff,0 0 28px #ccc,0 0 50px #888}50%{text-shadow:0 0 28px #fff,0 0 55px #ddd,0 0 80px #aaa}}
+@keyframes geYYBeam{0%,100%{opacity:.12;transform:scaleY(1)}50%{opacity:.4;transform:scaleY(1.06)}}
+@keyframes geYYStarOrbit{from{transform:rotate(0deg) translateX(0)}to{transform:rotate(360deg) translateX(0)}}
+.ge-yy-overlay{position:fixed;inset:0;z-index:10000;background:radial-gradient(ellipse at center,#111118 0%,#060608 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;animation:geOvIn .5s ease-out forwards}
+.ge-yy-secret-txt{font-family:'Press Start 2P',monospace;font-size:9px;color:#cccccc;letter-spacing:5px;opacity:0;animation:gePopIn .4s .5s ease-out forwards}
 .ge-yy-name-txt{font-family:'Fredoka One',cursive;font-size:34px;letter-spacing:4px;color:#fff;opacity:0;animation:gePopIn .4s 1.2s ease-out forwards;paint-order:stroke fill;-webkit-text-stroke:2px #0e0e1a;animation-fill-mode:both}
 .ge-yy-name-txt.ge-yy-pulse{animation:gePopIn .4s 1.2s ease-out forwards,geYYPulse 2s 1.6s ease-in-out infinite;animation-fill-mode:both}
-.ge-yy-tap{font-family:'Press Start 2P',monospace;font-size:7px;color:#c4b5fd;letter-spacing:3px;opacity:0;animation:gePopIn .3s 2.2s ease-out forwards,geBlink 1s 2.5s step-end infinite;animation-fill-mode:both}
+.ge-yy-tap{font-family:'Press Start 2P',monospace;font-size:7px;color:#aaaaaa;letter-spacing:3px;opacity:0;animation:gePopIn .3s 2.2s ease-out forwards,geBlink 1s 2.5s step-end infinite;animation-fill-mode:both}
 .ge-idle-orb{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#2a2a5a,#0e0e1a);border:3px solid #2a2a4a;display:flex;align-items:center;justify-content:center;font-size:44px;box-shadow:0 0 0 6px #1a1a3022,0 8px 24px #00000088;animation:geIdleBob 2.5s ease-in-out infinite}
 .ge-pull-btn{font-family:'Fredoka One',cursive;font-size:20px;letter-spacing:3px;padding:14px 52px;background:linear-gradient(180deg,#4a4aff,#2a2acf);color:#fff;border:none;border-radius:12px;cursor:pointer;width:100%;box-shadow:0 6px 0 #1a1a8f,0 8px 20px #4a4aff44,inset 0 1px 0 rgba(255,255,255,.3);transition:transform .08s,box-shadow .08s;-webkit-text-stroke:1px #1a1a8f;paint-order:stroke fill}
 .ge-pull-btn:hover{transform:translateY(-2px);box-shadow:0 8px 0 #1a1a8f,0 12px 28px #4a4aff55,inset 0 1px 0 rgba(255,255,255,.3)}
@@ -296,48 +297,43 @@
   }
 
   function _frameYinYang(el, W) {
+    const ext = Math.min(1, W / 100); // scale ornaments — prevents overflow at small sizes
     const uid = _uid(), svg = _mkRoot(W), cx = W / 2, cy = W / 2, R = W / 2 - 6;
     const idYY = `geYY_${uid}`, idL = `geL_${uid}`, idR = `geR_${uid}`;
-    // aura layer 1: big soft purple glow, slow breathe
-    const a1 = _mkCirc(cx, cy, R + 18, 'none', '#a78bfa', 28);
-    a1.setAttribute('opacity', '0.07'); a1.style.filter = 'blur(8px)';
-    _anim(a1, { attributeName: 'opacity', values: '0.04;0.13;0.04', dur: '3s', repeatCount: 'indefinite' });
-    _anim(a1, { attributeName: 'stroke-width', values: '22;36;22', dur: '3s', repeatCount: 'indefinite' });
-    svg.appendChild(a1);
-    // aura layer 2: white glow ring, faster
-    const a2 = _mkCirc(cx, cy, R + 10, 'none', '#ffffff', 14);
-    a2.setAttribute('opacity', '0.1'); a2.style.filter = 'blur(4px)';
-    _anim(a2, { attributeName: 'opacity', values: '0.06;0.2;0.06', dur: '2s', repeatCount: 'indefinite' });
-    _anim(a2, { attributeName: 'stroke-width', values: '10;20;10', dur: '2s', repeatCount: 'indefinite' });
-    svg.appendChild(a2);
-    // aura layer 3: purple sharp ring, shimmer
-    const a3 = _mkCirc(cx, cy, R + 4, 'none', '#c4b5fd', 4);
-    a3.setAttribute('opacity', '0.35');
-    _anim(a3, { attributeName: 'opacity', values: '0.2;0.6;0.2', dur: '1.6s', repeatCount: 'indefinite' });
-    _anim(a3, { attributeName: 'stroke-width', values: '3;6;3', dur: '1.6s', repeatCount: 'indefinite' });
-    svg.appendChild(a3);
-    // aura layer 4: spinning dashed ring
-    const a4 = _mkCirc(cx, cy, R + 8, 'none', '#e9d5ff', 3);
-    a4.setAttribute('stroke-dasharray', '12 8'); a4.setAttribute('opacity', '0.25');
-    _atAnim(a4, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '6s', repeatCount: 'indefinite' });
-    _anim(a4, { attributeName: 'opacity', values: '0.1;0.35;0.1', dur: '2.5s', repeatCount: 'indefinite' });
-    svg.appendChild(a4);
-    // aura layer 5: counter-spinning dashed ring
-    const a5 = _mkCirc(cx, cy, R + 12, 'none', '#f1f5f9', 2);
-    a5.setAttribute('stroke-dasharray', '8 16'); a5.setAttribute('opacity', '0.15');
-    _atAnim(a5, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `-360 ${cx} ${cy}`, dur: '4s', repeatCount: 'indefinite' });
-    _anim(a5, { attributeName: 'opacity', values: '0.08;0.22;0.08', dur: '3s', repeatCount: 'indefinite' });
-    svg.appendChild(a5);
-    // comic outline
-    svg.appendChild(_mkCirc(cx, cy, R + 4, 'none', '#0e0e1a', 6));
-    // defs — unique IDs per instance prevent clipPath collisions
+
+    // ── Aura: white outer glow breathe ───────────────────────────────────────
+    const aGlow = _mkCirc(cx, cy, R + Math.round(16 * ext), 'none', '#ffffff', Math.round(28 * ext));
+    aGlow.setAttribute('opacity', '0.06'); aGlow.style.filter = 'blur(8px)';
+    _anim(aGlow, { attributeName: 'opacity', values: '0.03;0.18;0.03', dur: '3s', repeatCount: 'indefinite' });
+    _anim(aGlow, { attributeName: 'stroke-width', values: `${Math.round(20*ext)};${Math.round(38*ext)};${Math.round(20*ext)}`, dur: '3s', repeatCount: 'indefinite' });
+    svg.appendChild(aGlow);
+
+    // ── Spinning ring outer: dark dashed ─────────────────────────────────────
+    const rOuter = _mkCirc(cx, cy, R + Math.round(9 * ext), 'none', '#2a2a2a', 2);
+    rOuter.setAttribute('stroke-dasharray', '10 7');
+    _atAnim(rOuter, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '5s', repeatCount: 'indefinite' });
+    _anim(rOuter, { attributeName: 'opacity', values: '0.5;1;0.5', dur: '2s', repeatCount: 'indefinite' });
+    svg.appendChild(rOuter);
+
+    // ── Spinning ring inner: bright white dashed ──────────────────────────────
+    const rInner = _mkCirc(cx, cy, R + Math.round(6 * ext), 'none', '#e8e8e8', 1.5);
+    rInner.setAttribute('stroke-dasharray', '6 10');
+    _atAnim(rInner, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `-360 ${cx} ${cy}`, dur: '3.5s', repeatCount: 'indefinite' });
+    _anim(rInner, { attributeName: 'opacity', values: '0.4;0.9;0.4', dur: '1.8s', repeatCount: 'indefinite' });
+    svg.appendChild(rInner);
+
+    // ── Black outline comic ring ──────────────────────────────────────────────
+    svg.appendChild(_mkCirc(cx, cy, R + 3, 'none', '#0e0e1a', 6));
+
+    // ── defs ──────────────────────────────────────────────────────────────────
     const defs = _mkEl('defs');
     const mkClip = (id, x, y, w, h) => { const cp = _mkEl('clipPath', { id }); cp.appendChild(_mkEl('rect', { x, y, width: w, height: h })); return cp; };
     const cpYY = _mkEl('clipPath', { id: idYY }); cpYY.appendChild(_mkCirc(cx, cy, R, '#fff', 'none', 0)); defs.appendChild(cpYY);
     defs.appendChild(mkClip(idL, 0, 0, cx, W));
     defs.appendChild(mkClip(idR, cx, 0, cx, W));
     svg.appendChild(defs);
-    // yin yang body
+
+    // ── Yin Yang body ─────────────────────────────────────────────────────────
     const g = _mkEl('g', { 'clip-path': `url(#${idYY})` });
     g.appendChild(_mkEl('path', { d: `M ${cx} ${cy - R} A ${R} ${R} 0 0 0 ${cx} ${cy + R} Z`, fill: '#111' }));
     g.appendChild(_mkEl('path', { d: `M ${cx} ${cy - R} A ${R} ${R} 0 0 1 ${cx} ${cy + R} Z`, fill: '#eee' }));
@@ -347,21 +343,43 @@
     g.appendChild(_mkCirc(cx, cy - sr, sr * 0.28,'#111', 'none', 0));
     g.appendChild(_mkCirc(cx, cy + sr, sr * 0.28,'#eee', 'none', 0));
     svg.appendChild(g);
-    // split ring: black left / white right
-    const rBk = _mkCirc(cx, cy, R, 'none', '#111', 5); rBk.setAttribute('clip-path', `url(#${idL})`); svg.appendChild(rBk);
-    const rWh = _mkCirc(cx, cy, R, 'none', '#eee', 5); rWh.setAttribute('clip-path', `url(#${idR})`); svg.appendChild(rWh);
-    // thin separator line down the middle
-    const sep = _mkEl('line', { x1: cx, y1: cy - R - 2, x2: cx, y2: cy + R + 2, stroke: '#88888866', 'stroke-width': 1 });
-    svg.appendChild(sep);
-    // 8 floating star ornaments with opacity + scale pulse
+
+    // ── Main ring: black left / white right, shimmer ──────────────────────────
+    const rBk = _mkCirc(cx, cy, R, 'none', '#111111', 5); rBk.setAttribute('clip-path', `url(#${idL})`);
+    _anim(rBk, { attributeName: 'stroke-width', values: '4;7;4', dur: '2s', repeatCount: 'indefinite' });
+    svg.appendChild(rBk);
+    const rWh = _mkCirc(cx, cy, R, 'none', '#eeeeee', 5); rWh.setAttribute('clip-path', `url(#${idR})`);
+    _anim(rWh, { attributeName: 'stroke-width', values: '4;7;4', dur: '2s', repeatCount: 'indefinite' });
+    _anim(rWh, { attributeName: 'opacity', values: '0.8;1;0.8', dur: '1.4s', repeatCount: 'indefinite' });
+    svg.appendChild(rWh);
+
+    // ── Separator line ────────────────────────────────────────────────────────
+    svg.appendChild(_mkEl('line', { x1: cx, y1: cy - R - 2, x2: cx, y2: cy + R + 2, stroke: '#88888844', 'stroke-width': 1 }));
+
+    // ── 8 floating star ornaments — scaled so they don't overflow small avatars
+    const starDist = R + Math.round(16 * ext);
+    const starSize = Math.max(2, Math.round(4 * ext));
     for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2, ox = cx + Math.cos(a) * (R + 16), oy = cy + Math.sin(a) * (R + 16);
-      const star = _mkEl('polygon', { points: _yyStarPts(ox, oy, 4, 4, 1.8), fill: i % 2 === 0 ? '#fff' : '#c4b5fd', opacity: '0.7' });
-      const delay = (i * 0.25).toFixed(2);
-      _anim(star, { attributeName: 'opacity', values: '0.3;1;0.3', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
-      _atAnim(star, { attributeName: 'transform', type: 'scale', additive: 'sum', values: '1;1.4;1', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite', 'transform-origin': `${ox} ${oy}` });
+      const a = (i / 8) * Math.PI * 2;
+      const ox = cx + Math.cos(a) * starDist, oy = cy + Math.sin(a) * starDist;
+      const col = i % 2 === 0 ? '#ffffff' : '#cccccc';
+      const star = _mkEl('polygon', { points: _yyStarPts(ox, oy, 4, starSize, starSize * 0.42), fill: col, opacity: '0.85' });
+      const delay = (i * 0.3).toFixed(2);
+      _anim(star, { attributeName: 'opacity', values: '0.2;1;0.2', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
+      _anim(star, { attributeName: 'r', values: `${starSize*0.8};${starSize*1.3};${starSize*0.8}`, dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
       svg.appendChild(star);
     }
+
+    // ── 4 bright diamond sparks at cardinal points ────────────────────────────
+    const sparkDist = R + Math.round(4 * ext);
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+      const ox = cx + Math.cos(a) * sparkDist, oy = cy + Math.sin(a) * sparkDist;
+      const sp = _mkEl('polygon', { points: `${ox},${oy-3*ext} ${ox+2*ext},${oy} ${ox},${oy+3*ext} ${ox-2*ext},${oy}`, fill: '#ffffff', opacity: '0.9' });
+      _anim(sp, { attributeName: 'opacity', values: '0;1;0', dur: '1.5s', begin: `${(i*0.38).toFixed(2)}s`, repeatCount: 'indefinite' });
+      svg.appendChild(sp);
+    }
+
     return svg;
   }
 
@@ -518,8 +536,8 @@
     // big flash
     let flash = document.getElementById('geFlash');
     if (!flash) { flash = document.createElement('div'); flash.id = 'geFlash'; flash.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0;'; document.body.appendChild(flash); }
-    flash.style.background = '#c4b5fd'; flash.style.transition = 'none'; flash.style.opacity = '0.9';
-    setTimeout(() => { flash.style.transition = 'opacity .8s ease-out'; flash.style.opacity = '0'; }, 100);
+    flash.style.background = '#ffffff'; flash.style.transition = 'none'; flash.style.opacity = '0.85';
+    setTimeout(() => { flash.style.transition = 'opacity .9s ease-out'; flash.style.opacity = '0'; }, 100);
 
     // overlay
     const ov = document.createElement('div');
@@ -527,7 +545,7 @@
 
     // light beam behind symbol
     const beam = document.createElement('div');
-    beam.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(196,181,253,.12),transparent 70%);animation:geYYBeam 2s .8s ease-in-out infinite;pointer-events:none';
+    beam.style.cssText = 'position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(255,255,255,.1),transparent 70%);animation:geYYBeam 2s .8s ease-in-out infinite;pointer-events:none';
     ov.appendChild(beam);
 
     // star dust burst
