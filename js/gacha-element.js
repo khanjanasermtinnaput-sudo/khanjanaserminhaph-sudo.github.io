@@ -8,16 +8,16 @@
       rarityTh: 'ธรรมดา',    rate: 70,
       c: { ring: '#c8932a', ring2: '#8B6914', glow: '#e8c56a', text: '#fde68a', bg: '#2d1f08' } },
     { id: 'water',     name: 'AQUA น้ำ',    emoji: '💧', rarity: 'Uncommon',
-      rarityTh: 'หายากกลาง', rate: 12.5,
+      rarityTh: 'หายากกลาง', rate: 14,
       c: { ring: '#38bdf8', ring2: '#0ea5e9', glow: '#7dd3fc', text: '#e0f2fe', bg: '#082030' } },
     { id: 'wind',      name: 'ZEPHYR ลม',   emoji: '🌀', rarity: 'Uncommon',
-      rarityTh: 'หายากกลาง', rate: 12.5,
+      rarityTh: 'หายากกลาง', rate: 14,
       c: { ring: '#34d399', ring2: '#10b981', glow: '#6ee7b7', text: '#d1fae5', bg: '#062018' } },
     { id: 'fire',      name: 'IGNIS ไฟ',    emoji: '🔥', rarity: 'Mythic',
-      rarityTh: 'มิธิก',     rate: 2.45,
+      rarityTh: 'มิธิก',     rate: 0.95,
       c: { ring: '#f97316', ring2: '#dc2626', glow: '#fb923c', text: '#fed7aa', bg: '#2d0f04' } },
     { id: 'lightning', name: 'VOLT สายฟ้า', emoji: '⚡', rarity: 'Mythic',
-      rarityTh: 'มิธิก',     rate: 2.45,
+      rarityTh: 'มิธิก',     rate: 0.95,
       c: { ring: '#fbbf24', ring2: '#f59e0b', glow: '#fde68a', text: '#fef9c3', bg: '#201800' } },
     { id: 'yinyang',   name: 'YIN YANG',    emoji: '☯️', rarity: 'Secret',
       rarityTh: 'ซีเคร็ต',   rate: 0.1,
@@ -811,10 +811,10 @@
           </div>
           <div style="margin-top:14px;padding:10px 12px;background:rgba(0,0,0,.15);border-radius:10px;font-size:.7rem;color:var(--muted);line-height:2.2;text-align:center">
             <span style="color:#c8932a">🌍 70%</span> ดิน &nbsp;·&nbsp;
-            <span style="color:#38bdf8">💧 12.5%</span> น้ำ &nbsp;·&nbsp;
-            <span style="color:#34d399">🌀 12.5%</span> ลม &nbsp;·&nbsp;
-            <span style="color:#f97316">🔥 2.45%</span> ไฟ &nbsp;·&nbsp;
-            <span style="color:#fbbf24">⚡ 2.45%</span> สายฟ้า &nbsp;·&nbsp;
+            <span style="color:#38bdf8">💧 14%</span> น้ำ &nbsp;·&nbsp;
+            <span style="color:#34d399">🌀 14%</span> ลม &nbsp;·&nbsp;
+            <span style="color:#f97316">🔥 0.95%</span> ไฟ &nbsp;·&nbsp;
+            <span style="color:#fbbf24">⚡ 0.95%</span> สายฟ้า &nbsp;·&nbsp;
             <span style="color:#c4b5fd">☯️ 0.1%</span> YIN YANG
           </div>
         </div>
