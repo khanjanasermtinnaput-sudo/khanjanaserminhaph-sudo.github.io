@@ -176,7 +176,7 @@ async function renderProfileMailbox() {
     const items = await dbGetMailbox(currentUser.id);
     if (!items || items.length === 0) { card.style.display = 'none'; return; }
     card.style.display = '';
-    const typeLabel = { coins:'🪙 เหรียญ', elo:'📈 ELO', gacha_frame:'🖼️ Gacha Frame', gacha_emoji:'😎 Emoji' };
+    const typeLabel = { coins:'🪙 เหรียญ', elo:'📈 ELO', gacha_frame:'🖼️ Gacha Frame', gacha_emoji:'😎 Emoji', gacha_element:'✦ Element' };
     list.innerHTML = items.map(item => `
       <div class="mailbox-item">
         <div class="mailbox-item-icon">${typeLabel[item.item_type]?.split(' ')[0] || '🎁'}</div>
@@ -194,6 +194,7 @@ async function claimMailItemProfile(mailId, btn) {
   await claimMailItem(mailId);
   await renderProfileMailbox();
   await renderProfile();
+  if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
 }
 
 // ═══════════════════════════════════════════════════════════
