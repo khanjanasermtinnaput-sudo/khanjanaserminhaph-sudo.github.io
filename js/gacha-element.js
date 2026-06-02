@@ -54,6 +54,10 @@
 .ge-badge{font-family:'Press Start 2P',monospace;font-size:6px;padding:3px 8px;border-radius:4px;display:inline-block;margin-bottom:4px}
 .ge-badge-secret{background:#1a0a2e;color:#c4b5fd;border:2px solid #7c3aed;animation:geBadgePulse 1.5s ease-in-out infinite}
 .ge-badge-mythic{background:#1a0a00}
+.ge-pull-btn-10{background:linear-gradient(180deg,#7c3aed,#5b21b6)!important;box-shadow:0 6px 0 #3b0764,0 8px 20px #7c3aed44,inset 0 1px 0 rgba(255,255,255,.3)!important}
+.ge-pull-btn-10:hover{box-shadow:0 8px 0 #3b0764,0 12px 28px #7c3aed55,inset 0 1px 0 rgba(255,255,255,.3)!important}
+.ge-coin-bal{text-align:center;padding:8px 12px;background:rgba(251,191,36,.07);border:1px solid rgba(251,191,36,.2);border-radius:10px;font-size:.82rem;font-weight:700;color:#fbbf24;margin-bottom:14px}
+.ge-r10-card{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:10px;opacity:0;animation:gePopIn .4s cubic-bezier(.34,1.56,.64,1) forwards}
     `;
     document.head.appendChild(s);
   }());
@@ -553,34 +557,129 @@
     }
   }
 
+  // ── Coin helpers ──────────────────────────────────────────────────────────────
+  function _geEffectiveCoins() {
+    if (typeof currentUser === 'undefined' || !currentUser) return 0;
+    if (typeof getEffectiveCoins === 'function') return getEffectiveCoins(currentUser.id);
+    const pl = (typeof db !== 'undefined') && db.players && db.players.find(x => x.id === currentUser.id);
+    return pl ? (pl.coins || 0) : 0;
+  }
+  async function _geSpendCoins(cost) {
+    if (typeof dbAddCoins === 'function') {
+      await dbAddCoins(currentUser.id, -cost);
+    } else {
+      if (typeof _setLsCoins === 'function') _setLsCoins(currentUser.id, _geEffectiveCoins() - cost);
+    }
+  }
+  function _geUpdateCoinBal() {
+    const el = document.getElementById('geCoinBal');
+    if (!el) return;
+    const coins = _geEffectiveCoins();
+    const loggedIn = typeof currentUser !== 'undefined' && currentUser;
+    el.textContent = loggedIn ? `🪙 ${coins} เหรียญ` : '🪙 กรุณาเข้าสู่ระบบ';
+    const b1 = document.getElementById('gePullBtn'), b10 = document.getElementById('gePull10Btn');
+    if (b1)  b1.disabled  = !loggedIn || coins < 5  || gachaState.pulling;
+    if (b10) b10.disabled = !loggedIn || coins < 50 || gachaState.pulling;
+  }
+
+  // ── x10 result grid ───────────────────────────────────────────────────────────
+  function _geShowResults10(results) {
+    const idle = document.getElementById('geIdle');
+    const result = document.getElementById('geResult');
+    const ez = document.getElementById('geEquipZone');
+    if (idle) idle.style.display = 'none';
+    if (ez) ez.style.display = 'none';
+    if (!result) return;
+
+    const rarityRank = { Secret: 0, Mythic: 1, Uncommon: 2, Common: 3 };
+    const best = [...results].sort((a, b) => rarityRank[a.rarity] - rarityRank[b.rarity])[0];
+    _geBurst(best);
+    let flash = document.getElementById('geFlash');
+    if (!flash) { flash = document.createElement('div'); flash.id = 'geFlash'; flash.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:0;'; document.body.appendChild(flash); }
+    flash.style.background = best.c.glow; flash.style.transition = 'none'; flash.style.opacity = '0.5';
+    setTimeout(() => { flash.style.transition = 'opacity .7s ease-out'; flash.style.opacity = '0'; }, 80);
+
+    result.style.display = 'block';
+    result.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%">
+        ${results.map((el, i) => {
+          const rc = el.rarity === 'Secret' ? '#c4b5fd' : el.rarity === 'Mythic' ? el.c.glow : el.c.text === 'split' ? '#c4b5fd' : el.c.text;
+          const isBest = el === best;
+          return `<div class="ge-r10-card" style="background:${el.c.bg};border:1px solid ${el.c.ring}${isBest ? '' : '44'};${isBest ? `box-shadow:0 0 10px ${el.c.glow}66;` : ''}animation-delay:${(i * 0.06).toFixed(2)}s" id="geR10C_${i}">
+            <div style="position:relative;width:56px;height:56px;flex-shrink:0" id="geR10F_${i}">
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:${el.c.bg};display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">${el.emoji}</div>
+            </div>
+            <div style="font-size:.58rem;font-weight:700;color:${rc};text-align:center;line-height:1.3;word-break:break-word">${el.name}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="margin-top:10px;text-align:center;font-size:.72rem;color:var(--muted)">
+        Best: <span style="color:${best.c.glow};font-weight:700">${best.name}</span>
+        ${best.rarity !== 'Common' ? `<span style="color:${best.c.glow}"> · ${best.rarityTh}</span>` : ''}
+      </div>`;
+
+    requestAnimationFrame(() => {
+      results.forEach((el, i) => {
+        const wrap = document.getElementById(`geR10F_${i}`);
+        if (!wrap || wrap.querySelector('svg')) return;
+        const svgF = renderElementFrame(el.id, 56);
+        if (svgF) wrap.appendChild(svgF);
+      });
+    });
+  }
+
   // ── Pull ──────────────────────────────────────────────────────────────────────
-  async function _pull() {
+  async function _pull(count) {
+    const n = (count === 10) ? 10 : 1;
+    const cost = n * 5;
     if (gachaState.pulling) return;
+
+    if (typeof currentUser === 'undefined' || !currentUser) {
+      if (typeof toast === 'function') toast('กรุณาเข้าสู่ระบบก่อน', 'error');
+      return;
+    }
+    if (_geEffectiveCoins() < cost) {
+      if (typeof toast === 'function') toast(`เหรียญไม่พอ (ต้องการ ${cost}🪙)`, 'error');
+      return;
+    }
+
     gachaState.pulling = true;
-    const btn = document.getElementById('gePullBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    const b1 = document.getElementById('gePullBtn'), b10 = document.getElementById('gePull10Btn');
+    if (b1)  { b1.disabled = true;  b1.textContent  = '...'; }
+    if (b10) { b10.disabled = true; b10.textContent = '...'; }
 
     await new Promise(r => setTimeout(r, 300));
 
-    const el = _gachaRoll();
+    // Deduct coins
+    try { await _geSpendCoins(cost); } catch (e) {}
 
-    if (typeof currentUser !== 'undefined' && currentUser) {
-      const pid = currentUser.id;
-      const inv = _geGetInventory(pid);
-      if (!inv.includes(el.id)) inv.push(el.id);
-      const d = _geGetData(pid);
-      if (!d.equippedElement) {
-        _geSetData(pid, { elementInventory: JSON.stringify(inv), equippedElement: el.id, element: el.id });
-      } else {
-        _geSetData(pid, { elementInventory: JSON.stringify(inv) });
-      }
+    // Roll
+    const results = [];
+    for (let i = 0; i < n; i++) results.push(_gachaRoll());
+
+    // Save inventory
+    const pid = currentUser.id;
+    const inv = _geGetInventory(pid);
+    results.forEach(el => { if (!inv.includes(el.id)) inv.push(el.id); });
+    const d = _geGetData(pid);
+    if (!d.equippedElement) {
+      const first = results[0];
+      _geSetData(pid, { elementInventory: JSON.stringify(inv), equippedElement: first.id, element: first.id });
+    } else {
+      _geSetData(pid, { elementInventory: JSON.stringify(inv) });
     }
 
-    _geShowResult(el);
+    if (n === 1) {
+      _geShowResult(results[0]);
+    } else {
+      _geShowResults10(results);
+    }
 
-    await new Promise(r => setTimeout(r, 600));
-    if (btn) { btn.disabled = false; btn.textContent = '⚡ PULL !'; }
+    await new Promise(r => setTimeout(r, n === 1 ? 600 : 800));
+    if (b1)  { b1.disabled  = false; b1.textContent  = '⚡ PULL x1 (5🪙)'; }
+    if (b10) { b10.disabled = false; b10.textContent = '✦ PULL x10 (50🪙)'; }
     gachaState.pulling = false;
+    _geUpdateCoinBal();
     _geRenderInventory();
   }
 
@@ -629,7 +728,11 @@
             <div id="geResult" style="display:none;flex-direction:column;align-items:center;gap:16px"></div>
           </div>
           <div id="geEquipZone" style="display:none;margin-bottom:14px;padding:12px;background:rgba(168,85,247,.06);border:1px solid rgba(168,85,247,.2);border-radius:12px;text-align:center"></div>
-          <button class="ge-pull-btn" id="gePullBtn" onclick="window.gachaPull()">⚡ PULL !</button>
+          <div class="ge-coin-bal" id="geCoinBal">🪙 — เหรียญ</div>
+          <div style="display:flex;gap:8px;margin-bottom:4px">
+            <button class="ge-pull-btn" id="gePullBtn" onclick="window.gachaPull(1)" style="flex:1;font-size:16px">⚡ PULL x1 (5🪙)</button>
+            <button class="ge-pull-btn ge-pull-btn-10" id="gePull10Btn" onclick="window.gachaPull(10)" style="flex:1;font-size:16px">✦ PULL x10 (50🪙)</button>
+          </div>
           <div style="margin-top:14px;padding:10px 12px;background:rgba(0,0,0,.15);border-radius:10px;font-size:.7rem;color:var(--muted);line-height:2.2;text-align:center">
             <span style="color:#c8932a">🌍 70%</span> ดิน &nbsp;·&nbsp;
             <span style="color:#38bdf8">💧 12.5%</span> น้ำ &nbsp;·&nbsp;
@@ -645,6 +748,7 @@
         </div>
       </main>`;
     }
+    _geUpdateCoinBal();
     _geRenderInventory();
   }
 
@@ -743,7 +847,7 @@
   }());
 
   // ── Public API ────────────────────────────────────────────────────────────────
-  window.gachaPull       = _pull;
+  window.gachaPull       = (n) => _pull(n);
   window.geEquip         = _geEquip;
   window.geEquipFromPull = _geEquipFromPull;
   window.geToggleEmoji   = _geToggleEmoji;
