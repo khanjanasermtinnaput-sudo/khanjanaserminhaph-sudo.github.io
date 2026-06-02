@@ -847,17 +847,52 @@
       const p = data[i];
       if (!p) return;
       const av = row.querySelector('.lb-rav');
-      if (!av || av.dataset.geInject) return;
-      av.dataset.geInject = '1';
       const d = _geGetData(p.id);
-      if (!d.equippedElement) return;
-      const svgF = renderElementFrame(d.equippedElement, 34);
-      if (svgF) av.appendChild(svgF);
+      if (av && !av.dataset.geInject) {
+        av.dataset.geInject = '1';
+        if (d.equippedElement) {
+          const svgF = renderElementFrame(d.equippedElement, 34);
+          if (svgF) av.appendChild(svgF);
+        }
+      }
+      // YinYang holders: name glow + glittering sparkles across the whole row strip
       if (d.equippedElement === 'yinyang') {
-        const nameEl = row.querySelector('.lb-name');
+        const nameEl = row.querySelector('.lb-rn');
         if (nameEl) nameEl.classList.add('ge-yy-name-glow');
+        if (!row.dataset.geSparkle) {
+          row.dataset.geSparkle = '1';
+          _geAddRowSparkles(row);
+        }
       }
     });
+  }
+
+  // ── Glittering star sparkles across a leaderboard row strip (SVG SMIL) ────────
+  function _geAddRowSparkles(row) {
+    const w = row.clientWidth || 320, h = row.clientHeight || 60;
+    const svg = _mkEl('svg', { viewBox: `0 0 ${w} ${h}`, preserveAspectRatio: 'none' });
+    svg.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:hidden;';
+    const N = Math.max(8, Math.round(w / 26));
+    for (let i = 0; i < N; i++) {
+      const x = Math.round((i + 0.5) / N * w + (Math.random() - 0.5) * 14);
+      const y = Math.round(6 + Math.random() * (h - 12));
+      const sz = 1.4 + Math.random() * 2.2;
+      const big = _yyStarPts(x, y, 4, sz, sz * 0.4);
+      const tiny = _yyStarPts(x, y, 4, sz * 0.15, sz * 0.06);
+      const star = _mkEl('polygon', { points: big, fill: i % 2 === 0 ? '#ffffff' : '#c4b5fd', opacity: '0' });
+      const dur = (1.4 + Math.random() * 1.6).toFixed(2);
+      const begin = (Math.random() * 2.2).toFixed(2);
+      _anim(star, { attributeName: 'opacity', values: '0;0.9;0', dur: `${dur}s`, begin: `${begin}s`, repeatCount: 'indefinite' });
+      _anim(star, { attributeName: 'points', values: `${tiny};${big};${tiny}`, dur: `${dur}s`, begin: `${begin}s`, repeatCount: 'indefinite' });
+      svg.appendChild(star);
+    }
+    // keep row content above the sparkle layer
+    Array.from(row.children).forEach(ch => {
+      if (ch === svg) return;
+      if (!ch.style.position || ch.style.position === 'static') ch.style.position = 'relative';
+      ch.style.zIndex = '1';
+    });
+    row.insertBefore(svg, row.firstChild);
   }
 
   function _geInjectPodiumFrames() {
@@ -1026,6 +1061,32 @@
       });
     };
   }());
+
+  // openPlayerProfile: inject element frame into the player profile popup (.pp2-av)
+  (function () {
+    const orig = typeof openPlayerProfile === 'function' ? openPlayerProfile : null;
+    if (!orig) return;
+    openPlayerProfile = function (playerId) {
+      orig(playerId);
+      setTimeout(() => _geInjectPlayerSheetFrame(playerId), 120);
+    };
+  }());
+
+  function _geInjectPlayerSheetFrame(playerId) {
+    const sheet = document.getElementById('ppSheet2');
+    if (!sheet) return;
+    const av = sheet.querySelector('.pp2-av');
+    if (!av || av.dataset.geInject) return;
+    av.dataset.geInject = '1';
+    const d = _geGetData(playerId);
+    if (!d.equippedElement) return;
+    const svgF = renderElementFrame(d.equippedElement, 76);
+    if (svgF) av.appendChild(svgF);
+    if (d.equippedElement === 'yinyang') {
+      const nameEl = sheet.querySelector('.pp2-name');
+      if (nameEl) nameEl.classList.add('ge-yy-name-glow');
+    }
+  }
 
   // ── Admin grant (called by mailbox claimMailItem for gacha_element type) ─────
   function _geAdminGrant(pid, elementId) {
