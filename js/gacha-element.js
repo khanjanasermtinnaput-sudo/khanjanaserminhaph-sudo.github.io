@@ -763,8 +763,9 @@
     if (typeof currentUser === 'undefined' || !currentUser) return;
     _geSetData(currentUser.id, { equippedElement: elId, element: elId });
     _geRenderInventory();
+    _geRenderProfileInventory();
     if (typeof renderLeaderboard === 'function') renderLeaderboard();
-    else if (typeof renderProfile === 'function') renderProfile();
+    if (typeof renderProfile === 'function') renderProfile();
   }
 
   function _geEquipFromPull(elId) {
@@ -874,6 +875,87 @@
     }
   }
 
+  // ── Profile Element inventory ─────────────────────────────────────────────────
+  function _geRenderProfileInventory() {
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    const pid  = currentUser.id;
+    const card = document.getElementById('geProfileElementCard');
+    const box  = document.getElementById('geProfileInvBox');
+    if (!card || !box) return;
+
+    const inv = _geGetInventory(pid);
+    const d   = _geGetData(pid);
+    const equipped = d.equippedElement || null;
+
+    if (!inv.length) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = '';
+
+    // Equipped element — large showcase
+    let equippedHtml = '';
+    if (equipped) {
+      const el = GACHA_ELEMENTS.find(e => e.id === equipped);
+      if (el) {
+        const rc = el.rarity === 'Secret' ? '#c4b5fd' : el.rarity === 'Mythic' ? el.c.glow : el.c.text === 'split' ? '#c4b5fd' : el.c.text;
+        equippedHtml = `
+          <div style="display:flex;align-items:center;gap:14px;padding:10px;background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.25);border-radius:14px;margin-bottom:14px">
+            <div style="position:relative;width:72px;height:72px;flex-shrink:0" id="geProf_eq_wrap">
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:54px;height:54px;border-radius:50%;background:${el.c.bg};display:flex;align-items:center;justify-content:center;font-size:26px;z-index:2">${el.emoji}</div>
+            </div>
+            <div>
+              <div style="font-size:0.65rem;font-family:'Press Start 2P',monospace;color:#a78bfa;letter-spacing:3px;margin-bottom:4px">EQUIPPED</div>
+              <div style="font-family:'Fredoka One',cursive;font-size:1.1rem;color:${rc};letter-spacing:1px">${el.name}</div>
+              <div style="font-size:0.68rem;color:${el.c.glow};margin-top:2px">— ${el.rarityTh} · ${el.rate}% —</div>
+            </div>
+          </div>`;
+      }
+    }
+
+    // All collected — grid
+    const gridItems = inv.map((elId, i) => {
+      const el = GACHA_ELEMENTS.find(e => e.id === elId);
+      if (!el) return '';
+      const isEq = equipped === elId;
+      const rc = el.rarity === 'Secret' ? '#c4b5fd' : el.rarity === 'Mythic' ? el.c.glow : el.c.text === 'split' ? '#c4b5fd' : el.c.text;
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:12px;border:1px solid ${isEq ? 'rgba(168,85,247,0.6)' : 'rgba(168,85,247,0.15)'};background:${isEq ? 'rgba(168,85,247,0.1)' : 'rgba(0,0,0,0.12)'};cursor:pointer;transition:all .2s" onclick="window.geEquip('${elId}')" title="${el.name}">
+        <div style="position:relative;width:56px;height:56px;flex-shrink:0" id="geProf_grid_${i}">
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:40px;height:40px;border-radius:50%;background:${el.c.bg};display:flex;align-items:center;justify-content:center;font-size:18px;z-index:2">${el.emoji}</div>
+        </div>
+        <div style="font-size:0.6rem;font-weight:700;color:${rc};text-align:center;line-height:1.3;word-break:break-word">${el.name}</div>
+        ${isEq ? '<div style="font-size:0.55rem;color:#a78bfa;font-family:\'Press Start 2P\',monospace">✓</div>' : ''}
+      </div>`;
+    }).join('');
+
+    const title = inv.length > 0
+      ? `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:8px;font-weight:600">📦 ${inv.length} Element ในคลัง — แตะเพื่อ Equip</div>`
+      : '';
+
+    box.innerHTML = equippedHtml + title +
+      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px" id="geProf_grid">${gridItems}</div>`;
+
+    // Inject SVG frames
+    requestAnimationFrame(() => {
+      // Equipped showcase frame
+      if (equipped) {
+        const ew = document.getElementById('geProf_eq_wrap');
+        if (ew && !ew.querySelector('svg')) {
+          const svgF = renderElementFrame(equipped, 72);
+          if (svgF) ew.appendChild(svgF);
+        }
+      }
+      // Grid frames
+      inv.forEach((elId, i) => {
+        const w = document.getElementById(`geProf_grid_${i}`);
+        if (!w || w.querySelector('svg')) return;
+        const svgF = renderElementFrame(elId, 56);
+        if (svgF) w.appendChild(svgF);
+      });
+    });
+  }
+  window._geRenderProfileInventory = _geRenderProfileInventory;
+
   // ── Monkey-patches (run immediately — all scripts already loaded) ─────────────
 
   // showSection: handle 'gacha' tab + activate nav button
@@ -911,13 +993,16 @@
     };
   }());
 
-  // renderProfile: inject frame after profile card HTML is set
+  // renderProfile: inject frame + render element inventory
   (function () {
     const orig = typeof renderProfile === 'function' ? renderProfile : null;
     if (!orig) return;
     renderProfile = async function () {
       await orig();
-      requestAnimationFrame(_geInjectProfileFrame);
+      requestAnimationFrame(() => {
+        _geInjectProfileFrame();
+        _geRenderProfileInventory();
+      });
     };
   }());
 
