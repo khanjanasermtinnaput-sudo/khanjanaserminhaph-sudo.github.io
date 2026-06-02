@@ -89,8 +89,14 @@ async function renderLeaderboard() {
 
 let lbAllPlayers = [];
 function lbFilterBoard(q) {
-  const filtered = q ? lbAllPlayers.filter(p => p.name.toLowerCase().includes(q.toLowerCase())) : lbAllPlayers;
-  lbRenderBoard(filtered, false);
+  // Filter in place by toggling row visibility instead of rebuilding every row's
+  // heavy HTML (gacha frames / SVG badges / crowns) on each keystroke.
+  const term = (q || '').trim().toLowerCase();
+  const list = document.getElementById('lbBoardList');
+  if (!list) return;
+  for (const row of list.children) {
+    row.style.display = (!term || (row.dataset.name || '').includes(term)) ? '' : 'none';
+  }
 }
 
 // คืน HTML badge สำหรับแถวใน Leaderboard
@@ -144,6 +150,7 @@ function lbRenderBoard(data, animate = true) {
     const isKingThrone = (globalPos === 1 && rank.id === 'king');
     const row = document.createElement('div');
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
+    row.dataset.name = p.name.toLowerCase();   // for in-place search filtering (no DOM rebuild)
     row.style.animationDelay = (i * .06) + 's';
     const _hasArcs = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     const _presenceDotCls = p.lastSeen && (Date.now() - p.lastSeen) / 60000 <= 3 ? 'online' : 'offline';
