@@ -522,14 +522,17 @@ function _buildRankingChartInner(playerId, rangeDays) {
   // Walk backwards from current pts to reconstruct the forward score timeline
   let walk = p.pts;
   const after = []; // pts AFTER each match, in forward order
+  const wins = [];  // true = win, false = loss for each match (forward order)
   [...playerMatches].reverse().forEach(m => {
-    after.unshift(walk);
     const inA = m.teamA.some(x => x.id === playerId);
     const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+    after.unshift(walk);
+    wins.unshift(win);
     walk = win ? Math.max(0, walk - (m.pts?.gain || 0)) : Math.min(walk + (m.pts?.loss || 0), 9999);
   });
-  const fullSeries = [walk, ...after];                                       // index 0 = before first match
-  const fullDates  = [null, ...playerMatches.map(m => new Date(m.date || m.played_at))];
+  const fullSeries  = [walk, ...after];  // index 0 = before first match
+  const fullDates   = [null, ...playerMatches.map(m => new Date(m.date || m.played_at))];
+  const fullResults = [null, ...wins];   // null = starting point, else true/false
   const N = fullSeries.length;
 
   // Default range: focus on the last 30 days when there is enough recent data
@@ -542,7 +545,7 @@ function _buildRankingChartInner(playerId, rangeDays) {
   const toggle = _rkRangeToggle(playerId, rangeDays);
 
   // Slice to the selected window (keep one anchor point just before it)
-  let series = fullSeries, dates = fullDates;
+  let series = fullSeries, dates = fullDates, matchResults = fullResults;
   if (rangeDays > 0) {
     const cut = Date.now() - rangeDays * 86400000;
     let startIdx = -1;
@@ -550,27 +553,11 @@ function _buildRankingChartInner(playerId, rangeDays) {
     if (startIdx === -1)
       return toggle + _msg(_lang === 'en' ? 'No matches in this period' : 'ไม่มีแมตช์ในช่วงนี้');
     const from = Math.max(0, startIdx - 1);
-    series = fullSeries.slice(from);
-    dates  = fullDates.slice(from);
+    series       = fullSeries.slice(from);
+    dates        = fullDates.slice(from);
+    matchResults = fullResults.slice(from);
   }
 
-  // Collapse multiple matches on the same calendar day into one point (the
-  // last result of that day) so a busy session shows as one clean step
-  // instead of a jagged near-vertical zig-zag.
-  {
-    const bS = [series[0]], bD = [dates[0]];
-    for (let i = 1; i < series.length; i++) {
-      const d = dates[i], prev = bD[bD.length - 1];
-      if (bS.length > 1 && d && prev && d.toDateString() === prev.toDateString()) {
-        bS[bS.length - 1] = series[i];
-        bD[bD.length - 1] = d;
-      } else {
-        bS.push(series[i]);
-        bD.push(d);
-      }
-    }
-    series = bS; dates = bD;
-  }
   const n = series.length;
   if (n < 2)
     return toggle + _msg(_lang === 'en' ? 'Not enough data in this period' : 'ข้อมูลในช่วงนี้ไม่พอแสดงกราฟ');
@@ -601,12 +588,8 @@ function _buildRankingChartInner(playerId, rangeDays) {
   const toX = i => padL + (i / (n - 1)) * chartW;
   const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
 
-  // Smooth, overshoot-free line (monotone cubic) — falls back to straight
-  // segments if the shared helper from stats.js isn't loaded.
-  const xy = series.map((v, i) => ({ x: toX(i), y: toY(v) }));
-  const pathD = (typeof _srMonotone === 'function')
-    ? _srMonotone(xy)
-    : 'M' + series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' L');
+  // Straight segments so every win (up) and loss (down) is visible as a distinct step
+  const pathD = 'M' + series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' L');
 
   // Area fill below the line
   const lx = toX(n - 1).toFixed(1), ly = toY(curPts).toFixed(1);
@@ -641,10 +624,13 @@ function _buildRankingChartInner(playerId, rangeDays) {
     return `<text x="${toX(i).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.3)" font-size="8" text-anchor="middle" font-family="Rajdhani,sans-serif">${label}</text>`;
   }).join('');
 
-  // Dots at each data point
+  // Dots at each data point — green = win, red = loss, gold = peak
   const dotsSVG = series.map((v, i) => {
     const isPeak = i === peakIdx;
-    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="${isPeak ? 4 : 2.3}" fill="${isPeak ? '#ffd700' : lineColor}" opacity="${isPeak ? 1 : 0.55}"/>`;
+    const res = matchResults[i];
+    const dotColor = isPeak ? '#ffd700' : res === true ? '#00f5a0' : res === false ? '#ff4757' : 'rgba(255,255,255,0.4)';
+    const r = isPeak ? 4.5 : (res !== null ? 3 : 2);
+    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="${r}" fill="${dotColor}" opacity="${isPeak ? 1 : 0.85}"/>`;
   }).join('');
 
   return `
@@ -688,6 +674,11 @@ function _buildRankingChartInner(playerId, rangeDays) {
       <div style="margin-left:auto;font-family:'Rajdhani';font-size:0.95rem;font-weight:700;color:${lineColor}">
         ${improving ? '▲ +' : '▼ '}${delta} pts
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#00f5a0;display:inline-block"></span>${_lang==='en'?'Win':'ชนะ'}</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#ff4757;display:inline-block"></span>${_lang==='en'?'Loss':'แพ้'}</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#ffd700;display:inline-block"></span>${_lang==='en'?'Peak':'สูงสุด'}</div>
     </div>
   </div>`;
 }
