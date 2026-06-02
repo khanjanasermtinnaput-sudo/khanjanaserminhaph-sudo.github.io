@@ -97,8 +97,8 @@
     return _mkEl('circle', { cx, cy, r, fill, stroke, 'stroke-width': sw });
   }
   function _mkRoot(W) {
-    const s = _mkEl('svg', { width: W, height: W, viewBox: `0 0 ${W} ${W}` });
-    s.style.cssText = 'position:absolute;inset:0;z-index:3;overflow:visible;pointer-events:none;';
+    const s = _mkEl('svg', { viewBox: `0 0 ${W} ${W}` });
+    s.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;pointer-events:none;';
     return s;
   }
   function _anim(el, a) { el.appendChild(_mkEl('animate', a)); return el; }
@@ -839,7 +839,7 @@
       av.dataset.geInject = '1';
       const d = _geGetData(p.id);
       if (!d.equippedElement) return;
-      const svgF = renderElementFrame(d.equippedElement, 40);
+      const svgF = renderElementFrame(d.equippedElement, 34);
       if (svgF) av.appendChild(svgF);
     });
   }
@@ -854,7 +854,7 @@
       av.dataset.geInject = '1';
       const p = podOrder[i]; if (!p) return;
       const d = _geGetData(p.id); if (!d.equippedElement) return;
-      const svgF = renderElementFrame(d.equippedElement, 64);
+      const svgF = renderElementFrame(d.equippedElement, 52);
       if (svgF) av.appendChild(svgF);
     });
   }
@@ -867,7 +867,7 @@
     av.dataset.geInject = '1';
     const d = _geGetData(currentUser.id);
     if (!d.equippedElement) return;
-    const svgF = renderElementFrame(d.equippedElement, 130);
+    const svgF = renderElementFrame(d.equippedElement, 66);
     if (svgF) av.appendChild(svgF);
     if (d.equippedElement === 'yinyang' && d.hideEmoji) {
       av.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ''; });
