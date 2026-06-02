@@ -921,11 +921,26 @@
     };
   }());
 
+  // ── Admin grant (called by mailbox claimMailItem for gacha_element type) ─────
+  function _geAdminGrant(pid, elementId) {
+    const el = GACHA_ELEMENTS.find(e => e.id === elementId);
+    if (!el) return false;
+    const inv = _geGetInventory(pid);
+    if (!inv.includes(elementId)) inv.push(elementId);
+    const d = _geGetData(pid);
+    const patch = { elementInventory: JSON.stringify(inv) };
+    if (!d.equippedElement) { patch.equippedElement = elementId; patch.element = elementId; }
+    _geSetData(pid, patch);
+    return true;
+  }
+
   // ── Public API ────────────────────────────────────────────────────────────────
   window.gachaPull       = (n) => _pull(n);
   window.geEquip         = _geEquip;
   window.geEquipFromPull = _geEquipFromPull;
   window.geToggleEmoji   = _geToggleEmoji;
   window.gachaRenderTab  = gachaRenderTab;
+  window._geAdminGrant   = _geAdminGrant;
+  window._geElements     = GACHA_ELEMENTS;
 
 }());
