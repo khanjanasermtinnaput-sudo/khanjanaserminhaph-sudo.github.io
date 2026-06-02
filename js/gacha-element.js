@@ -44,6 +44,8 @@
 @keyframes geYYSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes geYYPulse{0%,100%{text-shadow:0 0 10px #c4b5fd,0 0 24px #7c3aed}50%{text-shadow:0 0 24px #fff,0 0 48px #c4b5fd,0 0 72px #7c3aed}}
 @keyframes geYYBeam{0%,100%{opacity:.15;transform:scaleY(1)}50%{opacity:.5;transform:scaleY(1.08)}}
+@keyframes geYYNameGlow{0%,100%{text-shadow:0 0 4px #fff,0 0 10px rgba(255,255,255,.6)}50%{text-shadow:0 0 10px #fff,0 0 22px rgba(255,255,255,.9),0 0 38px rgba(196,181,253,.55)}}
+.ge-yy-name-glow{animation:geYYNameGlow 2.5s ease-in-out infinite!important;-webkit-text-fill-color:unset!important;background-image:none!important}
 .ge-yy-overlay{position:fixed;inset:0;z-index:10000;background:radial-gradient(ellipse at center,#1a0a2e 0%,#080812 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;cursor:pointer;animation:geOvIn .5s ease-out forwards}
 .ge-yy-secret-txt{font-family:'Press Start 2P',monospace;font-size:9px;color:#a78bfa;letter-spacing:5px;opacity:0;animation:gePopIn .4s .5s ease-out forwards}
 .ge-yy-name-txt{font-family:'Fredoka One',cursive;font-size:34px;letter-spacing:4px;color:#fff;opacity:0;animation:gePopIn .4s 1.2s ease-out forwards;paint-order:stroke fill;-webkit-text-stroke:2px #0e0e1a;animation-fill-mode:both}
@@ -354,15 +356,23 @@
     // thin separator line down the middle
     const sep = _mkEl('line', { x1: cx, y1: cy - R - 2, x2: cx, y2: cy + R + 2, stroke: '#88888866', 'stroke-width': 1 });
     svg.appendChild(sep);
-    // 8 floating star ornaments — scaled with ext so they don't spill out of small rows
+    // 8 floating star ornaments — animate points (not scale) to avoid SMIL distortion
     const starDist = R + Math.round(16 * ext);
     const starSize = Math.max(2, Math.round(4 * ext));
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2, ox = cx + Math.cos(a) * starDist, oy = cy + Math.sin(a) * starDist;
-      const star = _mkEl('polygon', { points: _yyStarPts(ox, oy, 4, starSize, starSize * 0.45), fill: i % 2 === 0 ? '#fff' : '#c4b5fd', opacity: '0.7' });
-      const delay = (i * 0.25).toFixed(2);
-      _anim(star, { attributeName: 'opacity', values: '0.3;1;0.3', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
-      _atAnim(star, { attributeName: 'transform', type: 'scale', additive: 'sum', values: '1;1.4;1', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite', 'transform-origin': `${ox} ${oy}` });
+      const isWhite = i % 2 === 0;
+      const ptsBig  = _yyStarPts(ox, oy, 4, starSize,        starSize * 0.38);
+      const ptsTiny = _yyStarPts(ox, oy, 4, starSize * 0.18, starSize * 0.08);
+      const star = _mkEl('polygon', {
+        points: ptsBig,
+        fill:   isWhite ? '#ffffff' : '#111111',
+        stroke: isWhite ? '#111111' : '#eeeeee',
+        'stroke-width': 0.6, opacity: '0.85'
+      });
+      const delay = (i * 0.28).toFixed(2);
+      _anim(star, { attributeName: 'opacity', values: '0.15;1;0.15', dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
+      _anim(star, { attributeName: 'points',  values: `${ptsBig};${ptsTiny};${ptsBig}`, dur: '2s', begin: `${delay}s`, repeatCount: 'indefinite' });
       svg.appendChild(star);
     }
     return svg;
@@ -845,6 +855,10 @@
       if (!d.equippedElement) return;
       const svgF = renderElementFrame(d.equippedElement, 34);
       if (svgF) av.appendChild(svgF);
+      if (d.equippedElement === 'yinyang') {
+        const nameEl = row.querySelector('.lb-name');
+        if (nameEl) nameEl.classList.add('ge-yy-name-glow');
+      }
     });
   }
 
@@ -860,6 +874,10 @@
       const d = _geGetData(p.id); if (!d.equippedElement) return;
       const svgF = renderElementFrame(d.equippedElement, 52);
       if (svgF) av.appendChild(svgF);
+      if (d.equippedElement === 'yinyang') {
+        const nameEl = av.parentElement && av.parentElement.querySelector('.lb-pod-name');
+        if (nameEl) nameEl.classList.add('ge-yy-name-glow');
+      }
     });
   }
 
@@ -873,8 +891,10 @@
     if (!d.equippedElement) return;
     const svgF = renderElementFrame(d.equippedElement, 66);
     if (svgF) av.appendChild(svgF);
-    if (d.equippedElement === 'yinyang' && d.hideEmoji) {
-      av.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ''; });
+    if (d.equippedElement === 'yinyang') {
+      if (d.hideEmoji) av.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = ''; });
+      const nameEl = document.querySelector('#profileCard .profile-name');
+      if (nameEl) nameEl.classList.add('ge-yy-name-glow');
     }
   }
 
