@@ -74,19 +74,40 @@
     document.head.appendChild(s);
   }());
 
-  // ── localStorage helpers ───────────────────────────────────────────────────────
+  // ── localStorage + Supabase helpers ──────────────────────────────────────────
   function _geGetData(pid) {
     try { return JSON.parse(localStorage.getItem('bmt_gacha_' + pid) || '{}'); } catch (e) { return {}; }
   }
   function _geSetData(pid, patch) {
     try {
       const d = _geGetData(pid);
-      localStorage.setItem('bmt_gacha_' + pid, JSON.stringify(Object.assign({}, d, patch)));
+      const updated = Object.assign({}, d, patch);
+      localStorage.setItem('bmt_gacha_' + pid, JSON.stringify(updated));
+      // Sync elementInventory to Supabase via gacha_inventory.elements
+      if (patch.elementInventory !== undefined && typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
+        let newElems;
+        try { newElems = JSON.parse(patch.elementInventory || '[]'); } catch(e) { newElems = []; }
+        const inv = getGachaInventory(pid);
+        inv.elements = [...new Set([...(inv.elements || []), ...newElems])];
+        localStorage.setItem('bmt_gacha_inv_' + pid, JSON.stringify(inv));
+        _saveGachaInventoryToDB(pid, inv).catch(() => {});
+      }
     } catch (e) {}
   }
   function _geGetInventory(pid) {
     const d = _geGetData(pid);
-    try { return JSON.parse(d.elementInventory || '[]'); } catch (e) { return []; }
+    // Merge localStorage + Supabase (gacha_inventory.elements)
+    let ls = [];
+    try { ls = JSON.parse(d.elementInventory || '[]'); } catch(e) {}
+    const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid);
+    const dbElems = (pl && pl._dbGachaInv && pl._dbGachaInv.elements) || [];
+    const merged = [...new Set([...ls, ...dbElems])];
+    // Restore to localStorage if Supabase had more items
+    if (dbElems.length > ls.length) {
+      const upd = Object.assign({}, d, { elementInventory: JSON.stringify(merged) });
+      localStorage.setItem('bmt_gacha_' + pid, JSON.stringify(upd));
+    }
+    return merged;
   }
 
   // ── SVG helpers ───────────────────────────────────────────────────────────────

@@ -112,7 +112,9 @@ async function claimMailItem(mailId, itemType, itemValue) {
       } else if (itemType === 'gacha_element') {
         const elNames = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
         if (typeof window._geAdminGrant === 'function') window._geAdminGrant(currentUser.id, itemValue);
-        toast(`✦ รับ Element: ${elNames[itemValue] || itemValue} แล้ว!`, 'success');
+        // Also save to gacha_inventory.elements for permanent storage
+        _addToInv('elements', itemValue);
+        toast(`✦ รับ Element: ${elNames[itemValue] || itemValue} แล้ว! (เข้า Inventory ถาวรแล้ว)`, 'success');
       } else if (itemType === 'gacha_effect') {
         const pUp = db.players.find(x => x.id === currentUser.id);
         if (pUp) {
