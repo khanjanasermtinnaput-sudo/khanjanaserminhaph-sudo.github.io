@@ -146,6 +146,10 @@ async function equipGachaEffect(effectId) {
   owned.push(effectId);
   localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(owned));
   if (pl) pl.ownedEffects = owned;
+  const gInv = getGachaInventory(currentUser.id);
+  gInv.equippedEffects = owned;
+  localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(gInv));
+  _saveGachaInventoryToDB(currentUser.id, gInv);
   try { await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) }); } catch(e) {}
   await loadPlayers();
   renderGachaInventory();
@@ -159,6 +163,10 @@ async function unequipGachaEffect(effectId) {
   const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
   localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(owned));
   if (pl) pl.ownedEffects = owned;
+  const gInv = getGachaInventory(currentUser.id);
+  gInv.equippedEffects = owned;
+  localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(gInv));
+  _saveGachaInventoryToDB(currentUser.id, gInv);
   try { await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) }); } catch(e) {}
   await loadPlayers();
   renderGachaInventory();
@@ -176,12 +184,113 @@ function openGachaPull() {
   document.getElementById('gachaPullResult').innerHTML = '<div class="text-muted" style="font-size:0.82rem">กด Pull เพื่อลุ้น!</div>';
   const btn = document.getElementById('gachaPullBtn');
   if (btn) btn.disabled = coins < 2;
+  const btn10 = document.getElementById('gachaPullBtn10');
+  if (btn10) btn10.disabled = coins < 20;
   overlay.classList.add('show');
 }
 
 function closeGachaPull(e) {
   if (e && e.target !== document.getElementById('gachaPullOverlay')) return;
   document.getElementById('gachaPullOverlay').classList.remove('show');
+}
+
+// ── helper: one random roll — saves to inventory, returns result metadata ──
+async function _gachaApplyRoll() {
+  const roll = Math.random() * 100;
+  let inv = getGachaInventory(currentUser.id);
+  const invKey = 'bmt_gacha_inv_' + currentUser.id;
+
+  if (roll < 0.1) {
+    const eid = 'rotating_arcs';
+    if (!inv.effects) inv.effects = [];
+    if (!inv.effects.includes(eid)) inv.effects.push(eid);
+    inv.equippedEffects = [eid];
+    localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv);
+    localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify([eid]));
+    try { await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify([eid]) }); } catch(e) {}
+    return { type: 'secret', icon: '⚡', color: '#00d4ff', text: 'THUNDER GOD' };
+
+  } else if (roll < 3) {
+    const picks = ['void_frame','halo_frame','blaze_name','ice_name'];
+    const [val, col] = picks[Math.floor(Math.random() * picks.length)].split('_');
+    if (!inv.frames) inv.frames = [];
+    if (!inv.names) inv.names = [];
+    if (col === 'frame' && !inv.frames.includes(val)) inv.frames.push(val);
+    if (col === 'name'  && !inv.names.includes(val))  inv.names.push(val);
+    localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv);
+    const labels = { void:'🌑 Void', halo:'✨ Halo', blaze:'🔥 Blaze', ice:'❄️ Ice' };
+    return { type: 'ultra', icon: '✨', color: '#c084fc', text: `${labels[val]||val} ${col === 'frame' ? 'Frame' : 'Name'}` };
+
+  } else if (roll < 10) {
+    const frame = Math.random() < 0.5 ? 'rainbow' : 'robot';
+    if (!inv.frames) inv.frames = [];
+    if (!inv.frames.includes(frame)) inv.frames.push(frame);
+    localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv);
+    return { type: 'frame', icon: frame === 'rainbow' ? '🌈' : '⚙️', color: '#60a5fa', text: (frame === 'rainbow' ? 'Rainbow' : 'Robot') + ' Frame' };
+
+  } else if (roll < 30) {
+    const emoji = GACHA_EMOJIS[Math.floor(Math.random() * GACHA_EMOJIS.length)];
+    if (!inv.emojis) inv.emojis = [];
+    if (!inv.emojis.includes(emoji)) inv.emojis.push(emoji);
+    localStorage.setItem(invKey, JSON.stringify(inv));
+    _saveGachaInventoryToDB(currentUser.id, inv);
+    return { type: 'emoji', icon: emoji, color: '#94a3b8', text: emoji + ' Emoji' };
+
+  } else {
+    return { type: 'empty', icon: '💨', color: 'rgba(255,255,255,0.12)', text: 'ไม่ได้ของ' };
+  }
+}
+
+async function doGachaPull10() {
+  if (!currentUser) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const totalCoins = getEffectiveCoins(currentUser.id);
+  if (!pl || totalCoins < 20) { toast('เหรียญไม่พอ (ต้องการ 20🪙)', 'error'); return; }
+  const btn10 = document.getElementById('gachaPullBtn10');
+  const btn1  = document.getElementById('gachaPullBtn');
+  if (btn10) btn10.disabled = true;
+  if (btn1)  btn1.disabled  = true;
+
+  try { await dbAddCoins(currentUser.id, -20); }
+  catch(e) { _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 20); }
+  await loadPlayers();
+
+  const results = [];
+  for (let i = 0; i < 10; i++) results.push(await _gachaApplyRoll());
+
+  const resultEl = document.getElementById('gachaPullResult');
+  if (resultEl) {
+    const gridHtml = results.map(r =>
+      `<div style="border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px 2px;border:1px solid ${r.type!=='empty'?r.color:'rgba(255,255,255,0.07)'};background:${r.type!=='empty'?r.color+'18':'rgba(0,0,0,0.15)'}">
+        <div style="font-size:1.25rem;line-height:1">${r.icon}</div>
+        ${r.type!=='empty'?`<div style="font-size:0.42rem;color:${r.color};text-align:center;line-height:1.2;word-break:break-all">${r.text}</div>`:''}
+      </div>`
+    ).join('');
+    const hasSecret = results.some(r => r.type === 'secret');
+    resultEl.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;width:100%;margin-bottom:6px">${gridHtml}</div>
+      ${hasSecret ? `<div style="color:#00d4ff;font-weight:700;font-size:0.82rem;letter-spacing:.05em;animation:tgNameFlicker 1s ease-in-out infinite">⚡ THUNDER GOD ได้แล้ว!</div>` : ''}`;
+  }
+
+  const newCoins = getEffectiveCoins(currentUser.id);
+  const balEl = document.getElementById('gachaPullBalance');
+  if (balEl) balEl.textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
+  if (btn10) btn10.disabled = newCoins < 20;
+  if (btn1)  btn1.disabled  = newCoins < 2;
+  const pcEl = document.getElementById('profileCoinBalance');
+  if (pcEl) pcEl.textContent = newCoins;
+  if (typeof renderGachaInventory === 'function') renderGachaInventory();
+
+  const gotSecret = results.find(r => r.type === 'secret');
+  if (gotSecret) {
+    setTimeout(() => {
+      document.getElementById('gachaPullOverlay').classList.remove('show');
+      showThunderGodCinematic(currentUser.name);
+    }, 1800);
+  }
 }
 
 // ── Coin localStorage fallback (ใช้เมื่อ DB column ยังไม่มี) ──

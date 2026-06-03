@@ -1228,7 +1228,7 @@ loadAll = async function() {
 <div id="gachaPullOverlay" onclick="closeGachaPull(event)">
   <div class="gacha-pull-card" onclick="event.stopPropagation()">
     <div class="gacha-pull-label">GACHA PULL</div>
-    <div style="margin:8px 0;font-size:0.8rem;color:var(--muted)">ต้องใช้ <strong style="color:var(--gold)">2 🪙</strong> ต่อ 1 ครั้ง</div>
+    <div style="margin:8px 0;font-size:0.8rem;color:var(--muted)">x1 ใช้ <strong style="color:var(--gold)">2🪙</strong> &nbsp;·&nbsp; x10 ใช้ <strong style="color:var(--gold)">20🪙</strong></div>
     <div style="margin:10px 0 4px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.07);font-size:0.7rem">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 10px;background:rgba(0,180,255,0.08);border-bottom:1px solid rgba(0,200,255,0.18)">
         <span style="color:#00d4ff;font-weight:900;letter-spacing:.08em;animation:tgNameFlicker 3s ease-in-out infinite">⚡ SECRET</span>
@@ -1245,7 +1245,8 @@ loadAll = async function() {
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="closeGachaPull()">ปิด</button>
-      <button class="btn btn-primary btn-sm" style="flex:1" id="gachaPullBtn" onclick="doGachaPull()">🎰 Pull! (2🪙)</button>
+      <button class="btn btn-primary btn-sm" style="flex:1" id="gachaPullBtn" onclick="doGachaPull()">🎰 x1 (2🪙)</button>
+      <button class="btn btn-primary btn-sm" style="flex:1" id="gachaPullBtn10" onclick="doGachaPull10()">✦ x10 (20🪙)</button>
     </div>
   </div>
 </div>
