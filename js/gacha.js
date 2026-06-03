@@ -154,8 +154,8 @@ async function equipGachaName(val) {
 async function equipGachaEffect(effectId) {
   if (!currentUser) return;
   const pl = db.players.find(x => x.id === currentUser.id);
-  const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
-  owned.push(effectId);
+  // Only ONE effect can be active at a time — replace instead of append
+  const owned = [effectId];
   localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(owned));
   if (pl) pl.ownedEffects = owned;
   const gInv = getGachaInventory(currentUser.id);
