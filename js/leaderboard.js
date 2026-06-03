@@ -1,7 +1,8 @@
+let _rankUpCheckedThisSession = false;
 async function renderLeaderboard() {
   try {
     await loadAll();
-    checkSelfRankUpFromDB();
+    if (!_rankUpCheckedThisSession) { _rankUpCheckedThisSession = true; checkSelfRankUpFromDB(); }
     checkKingChange();
     const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
     if (!sorted.length) return;
@@ -59,9 +60,8 @@ async function renderLeaderboard() {
       return `<div class="lb-pc lb-glass ${cls}${isSE ? ' lb-king-throne' : ''}" style="animation-delay:${i*.12+.28}s" onclick="openPlayerProfile(${p.id})">
         <canvas class="lb-pod-canvas" id="${canvasId}"></canvas>
         <div class="lb-pod-shim"></div>
-        ${isFirst ? '<div class="lb-crown">👑</div>' : ''}
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
-        <div class="lb-pod-av ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
+        <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
         <div class="lb-pod-name ${getGachaNameClass(p)}">${p.name}</div>
         <div class="lb-pod-score" id="lbpscore${p.id}">${p.pts.toLocaleString()}</div>
         <div class="lb-pod-wins">ชนะ ${p.wins} · แพ้ ${p.losses} · ${wr}%</div>
@@ -89,19 +89,22 @@ async function renderLeaderboard() {
 
 let lbAllPlayers = [];
 function lbFilterBoard(q) {
-  const filtered = q ? lbAllPlayers.filter(p => p.name.toLowerCase().includes(q.toLowerCase())) : lbAllPlayers;
-  lbRenderBoard(filtered, false);
+  // Filter in place by toggling row visibility instead of rebuilding every row's
+  // heavy HTML (gacha frames / SVG badges / crowns) on each keystroke.
+  const term = (q || '').trim().toLowerCase();
+  const list = document.getElementById('lbBoardList');
+  if (!list) return;
+  for (const row of list.children) {
+    row.style.display = (!term || (row.dataset.name || '').includes(term)) ? '' : 'none';
+  }
 }
 
 // คืน HTML badge สำหรับแถวใน Leaderboard
-// ระบบ "ติก = โชว์": ติกใน Profile → โชว์ทั้ง Leaderboard และ Profile, ไม่ติก → ไม่โชว์
+// ระบบ "ติก = โชว์": ติกใน Profile → โชว์บน Leaderboard, ไม่ติก → ไม่โชว์
 function getPlayerLBBadges(p) {
-  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (โชว์ทุก customAch ที่มี), array = ตั้งค่าแล้ว
-  if (pinnedAchs === null || pinnedAchs === undefined) {
-    // ยังไม่เคยตั้งค่า → โชว์ customAch ทั้งหมด (default)
-    return (p.customAch || []).map(a =>
-      `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
-    ).join('');
+  const pinnedAchs = p.pinnedAchs; // null/undefined = ยังไม่เคยตั้งค่า → ไม่โชว์บน LB
+  if (!pinnedAchs || !Array.isArray(pinnedAchs) || pinnedAchs.length === 0) {
+    return ''; // ยังไม่ได้ติก → ไม่โชว์อะไรบน Leaderboard
   }
   // ตั้งค่าแล้ว: รวม built-in + customAch แล้วโชว์เฉพาะที่ติก (pinned)
   const allDefs = (typeof ACHIEVEMENTS_DEF !== 'undefined' && typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined')
@@ -144,29 +147,39 @@ function lbRenderBoard(data, animate = true) {
     const isKingThrone = (globalPos === 1 && rank.id === 'king');
     const row = document.createElement('div');
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
+    row.dataset.name = p.name.toLowerCase();   // for in-place search filtering (no DOM rebuild)
     row.style.animationDelay = (i * .06) + 's';
+    const _hasThunderGod = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
+    const _presenceDotCls = p.lastSeen && (Date.now() - p.lastSeen) / 60000 <= 3 ? 'online' : 'offline';
+    const _presenceAvatarDot = p.lastSeen ? `<span class="presence-avatar-dot ${_presenceDotCls}"></span>` : '';
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
-        <div style="position:relative;flex-shrink:0">
-          <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''}">${getGachaFrameInner(p)}${av.content}</div>
-          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?'<div style="position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:0.85rem;z-index:5;filter:drop-shadow(0 1px 4px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>':''}
+        <div style="position:relative;flex-shrink:0;isolation:isolate">
+          ${_hasThunderGod ? thunderGodAvatarHTML(av.content, 40, av.bg, av.fg) : `<div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>`}
+          ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:32px;height:32px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`:''}
+          ${_presenceAvatarDot}
         </div>
         <div>
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}</div>
-          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px"><span class="rank-badge ${rank.class}" style="font-size:0.65rem;padding:1px 6px">${getRankLabel(p.pts,p.id)}</span>${getPlayerLBBadges(p)}</div>
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>
+          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
       <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>${t('pts_col')}</small></div>
       <div class="lb-rst">${p.wins}/${p.losses}<small>${t('wl_col')}</small></div>
       <div class="lb-rst">${wp}%<small>Win rate</small></div>
-      <div class="lb-rbadge"><div class="lb-bdg">${trendBdg}</div></div>
+      <div class="lb-rbadge">${getRankBadgeSVG(p.pts,p.id,36)}</div>
     `;
     row.addEventListener('click', e => {
       lbAddRipple(row, e);
       setTimeout(() => openPlayerProfile(p.id), 120);
     });
     bl.appendChild(row);
+    // Apply ThunderCardFrame border to the row (no corner sparks — row has overflow:hidden for ripple)
+    if (_hasThunderGod) {
+      row.classList.add('tcf-active');
+      applyThunderCardFrame(row, 16, 2, false);
+    }
     const isLite = document.documentElement.getAttribute('data-style') === 'lite';
     if (animate && !isLite) {
       setTimeout(() => {
@@ -202,15 +215,35 @@ function lbCountUp(elId, target, dur = 1000) {
 }
 
 const _lbParticleRafs = {};
+const _lbParticleRO = {};   // ResizeObserver per canvas (so we can disconnect on re-init)
+const _lbParticleIO = {};   // IntersectionObserver per canvas (pause when off-screen)
 function lbParticles(id, r, g, b) {
+  // Clean up any previous instance for this canvas (avoids leaked observers/RAFs)
   if (_lbParticleRafs[id]) { cancelAnimationFrame(_lbParticleRafs[id]); delete _lbParticleRafs[id]; }
+  if (_lbParticleRO[id]) { _lbParticleRO[id].disconnect(); delete _lbParticleRO[id]; }
+  if (_lbParticleIO[id]) { _lbParticleIO[id].disconnect(); delete _lbParticleIO[id]; }
   const c = document.getElementById(id); if (!c) return;
   const ctx = c.getContext('2d'); let ps = [], W, H;
-  function resize() { const rc = c.parentElement.getBoundingClientRect(); W = c.width = rc.width; H = c.height = rc.height; }
-  resize(); new ResizeObserver(resize).observe(c.parentElement);
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);   // cap DPR — retina was rendering 4x pixels
+  function resize() {
+    const rc = c.parentElement.getBoundingClientRect();
+    W = rc.width; H = rc.height;
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+    c.style.width = W + 'px'; c.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  _lbParticleRO[id] = new ResizeObserver(resize); _lbParticleRO[id].observe(c.parentElement);
+  const COUNT = Math.max(6, Math.min(10, Math.round(W / 18)));   // ~10 instead of a flat 18
   function mk() { return { x: Math.random()*W, y: H+8, r: Math.random()*2.4+.7, sp: Math.random()*.7+.28, a: Math.random()*.45+.15, wb: Math.random()*Math.PI*2, ws: (Math.random()-.5)*.045 }; }
-  for (let i = 0; i < 18; i++) { const p = mk(); p.y = Math.random()*H; ps.push(p); }
-  function loop() {
+  for (let i = 0; i < COUNT; i++) { const p = mk(); p.y = Math.random()*H; ps.push(p); }
+  let onScreen = true, last = 0;
+  const FRAME = 1000 / 30;   // throttle to ~30fps (was uncapped ~60)
+  function loop(ts) {
+    _lbParticleRafs[id] = requestAnimationFrame(loop);
+    if (document.hidden || !onScreen) return;          // pause work when tab hidden / canvas off-screen
+    if (ts - last < FRAME) return;                      // FPS cap
+    last = ts;
     ctx.clearRect(0,0,W,H);
     ps.forEach((p,i) => {
       p.y -= p.sp; p.wb += p.ws; p.x += Math.sin(p.wb)*.45;
@@ -219,48 +252,94 @@ function lbParticles(id, r, g, b) {
       ctx.fillStyle = `rgba(${r},${g},${b},${p.a.toFixed(2)})`; ctx.fill();
       if (p.y < -10) ps[i] = mk();
     });
-    _lbParticleRafs[id] = requestAnimationFrame(loop);
   }
+  _lbParticleIO[id] = new IntersectionObserver(es => { onScreen = es[0].isIntersecting; }, { threshold: 0 });
+  _lbParticleIO[id].observe(c);
   _lbParticleRafs[id] = requestAnimationFrame(loop);
 }
 
 function renderMatchSetup() {
-  const opts = db.players.map(p => `<option value="${p.id}">${p.name} (${p.pts}pts)</option>`).join('');
-  document.getElementById('singleA').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
-  document.getElementById('singleB').innerHTML = `<option value="">${t('select_ph')}</option>` + opts;
+  window._matchSel = { mode: 'singles', A: [], B: [] };
+  renderPlayerGrid();
 }
-function renderDoublesPlayers() {
-  const html = db.players.map(p => { const rank = getRank(p.pts, p.id); return `<div class="pl-item" id="dp_${p.id}"><div class="pl-check" id="chk_${p.id}" onclick="toggleDoubles(${p.id})"></div><div class="pl-name"><span class="${getGachaNameClass(p)}">${p.name}</span> <span class="rank-badge ${rank.class}" style="font-size:0.68rem">${rank.label}</span></div><div class="pl-pts" id="dteam_${p.id}" style="font-size:0.72rem;color:var(--muted)"></div></div>`; }).join('') || `<div class="text-muted">${t('no_players')}</div>`;
-  document.getElementById('doublesPlayerList').innerHTML = html;
-  window._doublesSelected = { A: [], B: [] };
-}
-function toggleDoubles(id) {
-  const sel = window._doublesSelected || { A: [], B: [] };
-  if (sel.A.includes(id)) sel.A = sel.A.filter(x=>x!==id);
-  else if (sel.B.includes(id)) sel.B = sel.B.filter(x=>x!==id);
-  else if (sel.A.length < 2) sel.A.push(id);
-  else if (sel.B.length < 2) sel.B.push(id);
-  else { toast(t('max_2'), 'error'); return; }
-  window._doublesSelected = sel;
-  db.players.forEach(p => {
-    const chk = document.getElementById('chk_' + p.id), dteam = document.getElementById('dteam_' + p.id);
-    if (!chk) return;
+function renderPlayerGrid() {
+  const sel = window._matchSel || (window._matchSel = { mode: 'singles', A: [], B: [] });
+  const isDoubles = sel.mode === 'doubles';
+  const allSelected = [...sel.A, ...sel.B];
+  const slotEl = document.getElementById(isDoubles ? 'doublesSlots' : 'singlesSlots');
+  if (slotEl) {
+    if (isDoubles) {
+      slotEl.innerHTML = _renderSlotChip('A1', sel.A[0]) + _renderSlotChip('A2', sel.A[1])
+                       + _renderSlotChip('B1', sel.B[0]) + _renderSlotChip('B2', sel.B[1]);
+    } else {
+      slotEl.innerHTML = _renderSlotChip('A', sel.A[0]) + _renderSlotChip('B', sel.B[0]);
+    }
+  }
+  const gridEl = document.getElementById(isDoubles ? 'doublesGrid' : 'singlesGrid');
+  if (!gridEl) return;
+  const maxTotal = isDoubles ? 4 : 2;
+  gridEl.innerHTML = db.players.map(p => {
+    const colors = getAvatarColor(p.id);
     const inA = sel.A.includes(p.id), inB = sel.B.includes(p.id);
-    chk.classList.toggle('checked', inA || inB);
-    chk.textContent = inA ? 'A' : inB ? 'B' : '';
-    dteam.textContent = inA ? t('team_a') : inB ? t('team_b') : '';
-    dteam.style.color = inA ? 'var(--neon)' : inB ? 'var(--red)' : 'var(--muted)';
-  });
+    const selected = inA || inB;
+    const disabled = !selected && allSelected.length >= maxTotal;
+    let badge = '';
+    if (selected) {
+      const label = inA ? (isDoubles ? (sel.A.indexOf(p.id)===0?'A1':'A2') : 'A')
+                        : (isDoubles ? (sel.B.indexOf(p.id)===0?'B1':'B2') : 'B');
+      badge = `<div class="pc-sel-badge">${label}</div>`;
+    }
+    return `<div class="player-card${selected?' selected':''}${disabled?' disabled':''}" onclick="tapPlayerCard(${p.id})">
+      <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,24)}<div class="pc-av" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div></div>
+      <div class="pc-info"><div class="pc-name">${p.name}</div><div class="pc-pts">${p.pts} pts</div></div>
+      ${badge}
+    </div>`;
+  }).join('') || `<div class="text-muted" style="grid-column:span 2;padding:12px;text-align:center">${t('no_players')}</div>`;
 }
+function _renderSlotChip(label, playerId) {
+  const p = playerId ? db.players.find(x => x.id === playerId) : null;
+  const isA = label.startsWith('A');
+  const accentColor = isA ? 'var(--neon)' : '#ff6b81';
+  return `<div class="slot-chip${p?' filled':''}" onclick="${p?`clearSlot('${label}')`:''}" style="cursor:${p?'pointer':'default'}">
+    <div style="flex:1;min-width:0">
+      <div class="slot-chip-label" style="color:${accentColor}">${label}</div>
+      ${p ? `<div class="slot-chip-name">${p.name}</div>` : '<div class="slot-chip-empty-txt">แตะเลือก</div>'}
+    </div>
+    ${p ? '<div class="slot-chip-clear">✕</div>' : ''}
+  </div>`;
+}
+function tapPlayerCard(id) {
+  const sel = window._matchSel || { mode: 'singles', A: [], B: [] };
+  if (sel.A.includes(id)) { sel.A = sel.A.filter(x=>x!==id); }
+  else if (sel.B.includes(id)) { sel.B = sel.B.filter(x=>x!==id); }
+  else {
+    const maxPer = sel.mode === 'doubles' ? 2 : 1;
+    if (sel.A.length < maxPer) sel.A.push(id);
+    else if (sel.B.length < maxPer) sel.B.push(id);
+    else { toast('เลือกครบทุก slot แล้ว', 'error'); return; }
+  }
+  window._matchSel = sel;
+  renderPlayerGrid();
+}
+function clearSlot(label) {
+  const sel = window._matchSel || { mode: 'singles', A: [], B: [] };
+  if      (label==='A'||label==='A1') sel.A.splice(0,1);
+  else if (label==='A2')              sel.A.splice(1,1);
+  else if (label==='B'||label==='B1') sel.B.splice(0,1);
+  else if (label==='B2')              sel.B.splice(1,1);
+  window._matchSel = sel;
+  renderPlayerGrid();
+}
+function renderDoublesPlayers() { renderPlayerGrid(); } // legacy shim
 function startSingles() {
-  const aId = parseInt(document.getElementById('singleA').value), bId = parseInt(document.getElementById('singleB').value);
-  if (!aId || !bId) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
-  if (aId === bId) return toast('เลือกผู้เล่นคนละคน', 'error');
-  currentMatch = { type: 'singles', teamA: [db.players.find(p=>p.id===aId)], teamB: [db.players.find(p=>p.id===bId)], scoreA: 0, scoreB: 0 };
+  const sel = window._matchSel || { A: [], B: [] };
+  if (!sel.A[0] || !sel.B[0]) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
+  if (sel.A[0] === sel.B[0]) return toast('เลือกผู้เล่นคนละคน', 'error');
+  currentMatch = { type: 'singles', teamA: [db.players.find(p=>p.id===sel.A[0])], teamB: [db.players.find(p=>p.id===sel.B[0])], scoreA: 0, scoreB: 0 };
   showMatchPlaying();
 }
 function startDoubles() {
-  const sel = window._doublesSelected || { A: [], B: [] };
+  const sel = window._matchSel || { A: [], B: [] };
   if (sel.A.length !== 2 || sel.B.length !== 2) return toast('ต้องเลือกทีมละ 2 คน', 'error');
   currentMatch = { type: 'doubles', teamA: sel.A.map(id => db.players.find(p=>p.id===id)), teamB: sel.B.map(id => db.players.find(p=>p.id===id)), scoreA: 0, scoreB: 0 };
   showMatchPlaying();
@@ -300,7 +379,7 @@ function showMatchPlaying() {
 function selectPlayMode(mode) {
   document.getElementById('modePicker').classList.add('hidden');
   if (mode === 'classic') {
-    document.getElementById('classicMode').classList.remove('hidden');
+    npOpen();
   } else {
     // เปิด fullscreen overlay
     const overlay = document.getElementById('refOverlay');
@@ -374,6 +453,7 @@ function changeScore(team, delta) {
 
 function cancelMatch() {
   currentMatch = null;
+  npClose();
   // ปิด fullscreen overlay
   document.getElementById('refOverlay').style.display = 'none';
   delete document.body.dataset.refLock;
@@ -393,6 +473,103 @@ function closeRefOverlay() {
   if (!document.body.dataset.ruLock && !document.body.dataset.ppLock) document.body.style.overflow = '';
   document.getElementById('mainNav').style.display = '';
   document.getElementById('themeControls').style.display = '';
+}
+
+// ── NUMPAD BOTTOM SHEET (replaces classic +/- score entry) ──
+window._np = { active: 'A', a: '', b: '' };
+function npOpen() {
+  if (!currentMatch) return;
+  window._np = { active: 'A', a: '', b: '' };
+  document.getElementById('npNameA').textContent = currentMatch.teamA.map(p=>p.name).join(' & ');
+  document.getElementById('npNameB').textContent = currentMatch.teamB.map(p=>p.name).join(' & ');
+  _npRender(false);
+  const sheet = document.getElementById('numpadSheet');
+  sheet.style.display = 'flex';
+  sheet.classList.add('np-open');
+  document.body.style.overflow = 'hidden';
+}
+function npClose() {
+  const sheet = document.getElementById('numpadSheet');
+  if (!sheet) return;
+  sheet.style.display = 'none';
+  sheet.classList.remove('np-open');
+  if (!document.body.dataset.refLock && !document.body.dataset.ruLock && !document.body.dataset.ppLock) {
+    document.body.style.overflow = '';
+  }
+}
+function npKey(d) {
+  const np = window._np;
+  const cur = np.active === 'A' ? np.a : np.b;
+  if (cur.length >= 2) return;
+  const next = cur + String(d);
+  if (parseInt(next) > 30) return;
+  if (np.active === 'A') np.a = next; else np.b = next;
+  _npRender(true);
+}
+function npBack() {
+  const np = window._np;
+  if (np.active === 'A') np.a = np.a.slice(0,-1); else np.b = np.b.slice(0,-1);
+  _npRender(false);
+}
+function npSetActive(side) {
+  window._np.active = side;
+  _npRender(false);
+}
+function _npRender(pop) {
+  const np = window._np;
+  const sideA = document.getElementById('npSideA');
+  const sideB = document.getElementById('npSideB');
+  const scoreA = document.getElementById('npScoreA');
+  const scoreB = document.getElementById('npScoreB');
+  const actionBtn = document.getElementById('npAction');
+  const winHint = document.getElementById('npWinHint');
+  if (sideA) sideA.classList.toggle('np-active', np.active==='A');
+  if (sideB) sideB.classList.toggle('np-active', np.active==='B');
+  if (scoreA) {
+    scoreA.textContent = np.a === '' ? '—' : np.a;
+    scoreA.className = 'np-score-disp' + (np.active==='A'?' np-active-score':'');
+    if (pop && np.active==='A') { scoreA.classList.add('np-pop'); setTimeout(()=>scoreA.classList.remove('np-pop'),120); }
+  }
+  if (scoreB) {
+    scoreB.textContent = np.b === '' ? '—' : np.b;
+    scoreB.className = 'np-score-disp' + (np.active==='B'?' np-active-score':'');
+    if (pop && np.active==='B') { scoreB.classList.add('np-pop'); setTimeout(()=>scoreB.classList.remove('np-pop'),120); }
+  }
+  const hasA = np.a !== '', hasB = np.b !== '';
+  if (actionBtn) {
+    if (hasA && hasB) {
+      actionBtn.textContent = '✅ บันทึกผล';
+      actionBtn.className = 'np-action np-submit';
+      actionBtn.onclick = npSubmit;
+      if (winHint && currentMatch) {
+        const sA = parseInt(np.a), sB = parseInt(np.b);
+        if (!isNaN(sA) && !isNaN(sB) && sA !== sB) {
+          const winName = sA > sB ? currentMatch.teamA.map(p=>p.name).join(' & ') : currentMatch.teamB.map(p=>p.name).join(' & ');
+          winHint.textContent = `🏆 ${winName} ชนะ`;
+        } else { winHint.textContent = ''; }
+      }
+    } else {
+      actionBtn.textContent = '→ ถัดไป กรอก B';
+      actionBtn.className = 'np-action np-next';
+      actionBtn.onclick = hasA ? ()=>npSetActive('B') : null;
+      if (winHint) winHint.textContent = '';
+    }
+  }
+}
+function npSubmit() {
+  const np = window._np;
+  const sA = parseInt(np.a), sB = parseInt(np.b);
+  if (!np.a || !np.b || isNaN(sA) || isNaN(sB)) return toast('กรอกคะแนนให้ครบทั้งสองฝั่ง', 'error');
+  if (sA <= 0 || sB <= 0) return toast('คะแนนต้องมากกว่า 0', 'error');
+  if (sA === sB) return toast('คะแนนเท่ากัน ไม่มีเสมอในแบดมินตัน', 'error');
+  if (sA >= 28 && sB >= 28) {
+    if (!confirm(`คะแนน ${sA}–${sB} ผิดปกติ ยืนยันไหม?`)) return;
+  }
+  currentMatch.scoreA = sA;
+  currentMatch.scoreB = sB;
+  npClose();
+  document.getElementById('modePicker').classList.add('hidden');
+  confirmFinish();
 }
 function confirmFinish() {
   if (!currentMatch) return;
@@ -639,10 +816,26 @@ async function renderProfile() {
   try {
     await loadAll();
     const p = db.players.find(x=>x.id===currentUser.id) || currentUser;
-    // ── Merge localStorage gacha fallback (ถ้า DB ยังไม่มี column) ──
+    // ── Merge localStorage gacha fallback + sync to DB for cross-device visibility ──
     const _lsG = JSON.parse(localStorage.getItem('bmt_gacha_'+p.id)||'{}');
-    if (!p.gachaFrame && _lsG.gacha_frame) p.gachaFrame = _lsG.gacha_frame;
-    if (!p.gachaName  && _lsG.gacha_name)  p.gachaName  = _lsG.gacha_name;
+    if (!p.gachaFrame && _lsG.gacha_frame) {
+      p.gachaFrame = _lsG.gacha_frame;
+      dbUpdatePlayer(p.id, { gacha_frame: _lsG.gacha_frame }).catch(() => {});
+      if (typeof _saveGachaInventoryToDB === 'function' && typeof getGachaInventory === 'function') {
+        const _iv = getGachaInventory(p.id); _iv.equippedFrame = _lsG.gacha_frame;
+        localStorage.setItem('bmt_gacha_inv_' + p.id, JSON.stringify(_iv));
+        _saveGachaInventoryToDB(p.id, _iv).catch(() => {});
+      }
+    }
+    if (!p.gachaName && _lsG.gacha_name) {
+      p.gachaName = _lsG.gacha_name;
+      dbUpdatePlayer(p.id, { gacha_name: _lsG.gacha_name }).catch(() => {});
+      if (typeof _saveGachaInventoryToDB === 'function' && typeof getGachaInventory === 'function') {
+        const _iv2 = getGachaInventory(p.id); _iv2.equippedName = _lsG.gacha_name;
+        localStorage.setItem('bmt_gacha_inv_' + p.id, JSON.stringify(_iv2));
+        _saveGachaInventoryToDB(p.id, _iv2).catch(() => {});
+      }
+    }
     if (!p.gachaEmoji && _lsG.gacha_emoji) p.gachaEmoji = _lsG.gacha_emoji;
     currentUser = p;
     const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id), prog = rankProgress(p.pts);
@@ -655,14 +848,17 @@ async function renderProfile() {
     if (!localStorage.getItem(peakPosKey) || rankPos < peakRankPos) { peakRankPos = rankPos; localStorage.setItem(peakPosKey, rankPos); }
     // Total days played
     const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
-    // ระบบติก=โชว์: ถ้าตั้งค่าแล้ว (pinnedAchs เป็น array) โชว์เฉพาะที่ติก, ถ้ายังไม่ตั้งค่า (null) โชว์ทั้งหมด
+    // ระบบติก=โชว์: โชว์ใน profile card เฉพาะที่ติกแล้วเท่านั้น, null = ยังไม่ได้ตั้งค่า = ไม่โชว์
     const _profPins = p.pinnedAchs;
-    const _profAch = (p.customAch||[]).filter(a => (_profPins === null || _profPins === undefined) ? true : _profPins.includes(a.id));
+    const _profAch = (_profPins && Array.isArray(_profPins) && _profPins.length > 0)
+      ? (p.customAch||[]).filter(a => _profPins.includes(a.id))
+      : [];
     const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
+    const _profHasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     document.getElementById('profileCard').innerHTML = `
-      <div class="profile-header">
-        <div class="profile-avatar ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
-        <div><div class="profile-name ${getGachaNameClass(p)}">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span class="rank-badge ${rank.class}">${getRankLabel(p.pts,p.id)}</span><span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
+      <div class="profile-header" id="profHeaderEl">
+        <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,32)}${_profHasTG ? thunderGodAvatarHTML(av.content, 72, av.bg, av.fg) : `<div class="profile-avatar ${getGachaFrameClass(p) || 'liquid-frame'} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameClass(p) ? '' : getLiquidFrameInner()}${getGachaFrameInner(p)}${av.content}</div>`}</div>
+        <div><div class="profile-name ${getGachaNameClass(p)}">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${getRankBadgeSVG(p.pts,p.id,36)}<span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
       <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">${t('rank_progress')} ${prog.next ? '→ '+prog.next.label : t('rank_max')}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
       <div class="profile-stats">
@@ -689,6 +885,14 @@ async function renderProfile() {
       <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
       ${buildRankingChart(p.id)}`;
+    // Apply ThunderCardFrame to profile header for Thunder God players
+    if (_profHasTG) {
+      const hdr = document.getElementById('profHeaderEl');
+      if (hdr) {
+        hdr.insertAdjacentHTML('afterbegin', '<div class="tcf-hero-glow"></div>');
+        applyThunderCardFrame(hdr, 18, 2.5, true);
+      }
+    }
     const myMatches = db.matches.filter(m => [...m.teamA,...m.teamB].some(x=>x.id===p.id)).slice(0, 20);
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
@@ -706,7 +910,7 @@ async function renderAdmin() {
     const sorted = [...db.players].sort((a,b)=>b.pts-a.pts);
     document.getElementById('adminPlayerList').innerHTML = sorted.map(p => {
       const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id);
-      return `<div class="lb-item" style="margin-bottom:6px"><div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px"><span class="rank-badge ${rank.class}" style="font-size:0.68rem">${getRankLabel(p.pts,p.id)}</span></div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
+      return `<div class="lb-item" style="margin-bottom:6px"><div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,22)}<div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div></div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px">${getRankBadgeSVG(p.pts,p.id,36)}</div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
     }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
     renderCachAdmin(); // [FIXED] render immediately with cached data
@@ -936,7 +1140,31 @@ function openEditPlayer(id) {
   document.getElementById('editPlayerAdmin').value = p.isAdmin ? '1' : '0';
   document.getElementById('editPlayerGachaFrame').value = p.gachaFrame || '';
   document.getElementById('editPlayerGachaName').value = p.gachaName || '';
+  // Show/hide Thunder God revoke button based on player's current badge
+  const revokeBtn = document.getElementById('tgRevokeGroup');
+  if (revokeBtn) {
+    const hasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
+    revokeBtn.style.display = hasTG ? '' : 'none';
+  }
   openModal('editPlayerModal');
+}
+
+async function adminRevokeThunderGod() {
+  const id = parseInt(document.getElementById('editPlayerId').value);
+  const p = db.players.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`ลบ ⚡ Thunder God badge ของ "${p.name}"?`)) return;
+  try {
+    const efx = (p.ownedEffects || []).filter(e => e !== 'rotating_arcs');
+    const data = { owned_effects: JSON.stringify(efx) };
+    if (p.gachaFrame === 'thundergod') data.gacha_frame = null;
+    if (p.gachaName  === 'thundergod') data.gacha_name  = null;
+    await dbUpdatePlayer(id, data);
+    await loadPlayers();
+    closeModal('editPlayerModal');
+    renderAdmin(); renderLeaderboard();
+    toast(`⚡ ลบ Thunder God ของ ${p.name} แล้ว`, 'info');
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
 async function saveEditPlayer() {
   const id = parseInt(document.getElementById('editPlayerId').value);
@@ -961,10 +1189,20 @@ async function saveEditPlayer() {
       if (newName  && !inv.names.includes(gachaName))   inv.names.push(gachaName);
       _saveGachaInventoryToDB(id, inv); // async — fire and forget
     }
-    closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
+    // ── If granting Thunder God, also persist rotating_arcs to owned_effects in DB ──
+    const isThunderGod = gachaFrame === 'thundergod' || gachaName === 'thundergod';
+    if (isThunderGod) {
+      const pUpdated = db.players.find(x => x.id === id);
+      if (pUpdated) {
+        const efx = (pUpdated.ownedEffects || []).filter(e => e !== 'rotating_arcs');
+        efx.push('rotating_arcs');
+        dbUpdatePlayer(id, { owned_effects: JSON.stringify(efx) }).catch(() => {});
+        pUpdated.ownedEffects = efx;
+      }
+    }
+    closeModal('editPlayerModal'); renderAdmin(); renderLeaderboard(); toast('บันทึกสำเร็จ', 'success');
     // ── Show cosmetic reveal (cinematic for SECRET, normal card for others) ──
     if (newFrame || newName) {
-      const isThunderGod  = gachaFrame === 'thundergod' || gachaName === 'thundergod';
       const isSolarEmperor = gachaFrame === 'solaremperor' || gachaName === 'solaremperor';
       if (isThunderGod) showThunderGodCinematic(playerName);
       else if (isSolarEmperor) showSolarEmperorAscension(playerName, false);
@@ -990,6 +1228,163 @@ async function deletePlayer() {
   try { await dbDeletePlayer(id); await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('ลบผู้เล่นแล้ว', 'info'); }
   catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
+
+// ── Admin: Manage player rewards (achievements + tournament wins) ──
+async function openAdminManageRewards(playerId) {
+  const p = db.players.find(x => x.id === playerId);
+  if (!p) return;
+
+  const titleEl = document.getElementById('adminManageRewardsTitle');
+  const bodyEl  = document.getElementById('adminManageRewardsBody');
+  if (titleEl) titleEl.textContent = `🏆 รางวัล — ${p.name}`;
+  if (bodyEl)  bodyEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:28px;font-size:0.84rem">⏳ กำลังโหลด...</div>';
+  openModal('adminManageRewardsModal');
+
+  // Fetch & cache HOF rows so executeDeleteHofTournament rollback logic works
+  let hofRows = [];
+  try { hofRows = await dbGetHOFTournaments(); } catch(e) {}
+  if (typeof _hofAllRows !== 'undefined') _hofAllRows = hofRows;
+
+  // Find tournaments where this player is a champion
+  const tourWins = hofRows.filter(row => {
+    try {
+      const g = typeof row.groups === 'string' ? JSON.parse(row.groups) : (row.groups || []);
+      const hof = g.find(x => x._hof) || {};
+      return Array.isArray(hof.champion_ids) && hof.champion_ids.includes(playerId);
+    } catch(e) { return false; }
+  });
+
+  const achs = p.customAch || [];
+  const s1000Count = p.super1000Titles || 0;
+  let html = '';
+
+  // ── Super 1000 Champion title section ──
+  if (s1000Count > 0) {
+    html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">👑 S1000 Champion Title</div>
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.3);margin-bottom:16px">
+      <span style="font-size:1.2rem;flex-shrink:0">👑</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--gold)">SUPER 1000 CHAMPION</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:1px">${s1000Count} ครั้ง — แสดงใน profile</div>
+      </div>
+      <button onclick="adminResetS1000Title(${playerId})" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+    </div>`;
+  }
+
+  // ── Achievements section ──
+  html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏅 Achievement (${achs.length})</div>`;
+  if (!achs.length) {
+    html += `<div style="font-size:0.77rem;color:var(--muted);text-align:center;padding:12px 0;margin-bottom:14px">ไม่มี Achievement</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">`;
+    for (const ach of achs) {
+      const safeId = ach.id.replace(/'/g, "\\'");
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
+        <span style="font-size:1.15rem;flex-shrink:0">${ach.icon || '🏆'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${ach.title}</div>
+          ${ach.desc ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${ach.desc}</div>` : ''}
+        </div>
+        <button onclick="adminDeleteSingleAchievement(${playerId},'${safeId}')" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // ── Tournament wins section ──
+  html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏆 ประวัติชนะ Tournament (${tourWins.length})</div>`;
+  if (!tourWins.length) {
+    html += `<div style="font-size:0.77rem;color:var(--muted);text-align:center;padding:12px 0">ไม่มีประวัติ</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+    for (const row of tourWins) {
+      let hof = {};
+      try {
+        const g = typeof row.groups === 'string' ? JSON.parse(row.groups) : (row.groups || []);
+        hof = g.find(x => x._hof) || {};
+      } catch(e) {}
+      const tierIcon = row.tier === 'Super 1000' ? '👑' : row.tier === 'Super 500' ? '🥈' : '🏸';
+      const date = (hof.ended_at || row.created_at)
+        ? new Date(hof.ended_at || row.created_at).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' })
+        : '';
+      const safeName = (row.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
+        <span style="font-size:1.15rem;flex-shrink:0">${tierIcon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${row.name || '?'}</div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${row.tier}${date ? ' · ' + date : ''}</div>
+        </div>
+        <button onclick="adminDeletePlayerTourWin(${row.id},'${safeName}',${playerId})" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (bodyEl) bodyEl.innerHTML = html;
+}
+
+async function adminDeleteSingleAchievement(playerId, achId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  const ach = (pl.customAch || []).find(a => a.id === achId);
+  if (!ach) return;
+  if (!confirm(`ลบ Achievement "${ach.title}" ของ ${pl.name}?\nย้อนกลับไม่ได้`)) return;
+  try {
+    const newAch = (pl.customAch || []).filter(a => a.id !== achId);
+    pl.customAch = newAch;
+
+    // When removing s1000 badge, also zero out the super1000Titles counter
+    let newS1000 = pl.super1000Titles || 0;
+    if (achId === 'sys_tour_s1000') {
+      newS1000 = 0;
+      pl.super1000Titles = 0;
+    }
+
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: newAch, s1000: newS1000 });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ "${ach.title}" แล้ว`, 'info');
+    await openAdminManageRewards(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminResetS1000Title(playerId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  if (!confirm(`ลบ 👑 SUPER 1000 CHAMPION ของ ${pl.name}?\nจะหายออกจาก profile ถาวร — ย้อนกลับไม่ได้`)) return;
+  try {
+    pl.super1000Titles = 0;
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: 0 });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ SUPER 1000 CHAMPION ของ ${pl.name} แล้ว`, 'info');
+    await openAdminManageRewards(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminResetS1000TitleFromProfile(playerId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  if (!confirm(`ลบ 👑 SUPER 1000 CHAMPION ของ ${pl.name}?\nถาวร — เอากลับมาได้โดยชนะ S1000 Tournament ใหม่`)) return;
+  try {
+    pl.super1000Titles = 0;
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: 0 });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ SUPER 1000 CHAMPION ของ ${pl.name} แล้ว`, 'info');
+    // Re-open profile to refresh the banner
+    openPlayerProfile(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminDeletePlayerTourWin(tournamentId, tournamentName, playerId) {
+  if (!confirm(`ลบประวัติ Tournament "${tournamentName}"?\nจะ rollback Achievement และ S1000 title ของผู้ชนะด้วย — ย้อนกลับไม่ได้`)) return;
+  // Ensure _hofAllRows is populated for the rollback logic inside executeDeleteHofTournament
+  if (typeof _hofAllRows !== 'undefined' && !_hofAllRows.length) {
+    try { _hofAllRows = await dbGetHOFTournaments(); } catch(e) {}
+  }
+  await executeDeleteHofTournament(tournamentId);
+  await loadPlayers();
+  await openAdminManageRewards(playerId);
+}
+
 function resetAllData() { toast('ฟีเจอร์นี้ต้องลบผ่าน Supabase Dashboard ครับ', 'info'); }
 function exportData() {
   const blob = new Blob([JSON.stringify({ players: db.players, matches: db.matches }, null, 2)], { type: 'application/json' });
@@ -1091,8 +1486,6 @@ function checkPatchBadge() {
   }
 }
 
-loadTheme();
-setStyle(localStorage.getItem('badminton_style') || 'glass');
 checkPatchBadge();
 applyLang();
 
