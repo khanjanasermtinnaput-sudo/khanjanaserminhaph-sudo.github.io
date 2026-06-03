@@ -1345,6 +1345,74 @@ async function executeDeleteHofTournament(tournamentId) {
   document.getElementById('hofDelModal')?.remove();
   try {
     toast('กำลังลบ...', 'info');
+
+    // ── Rollback achievements & S1000 titles for champion players ──
+    const delRow = _hofAllRows.find(r => r.id === tournamentId);
+    let delHof = {};
+    if (delRow) {
+      try {
+        const g = typeof delRow.groups === 'string' ? JSON.parse(delRow.groups) : (delRow.groups || []);
+        delHof = g.find(x => x._hof) || {};
+      } catch(e) {}
+    }
+
+    const champIds = Array.isArray(delHof.champion_ids) ? delHof.champion_ids : [];
+    if (champIds.length > 0) {
+      // Count remaining wins per player from HOF rows that are NOT being deleted
+      const remainingRows = _hofAllRows.filter(r => r.id !== tournamentId);
+      const winCounts = {};
+      for (const pid of champIds) winCounts[pid] = { regular: 0, s500: 0, s1000: 0, doubles: 0, gf: 0 };
+
+      for (const row of remainingRows) {
+        let rHof = {};
+        try {
+          const g = typeof row.groups === 'string' ? JSON.parse(row.groups) : (row.groups || []);
+          rHof = g.find(x => x._hof) || {};
+        } catch(e) {}
+        const rChampIds = Array.isArray(rHof.champion_ids) ? rHof.champion_ids : [];
+        const rTier = rHof.tier || row.tier || '';
+        const rMatchType = rHof.match_type || '1v1';
+        for (const pid of champIds) {
+          if (!rChampIds.includes(pid)) continue;
+          if (rTier === 'Super 1000') winCounts[pid].s1000++;
+          else if (rTier === 'Super 500') winCounts[pid].s500++;
+          else winCounts[pid].regular++;
+          if (rMatchType === '2v2') winCounts[pid].doubles++;
+        }
+      }
+
+      // Update each champion's customAch and super1000Titles
+      for (const pid of champIds) {
+        const pl = db.players.find(x => x.id === pid);
+        if (!pl) continue;
+        const counts = winCounts[pid];
+
+        // Determine which sys_tour achievements should be kept
+        const keepMap = {
+          'sys_tour_s1000':   counts.s1000   > 0,
+          'sys_tour_s500':    counts.s500    > 0,
+          'sys_tour_regular': counts.regular > 0,
+          'sys_tour_doubles': counts.doubles > 0,
+        };
+
+        let cur = [...(pl.customAch || [])];
+        const filtered = cur.filter(a => !(a.id in keepMap) || keepMap[a.id]);
+        const achChanged = filtered.length !== cur.length;
+        if (achChanged) pl.customAch = filtered;
+
+        const newS1000 = counts.s1000;
+        const s1000Changed = pl.super1000Titles !== newS1000;
+        if (s1000Changed) pl.super1000Titles = newS1000;
+
+        if (achChanged || s1000Changed) {
+          try {
+            const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: pl.super1000Titles });
+            await dbUpdatePlayer(pid, { prime_titles: ptStr });
+          } catch(e) { console.warn('[HOFDel] player rollback failed:', e.message); }
+        }
+      }
+    }
+
     await dbDeleteTournament(tournamentId);
     _hofAllRows = _hofAllRows.filter(r => r.id !== tournamentId);
     toast('ลบประวัติแล้ว ✅', 'success');
