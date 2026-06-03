@@ -1240,7 +1240,21 @@ async function openAdminManageRewards(playerId) {
   });
 
   const achs = p.customAch || [];
+  const s1000Count = p.super1000Titles || 0;
   let html = '';
+
+  // ── Super 1000 Champion title section ──
+  if (s1000Count > 0) {
+    html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">👑 S1000 Champion Title</div>
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.3);margin-bottom:16px">
+      <span style="font-size:1.2rem;flex-shrink:0">👑</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--gold)">SUPER 1000 CHAMPION</div>
+        <div style="font-size:0.7rem;color:var(--muted);margin-top:1px">${s1000Count} ครั้ง — แสดงใน profile</div>
+      </div>
+      <button onclick="adminResetS1000Title(${playerId})" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+    </div>`;
+  }
 
   // ── Achievements section ──
   html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏅 Achievement (${achs.length})</div>`;
@@ -1314,6 +1328,19 @@ async function adminDeleteSingleAchievement(playerId, achId) {
     const ptStr = buildPlayerPrimeTitles(pl, { awards: newAch, s1000: newS1000 });
     await dbUpdatePlayer(playerId, { prime_titles: ptStr });
     toast(`ลบ "${ach.title}" แล้ว`, 'info');
+    await openAdminManageRewards(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminResetS1000Title(playerId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  if (!confirm(`ลบ 👑 SUPER 1000 CHAMPION ของ ${pl.name}?\nจะหายออกจาก profile ถาวร — ย้อนกลับไม่ได้`)) return;
+  try {
+    pl.super1000Titles = 0;
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: 0 });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ SUPER 1000 CHAMPION ของ ${pl.name} แล้ว`, 'info');
     await openAdminManageRewards(playerId);
   } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
