@@ -963,7 +963,12 @@
     const d   = _geGetData(pid);
     const equipped = d.equippedElement || null;
 
-    if (!inv.length) {
+    // Also check regular gacha inventory
+    const regInv = typeof getGachaInventory === 'function' ? getGachaInventory(pid) : {};
+    const regFrames = regInv.frames || [], regNames = regInv.names || [], regEmojis = regInv.emojis || [];
+    const hasRegItems = regFrames.length > 0 || regNames.length > 0 || regEmojis.length > 0;
+
+    if (!inv.length && !hasRegItems) {
       card.style.display = 'none';
       return;
     }
@@ -1008,8 +1013,36 @@
       ? `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:8px;font-weight:600">📦 ${inv.length} Element ในคลัง — แตะเพื่อ Equip</div>`
       : '';
 
+    // Regular gacha items (frames, names, emojis)
+    const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid) || {};
+    const curFrame = pl.gachaFrame || null, curName = pl.gachaName || null, curEmoji = pl.gachaEmoji || null;
+    const fLabels = { void:'🌑 Void Abyss', halo:'✨ Celestial Halo', blaze:'🔥 Crimson Blaze', ice:'❄️ Phantom Ice', solar:'☀️ Solar Crown' };
+    const nLabels = { void:'🌑 Void Corruption', halo:'✨ Celestial Script', blaze:'🔥 Blaze Script', ice:'❄️ Ice Script', solar:'☀️ Solar Script' };
+    let regHtml = '';
+    if (hasRegItems) {
+      const sep = inv.length ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(168,85,247,0.15)"></div>` : '';
+      let inner = sep;
+      if (regFrames.length) {
+        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">FRAME</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">`;
+        regFrames.forEach(f => { const a = f===curFrame; inner += `<button onclick="equipGachaFrame('${f}')" style="padding:5px 11px;border-radius:20px;border:1px solid ${a?'rgba(168,85,247,.8)':'rgba(168,85,247,.25)'};background:${a?'rgba(168,85,247,.2)':'rgba(168,85,247,.07)'};color:${a?'#c084fc':'var(--muted)'};font-size:.75rem;cursor:pointer;font-family:inherit">${fLabels[f]||f}${a?' ✓':''}</button>`; });
+        inner += `</div>`;
+      }
+      if (regNames.length) {
+        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">NAME EFFECT</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">`;
+        regNames.forEach(n => { const a = n===curName; inner += `<button onclick="equipGachaName('${n}')" style="padding:5px 11px;border-radius:20px;border:1px solid ${a?'rgba(168,85,247,.8)':'rgba(168,85,247,.25)'};background:${a?'rgba(168,85,247,.2)':'rgba(168,85,247,.07)'};color:${a?'#c084fc':'var(--muted)'};font-size:.75rem;cursor:pointer;font-family:inherit">${nLabels[n]||n}${a?' ✓':''}</button>`; });
+        inner += `</div>`;
+      }
+      if (regEmojis.length) {
+        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">AVATAR EMOJI</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+        regEmojis.forEach(e => { const a = e===curEmoji; inner += `<button onclick="equipGachaEmoji('${e}')" style="padding:5px 10px;border-radius:20px;border:1px solid ${a?'rgba(168,85,247,.8)':'rgba(168,85,247,.25)'};background:${a?'rgba(168,85,247,.2)':'rgba(168,85,247,.07)'};font-size:.9rem;cursor:pointer;font-family:inherit">${e}${a?' ✓':''}</button>`; });
+        inner += `</div>`;
+      }
+      regHtml = inner;
+    }
+
     box.innerHTML = equippedHtml + title +
-      `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px" id="geProf_grid">${gridItems}</div>`;
+      (inv.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px" id="geProf_grid">${gridItems}</div>` : '') +
+      regHtml;
 
     // Inject SVG frames
     requestAnimationFrame(() => {

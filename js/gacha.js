@@ -98,8 +98,23 @@ async function equipGachaFrame(val) {
     await dbUpdatePlayer(currentUser.id, { gacha_frame: val });
     await loadPlayers();
     renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
     renderProfile();
     toast('🖼️ เปลี่ยนกรอบเป็น ' + val + ' แล้ว!', 'success');
+  } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
+}
+async function equipGachaEmoji(emoji) {
+  if (!currentUser) return;
+  try {
+    await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji });
+    await loadPlayers();
+    const sv = getCustomAvatar(currentUser.id);
+    sv.emoji = emoji;
+    localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+    renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
+    renderProfile();
+    toast('🎭 เปลี่ยน Avatar Emoji เป็น ' + emoji + ' แล้ว!', 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
 }
 async function equipGachaName(val) {
@@ -108,6 +123,7 @@ async function equipGachaName(val) {
     await dbUpdatePlayer(currentUser.id, { gacha_name: val });
     await loadPlayers();
     renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
     renderProfile();
     toast('✨ เปลี่ยน Name Effect เป็น ' + val + ' แล้ว!', 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
