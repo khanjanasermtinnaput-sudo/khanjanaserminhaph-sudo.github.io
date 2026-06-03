@@ -141,30 +141,30 @@ async function equipGachaName(val) {
 }
 async function equipGachaEffect(effectId) {
   if (!currentUser) return;
-  try {
-    const pl = db.players.find(x => x.id === currentUser.id);
-    const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
-    owned.push(effectId);
-    await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) });
-    await loadPlayers();
-    renderGachaInventory();
-    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
-    renderProfile();
-    toast('⚡ ใส่ Thunder God แล้ว!', 'success');
-  } catch(e) { toast('ใส่ไม่ได้: ' + e.message, 'error'); }
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
+  owned.push(effectId);
+  localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(owned));
+  if (pl) pl.ownedEffects = owned;
+  try { await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) }); } catch(e) {}
+  await loadPlayers();
+  renderGachaInventory();
+  if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
+  renderProfile();
+  toast('⚡ ใส่ Thunder God แล้ว!', 'success');
 }
 async function unequipGachaEffect(effectId) {
   if (!currentUser) return;
-  try {
-    const pl = db.players.find(x => x.id === currentUser.id);
-    const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
-    await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) });
-    await loadPlayers();
-    renderGachaInventory();
-    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
-    renderProfile();
-    toast('⚡ ถอด Thunder God แล้ว!', 'success');
-  } catch(e) { toast('ถอดไม่ได้: ' + e.message, 'error'); }
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
+  localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(owned));
+  if (pl) pl.ownedEffects = owned;
+  try { await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) }); } catch(e) {}
+  await loadPlayers();
+  renderGachaInventory();
+  if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
+  renderProfile();
+  toast('⚡ ถอด Thunder God แล้ว!', 'success');
 }
 function openGachaPull() {
   if (!currentUser) return;

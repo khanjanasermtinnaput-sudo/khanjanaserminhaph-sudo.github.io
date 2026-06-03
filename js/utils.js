@@ -475,7 +475,10 @@ function normalizePlayer(p) {
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
   let _ownedEffects = [];
   try { _ownedEffects = JSON.parse(p.owned_effects || '[]'); } catch(e) {}
-  // localStorage fallback
+  // localStorage fallback when owned_effects column missing
+  if (!_ownedEffects.length) {
+    try { const _lsEq = JSON.parse(localStorage.getItem('bmt_owned_effects_' + p.id) || '[]'); if (_lsEq.length) _ownedEffects = _lsEq; } catch(e) {}
+  }
   if (!_ownedEffects.length) {
     try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects && _lsInvEf.effects.length) _ownedEffects = _lsInvEf.effects; } catch(e) {}
   }
