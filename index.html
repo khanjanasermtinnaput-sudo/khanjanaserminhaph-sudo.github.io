@@ -911,7 +911,7 @@ END $$;</pre>
 <script src="js/db.js?v=20260529l"></script>
 <script src="js/elo.js?v=20260529l"></script>
 <script src="js/auth.js?v=20260529l"></script>
-<script src="js/leaderboard.js?v=20260603c"></script>
+<script src="js/leaderboard.js?v=20260603d"></script>
 <script src="js/profile.js?v=20260601c"></script>
 <script src="js/stats.js?v=20260530d"></script>
 <script src="js/season.js?v=20260529l"></script>
@@ -1193,8 +1193,11 @@ openPlayerProfile = function(playerId) {
       if (hero) {
         const badgeDiv = document.createElement('div');
         badgeDiv.className = 'champion-badge-wrap';
-        badgeDiv.style.cssText = 'padding:0 20px 10px;display:flex;justify-content:center';
-        badgeDiv.innerHTML = `<div class="champion-badge">👑 SUPER 1000 CHAMPION &nbsp;<span style="opacity:.75">×${s1000}</span></div>`;
+        badgeDiv.style.cssText = 'padding:0 20px 10px;display:flex;justify-content:center;align-items:center;gap:8px';
+        const deleteBtn = isAdminUser()
+          ? `<button onclick="adminResetS1000TitleFromProfile(${p.id})" title="ลบ S1000 title (Admin)" style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,60,60,0.45);background:rgba(255,60,60,0.12);color:#ff6060;font-size:0.7rem;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center">✕</button>`
+          : '';
+        badgeDiv.innerHTML = `<div class="champion-badge">👑 SUPER 1000 CHAMPION &nbsp;<span style="opacity:.75">×${s1000}</span></div>${deleteBtn}`;
         hero.after(badgeDiv);
       }
     }

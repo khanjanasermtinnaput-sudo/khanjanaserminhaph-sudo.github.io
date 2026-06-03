@@ -1345,6 +1345,20 @@ async function adminResetS1000Title(playerId) {
   } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
 
+async function adminResetS1000TitleFromProfile(playerId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  if (!confirm(`ลบ 👑 SUPER 1000 CHAMPION ของ ${pl.name}?\nถาวร — เอากลับมาได้โดยชนะ S1000 Tournament ใหม่`)) return;
+  try {
+    pl.super1000Titles = 0;
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: 0 });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ SUPER 1000 CHAMPION ของ ${pl.name} แล้ว`, 'info');
+    // Re-open profile to refresh the banner
+    openPlayerProfile(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
 async function adminDeletePlayerTourWin(tournamentId, tournamentName, playerId) {
   if (!confirm(`ลบประวัติ Tournament "${tournamentName}"?\nจะ rollback Achievement และ S1000 title ของผู้ชนะด้วย — ย้อนกลับไม่ได้`)) return;
   // Ensure _hofAllRows is populated for the rollback logic inside executeDeleteHofTournament
