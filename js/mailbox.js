@@ -129,6 +129,8 @@ async function claimMailItem(mailId, itemType, itemValue) {
     await loadPlayers();
     renderMailboxList();
     checkMailboxBadge();
+    if (typeof renderGachaInventory === 'function') renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
   } catch(e) {
     toast('รับไม่ได้: ' + e.message, 'error');
     if (btn) btn.disabled = false;
