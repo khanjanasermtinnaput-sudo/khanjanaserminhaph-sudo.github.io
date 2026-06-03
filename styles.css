@@ -874,32 +874,6 @@ body.x2-active .toast-wrap{bottom:120px}
 .np-action:active{transform:scale(0.97)}
 .np-next{background:rgba(255,255,255,0.09);border:1px solid var(--glass-border);color:var(--text)}
 .np-submit{background:linear-gradient(135deg,#4caf50,#2e7d32);color:#fff;box-shadow:0 4px 18px rgba(76,175,80,0.28)}
-/* ══════════════════════════════════
-   ROTATING ARCS — LIGHTNING AVATAR (Thunder God 0.1%)
-══════════════════════════════════ */
-.lightning-avatar-wrap{position:relative;width:108px;height:108px;display:flex;align-items:center;justify-content:center}
-.lightning-arc{position:absolute;inset:0;border-radius:50%;border:3px solid transparent}
-.lightning-arc-1{border-top-color:#00ffff;border-right-color:#00aaff;animation:arc1-spin 0.4s steps(8) infinite;box-shadow:0 0 10px #00c8ff}
-.lightning-arc-2{inset:5px;border-bottom-color:#60e8ff;border-left-color:#0060ff;animation:arc2-spin 0.3s steps(6) infinite;box-shadow:0 0 8px #0060ff inset}
-.lightning-arc-3{inset:10px;border-top-color:#ffffff;border-right-color:transparent;animation:arc3-spin 0.18s steps(4) infinite}
-@keyframes arc1-spin{to{transform:rotate(360deg)}}
-@keyframes arc2-spin{to{transform:rotate(-360deg)}}
-@keyframes arc3-spin{to{transform:rotate(360deg)}}
-.lightning-dot{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 6px #00c8ff;animation:dot-blink 0.15s steps(3) infinite}
-.lightning-dot:nth-child(4){top:2px;left:50%;animation-delay:0.00s}
-.lightning-dot:nth-child(5){bottom:2px;left:50%;animation-delay:0.05s}
-.lightning-dot:nth-child(6){left:2px;top:50%;animation-delay:0.10s}
-.lightning-dot:nth-child(7){right:2px;top:50%;animation-delay:0.07s}
-@keyframes dot-blink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0;transform:scale(0.1)}}
-.lightning-avatar{width:78px;height:78px;border-radius:50%;background:linear-gradient(135deg,#f0c040,#c08000);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#5a2800;z-index:3;position:relative}
-.lightning-name-wrap{position:relative;display:inline-block}
-.lightning-name{font-size:17px;font-weight:900;color:#e8f4ff;letter-spacing:1px;text-shadow:0 0 8px rgba(96,200,255,0.5);animation:name-flash 2.5s steps(60) infinite;font-family:'Kanit',sans-serif}
-@keyframes name-flash{0%,100%{color:#e8f4ff;text-shadow:0 0 6px rgba(96,200,255,0.3)}49%{color:#fff;text-shadow:0 0 2px #fff,0 0 20px #60c8ff,0 0 40px #0080ff}50%{color:#c0e8ff;text-shadow:0 0 30px #60c8ff,0 0 60px #0040ff}51%{color:#fff;text-shadow:0 0 2px #fff,0 0 16px #60c8ff}}
-.lightning-name-wrap::before{content:'';position:absolute;top:0;left:-10%;width:0;height:100%;background:linear-gradient(90deg,transparent,rgba(96,200,255,0.8),rgba(255,255,255,0.9),transparent);animation:name-sweep 2.5s steps(30) infinite}
-@keyframes name-sweep{0%,44%,56%,100%{width:0;left:-10%;opacity:0}48%{width:120%;left:-10%;opacity:1}50%{width:0;left:110%;opacity:0}}
-.lightning-name-wrap::after{content:'⚡';position:absolute;top:-14px;font-size:12px;color:#60c8ff;animation:bolt-run 2.5s steps(20) infinite;pointer-events:none}
-@keyframes bolt-run{0%,44%,56%,100%{opacity:0;left:0}47%{opacity:1;left:20%}50%{opacity:1;left:70%}53%{opacity:0;left:90%}}
-[data-style="lite"] .lightning-arc-1,[data-style="lite"] .lightning-arc-2,[data-style="lite"] .lightning-arc-3,[data-style="lite"] .lightning-dot{animation:none!important}
 /* ══ SVG RANK BADGES ══ */
 .shield-wrap{position:relative;width:64px;height:74px}
 .shield-svg{width:64px;height:74px}
@@ -1023,3 +997,29 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 
 /* --- background-position shine (kingTitleShine) --- */
 .king-banner,.lb-rn-king{will-change:background-position}
+
+/* ══════════════════════════════════════════════════════
+   THUNDER CARD FRAME — new Thunder God border effect
+   (replaces rotating_arcs lightning-avatar-wrap)
+   SVG running-dash + periodic strike + corner sparks
+══════════════════════════════════════════════════════ */
+@keyframes tcfRun{to{stroke-dashoffset:-1000}}
+@keyframes tcfStrike{0%,70%,100%{opacity:0}73%{opacity:.95}76%{opacity:.15}80%{opacity:.8}85%{opacity:0}}
+@keyframes tcfSpark{0%,70%,100%{opacity:0;transform:scale(.6)}74%{opacity:1;transform:scale(1.4)}82%{opacity:.4;transform:scale(1)}88%{opacity:0;transform:scale(.6)}}
+@keyframes tcfBreath{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes tcfRowGlow{0%,100%{box-shadow:0 0 0 1.5px rgba(56,189,248,.5),0 0 14px rgba(56,189,248,.12),0 4px 18px rgba(3,105,161,.08)!important}50%{box-shadow:0 0 0 2px rgba(56,189,248,.88),0 0 26px rgba(56,189,248,.28),0 0 44px rgba(3,105,161,.18)!important}}
+
+/* SVG overlay — positioned over entire card */
+.tcf-svg-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:10;overflow:visible}
+/* Corner spark dots */
+.tcf-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#e0f2fe;box-shadow:0 0 8px #38bdf8,0 0 16px #38bdf8;pointer-events:none;z-index:11;opacity:0}
+/* Outer glow for profile hero wraps */
+.tcf-hero-glow{position:absolute;inset:-14px;border-radius:32px;box-shadow:0 0 22px rgba(3,105,161,.45),0 0 48px rgba(56,189,248,.22);animation:tcfBreath 3s ease-in-out infinite;pointer-events:none;z-index:0}
+/* Row glow (leaderboard) — replaces box-shadow */
+.tcf-active{animation:tcfRowGlow 3s ease-in-out infinite!important}
+
+/* lite / reduced-motion: kill animations, keep minimal visual */
+[data-style="lite"] .tcf-svg-overlay rect{animation:none!important}
+[data-style="lite"] .tcf-spark,[data-style="lite"] .tcf-hero-glow{animation:none!important;opacity:.35!important}
+[data-style="lite"] .tcf-active{animation:none!important;box-shadow:0 0 0 1.5px rgba(56,189,248,.6)!important}
+@media(prefers-reduced-motion:reduce){.tcf-svg-overlay rect,.tcf-spark,.tcf-hero-glow,.tcf-active{animation:none!important}}

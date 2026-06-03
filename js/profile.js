@@ -171,30 +171,19 @@ async function openPlayerProfile(playerId) {
     bronze: 'linear-gradient(135deg,#cd7f32,#a0522d)'
   };
 
+  const _hasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
   const html = `
   <div class="pp-overlay" id="ppOverlayEl" onclick="closePlayerProfile(event)">    <div class="pp-sheet2" id="ppSheet2">
       <div class="pp2-handle"></div>
-      <div class="pp2-hero">
-        ${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? `
-        <div class="lightning-avatar-wrap">
-          <div class="lightning-arc lightning-arc-1"></div>
-          <div class="lightning-arc lightning-arc-2"></div>
-          <div class="lightning-arc lightning-arc-3"></div>
-          <div class="lightning-dot"></div>
-          <div class="lightning-dot"></div>
-          <div class="lightning-dot"></div>
-          <div class="lightning-dot"></div>
-          <div class="lightning-avatar" style="font-size:1.6rem">${getInitial(p.name)}</div>
-        </div>` : `
+      <div class="pp2-hero" id="pp2HeroEl" style="${_hasTG ? 'position:relative;isolation:isolate;border-radius:18px;padding:18px;margin:-4px;' : ''}">
+        ${_hasTG ? '<div class="tcf-hero-glow"></div>' : ''}
         <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">
           ${getGachaFrameInner(p)}${getInitial(p.name)}
           ${!getGachaFrameClass(p) ? `<div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>` : ''}
           ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? _kingCrownHTML() : ''}
-        </div>`}
+        </div>
         <div class="pp2-hero-text">
-          ${(p.ownedEffects && p.ownedEffects.includes('rotating_arcs')) ? `
-          <div class="lightning-name-wrap"><span class="lightning-name">${p.name}</span></div>` : `
-          <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>`}
+          <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>
           ${getPresenceHTML(p) ? `<div style="margin-top:4px">${getPresenceHTML(p)}</div>` : ''}
           <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
@@ -288,6 +277,11 @@ async function openPlayerProfile(playerId) {
   overlay.style.display = 'block';
   document.body.dataset.ppLock = '1';
   document.body.style.overflow = 'hidden';
+  // Apply ThunderCardFrame to hero section for Thunder God players
+  if (_hasTG) {
+    const heroEl = document.getElementById('pp2HeroEl');
+    if (heroEl) applyThunderCardFrame(heroEl, 18, 2.5, true);
+  }
   // Start the King crown sparkles once the sheet is in the DOM (King only).
   const kcCanvas = document.getElementById('kcSparkCanvas');
   if (kcCanvas) requestAnimationFrame(() => _initKingCrownSparkles(kcCanvas));

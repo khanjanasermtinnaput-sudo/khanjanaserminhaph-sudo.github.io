@@ -152,35 +152,19 @@ function lbRenderBoard(data, animate = true) {
     row.className = `lb-br lb-glass${isMe ? ' lbme' : ''}${isKingThrone ? ' lb-king-throne' : ''}`;
     row.dataset.name = p.name.toLowerCase();   // for in-place search filtering (no DOM rebuild)
     row.style.animationDelay = (i * .06) + 's';
-    const _hasArcs = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
+    const _hasThunderGod = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     const _presenceDotCls = p.lastSeen && (Date.now() - p.lastSeen) / 60000 <= 3 ? 'online' : 'offline';
     const _presenceAvatarDot = p.lastSeen ? `<span class="presence-avatar-dot ${_presenceDotCls}"></span>` : '';
     row.innerHTML = `
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0;isolation:isolate">
-          ${_hasArcs ? `
-          <div class="lightning-avatar-wrap" style="width:48px;height:48px">
-            <div class="lightning-arc lightning-arc-1"></div>
-            <div class="lightning-arc lightning-arc-2"></div>
-            <div class="lightning-arc lightning-arc-3"></div>
-            <div class="lightning-dot"></div><div class="lightning-dot"></div>
-            <div class="lightning-dot"></div><div class="lightning-dot"></div>
-            <div class="lightning-avatar" style="width:36px;height:36px;font-size:16px">${getInitial(p.name)}</div>
-          </div>${_presenceAvatarDot}` : `
-          <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
+          <div class="lb-rav ${_hasThunderGod ? '' : getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${_hasThunderGod ? '' : getGachaFrameInner(p)}${av.content}</div>
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:32px;height:32px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`:''}
           ${_presenceAvatarDot}
-        `}
         </div>
         <div>
-          ${_hasArcs ? `
-          <div class="lightning-name-wrap lb-rn${rank.id==='king'?' lb-rn-king':''}">
-            <span class="lightning-name" style="font-size:13px;letter-spacing:0.5px;font-weight:600">${p.name}</span>
-            ${isMe ? `<span style="color:var(--neon);font-size:0.7rem;margin-left:4px">${t('me')}</span>` : ''}
-            ${getPresenceInlineHTML(p)}
-          </div>` : `
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>`}
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
@@ -194,6 +178,11 @@ function lbRenderBoard(data, animate = true) {
       setTimeout(() => openPlayerProfile(p.id), 120);
     });
     bl.appendChild(row);
+    // Apply ThunderCardFrame border to the row (no corner sparks — row has overflow:hidden for ripple)
+    if (_hasThunderGod) {
+      row.classList.add('tcf-active');
+      applyThunderCardFrame(row, 16, 2, false);
+    }
     const isLite = document.documentElement.getAttribute('data-style') === 'lite';
     if (animate && !isLite) {
       setTimeout(() => {
@@ -850,8 +839,9 @@ async function renderProfile() {
     const _profPins = p.pinnedAchs;
     const _profAch = (p.customAch||[]).filter(a => (_profPins === null || _profPins === undefined) ? true : _profPins.includes(a.id));
     const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
+    const _profHasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     document.getElementById('profileCard').innerHTML = `
-      <div class="profile-header">
+      <div class="profile-header" id="profHeaderEl">
         <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,32)}<div class="profile-avatar ${getGachaFrameClass(p) || 'liquid-frame'} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameClass(p) ? '' : getLiquidFrameInner()}${getGachaFrameInner(p)}${av.content}</div></div>
         <div><div class="profile-name ${getGachaNameClass(p)}">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${getRankBadgeSVG(p.pts,p.id,36)}<span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
@@ -880,6 +870,14 @@ async function renderProfile() {
       <div class="divider" style="${(p.primeTitles||[]).length ? '' : 'display:none'}"></div>
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📈 Ranking History<div style="flex:1;height:1px;background:var(--glass-border);margin-left:6px;"></div></div>
       ${buildRankingChart(p.id)}`;
+    // Apply ThunderCardFrame to profile header for Thunder God players
+    if (_profHasTG) {
+      const hdr = document.getElementById('profHeaderEl');
+      if (hdr) {
+        hdr.insertAdjacentHTML('afterbegin', '<div class="tcf-hero-glow"></div>');
+        applyThunderCardFrame(hdr, 18, 2.5, true);
+      }
+    }
     const myMatches = db.matches.filter(m => [...m.teamA,...m.teamB].some(x=>x.id===p.id)).slice(0, 20);
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
@@ -1127,7 +1125,31 @@ function openEditPlayer(id) {
   document.getElementById('editPlayerAdmin').value = p.isAdmin ? '1' : '0';
   document.getElementById('editPlayerGachaFrame').value = p.gachaFrame || '';
   document.getElementById('editPlayerGachaName').value = p.gachaName || '';
+  // Show/hide Thunder God revoke button based on player's current badge
+  const revokeBtn = document.getElementById('tgRevokeGroup');
+  if (revokeBtn) {
+    const hasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
+    revokeBtn.style.display = hasTG ? '' : 'none';
+  }
   openModal('editPlayerModal');
+}
+
+async function adminRevokeThunderGod() {
+  const id = parseInt(document.getElementById('editPlayerId').value);
+  const p = db.players.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm(`ลบ ⚡ Thunder God badge ของ "${p.name}"?`)) return;
+  try {
+    const efx = (p.ownedEffects || []).filter(e => e !== 'rotating_arcs');
+    const data = { owned_effects: JSON.stringify(efx) };
+    if (p.gachaFrame === 'thundergod') data.gacha_frame = null;
+    if (p.gachaName  === 'thundergod') data.gacha_name  = null;
+    await dbUpdatePlayer(id, data);
+    await loadPlayers();
+    closeModal('editPlayerModal');
+    renderAdmin(); renderLeaderboard();
+    toast(`⚡ ลบ Thunder God ของ ${p.name} แล้ว`, 'info');
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
 async function saveEditPlayer() {
   const id = parseInt(document.getElementById('editPlayerId').value);
@@ -1152,10 +1174,20 @@ async function saveEditPlayer() {
       if (newName  && !inv.names.includes(gachaName))   inv.names.push(gachaName);
       _saveGachaInventoryToDB(id, inv); // async — fire and forget
     }
-    closeModal('editPlayerModal'); renderAdmin(); toast('บันทึกสำเร็จ', 'success');
+    // ── If granting Thunder God, also persist rotating_arcs to owned_effects in DB ──
+    const isThunderGod = gachaFrame === 'thundergod' || gachaName === 'thundergod';
+    if (isThunderGod) {
+      const pUpdated = db.players.find(x => x.id === id);
+      if (pUpdated) {
+        const efx = (pUpdated.ownedEffects || []).filter(e => e !== 'rotating_arcs');
+        efx.push('rotating_arcs');
+        dbUpdatePlayer(id, { owned_effects: JSON.stringify(efx) }).catch(() => {});
+        pUpdated.ownedEffects = efx;
+      }
+    }
+    closeModal('editPlayerModal'); renderAdmin(); renderLeaderboard(); toast('บันทึกสำเร็จ', 'success');
     // ── Show cosmetic reveal (cinematic for SECRET, normal card for others) ──
     if (newFrame || newName) {
-      const isThunderGod  = gachaFrame === 'thundergod' || gachaName === 'thundergod';
       const isSolarEmperor = gachaFrame === 'solaremperor' || gachaName === 'solaremperor';
       if (isThunderGod) showThunderGodCinematic(playerName);
       else if (isSolarEmperor) showSolarEmperorAscension(playerName, false);

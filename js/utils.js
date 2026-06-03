@@ -50,11 +50,66 @@ function getGachaFrameInner(player) {
 }
 // Returns extra class for the name element e.g. "gn-void"
 function getGachaNameClass(player) {
+  // Thunder God (rotating_arcs) → use the gn-thundergod shimmer
+  if (player && player.ownedEffects && player.ownedEffects.includes('rotating_arcs')) return 'gn-thundergod';
   const raw = player && player.gachaName;
-  if (raw === 'thundergod') return ''; // replaced by rotating_arcs avatar effect
   const n = _resolveNameKey(raw);
   if (!n || !['void','halo','blaze','ice','solaremperor'].includes(n)) return '';
   return 'gn-' + n;
+}
+
+// ── ThunderCardFrame helpers ─────────────────────────────────────────────────
+// Shared SVG defs (filters + gradient) injected once into <body>.
+// All TCF instances reference the same filter IDs — minimal DOM cost.
+function _ensureTCFDefs() {
+  if (document.getElementById('tcf-defs-global')) return;
+  const gc = '#38bdf8', dc = '#0369a1';
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.id = 'tcf-defs-global';
+  s.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;z-index:-1';
+  s.innerHTML = `<defs>
+    <linearGradient id="tcf-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="${dc}"/><stop offset="50%" stop-color="${gc}"/><stop offset="100%" stop-color="${dc}"/>
+    </linearGradient>
+    <filter id="tcf-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="tcf-glow-s" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+  document.body.appendChild(s);
+}
+
+// Returns HTML string for the SVG overlay + corner sparks (inject into target element)
+function thunderCardFrameHTML(radius, bw, sparks) {
+  _ensureTCFDefs();
+  bw = bw || 2; radius = radius || 16; sparks = sparks !== false;
+  const rx = Math.max(0, radius - bw);
+  const dc = '#0369a1', cc = '#e0f2fe';
+  const w = `calc(100% - ${bw * 2}px)`, h = `calc(100% - ${bw * 2}px)`;
+  const sparkHTML = sparks ? `
+    <span class="tcf-spark" style="top:-3px;left:-3px;animation:tcfSpark 4.2s 0s ease-out infinite"></span>
+    <span class="tcf-spark" style="top:-3px;right:-3px;animation:tcfSpark 4.2s .12s ease-out infinite"></span>
+    <span class="tcf-spark" style="bottom:-3px;left:-3px;animation:tcfSpark 4.2s .24s ease-out infinite"></span>
+    <span class="tcf-spark" style="bottom:-3px;right:-3px;animation:tcfSpark 4.2s .36s ease-out infinite"></span>` : '';
+  return `<svg class="tcf-svg-overlay" preserveAspectRatio="none">
+    <rect x="${bw}" y="${bw}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="${dc}" stroke-width="${bw}" stroke-opacity=".55"/>
+    <rect x="${bw}" y="${bw}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="url(#tcf-grad)" stroke-width="${bw}" stroke-linecap="round" filter="url(#tcf-glow)" pathLength="1000" stroke-dasharray="180 820" style="animation:tcfRun 3.4s linear infinite"/>
+    <rect x="${bw}" y="${bw}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="${cc}" stroke-width="${bw * .5}" stroke-linecap="round" filter="url(#tcf-glow-s)" pathLength="1000" stroke-dasharray="90 910" style="animation:tcfRun 3.4s linear infinite;animation-delay:-.4s;opacity:.9"/>
+    <rect x="${bw}" y="${bw}" width="${w}" height="${h}" rx="${rx}" fill="none" stroke="${cc}" stroke-width="${bw * 1.3}" filter="url(#tcf-glow-s)" style="animation:tcfStrike 4.2s ease-out infinite;opacity:0"/>
+  </svg>${sparkHTML}`;
+}
+
+// Applies ThunderCardFrame to an existing DOM element (idempotent)
+function applyThunderCardFrame(el, radius, bw, sparks) {
+  if (!el || el.dataset.tcfDone) return;
+  el.dataset.tcfDone = '1';
+  el.style.position = 'relative';
+  el.style.isolation = 'isolate';
+  el.insertAdjacentHTML('beforeend', thunderCardFrameHTML(radius, bw, sparks));
 }
 // Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
 function resolveGachaPlayer(p) {

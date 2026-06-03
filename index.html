@@ -711,6 +711,9 @@ END $$;</pre>
     <div class="form-group"><label>สิทธิ์ Admin</label><select class="inp" id="editPlayerAdmin"><option value="0">ไม่ใช่ Admin</option><option value="1">Admin</option></select></div>
     <div class="form-group"><label>⭐ Gacha Frame</label><select class="inp" id="editPlayerGachaFrame"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Abyss</option><option value="halo">✨ Celestial Halo</option><option value="blaze">🔥 Crimson Blaze</option><option value="ice">❄️ Phantom Ice</option><option value="solaremperor">👑 Solar Emperor (King Prestige)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
     <div class="form-group"><label>⭐ Gacha Name Effect</label><select class="inp" id="editPlayerGachaName"><option value="">ไม่มี (ปกติ)</option><option value="void">🌑 Void Corruption</option><option value="halo">✨ Celestial Script</option><option value="blaze">🔥 Blaze Script</option><option value="ice">❄️ Ice Script</option><option value="solaremperor">👑 Solar Emperor Script (King Prestige)</option><option value="thundergod">⚡ Thunder God [SECRET 0.1%]</option></select></div>
+    <div class="form-group" id="tgRevokeGroup" style="display:none">
+      <button type="button" class="btn btn-sm" style="width:100%;background:rgba(56,189,248,0.08);border:1px solid rgba(56,189,248,0.35);color:#38bdf8;font-weight:600" onclick="adminRevokeThunderGod()">⚡ ลบ Thunder God badge ออกจากผู้เล่นคนนี้</button>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-danger btn-sm" onclick="deletePlayer()">🗑️ ลบ</button>
       <button class="btn btn-danger btn-sm" style="background:rgba(255,140,0,0.12);border-color:rgba(255,140,0,0.35);color:#ff8c00" onclick="clearPlayerHistory(parseInt(document.getElementById('editPlayerId').value))">🔄 ล้างประวัติ</button>
