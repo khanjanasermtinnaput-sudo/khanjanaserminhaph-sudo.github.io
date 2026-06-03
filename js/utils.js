@@ -449,9 +449,14 @@ function normalizePlayer(p) {
   const achpinsEntry = pt.find(t => typeof t === 'string' && t.startsWith(ACHPINS_PFX));
   const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX) || t.startsWith(ACHPINS_PFX))));
   let ca = [];
-  if (cachEntry) { try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {} }
-  if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
-  if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
+  if (cachEntry) {
+    try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {}
+    // __cach: explicitly set in prime_titles → authoritative, skip stale fallbacks
+  } else {
+    // No __cach: in prime_titles → may be old data or never awarded
+    if (!ca.length) { try { ca = JSON.parse(p.custom_ach || '[]'); } catch(e) {} }
+    if (!ca.length) { try { const ls = getCachAwardsLS(); if (ls[p.id]) ca = ls[p.id]; } catch(e) {} }
+  }
   let catalogShared = null;
   if (catalogEntry) { try { catalogShared = JSON.parse(catalogEntry.slice(CATALOG_PFX.length)); } catch(e) {} }
   let hofShared = null;
@@ -513,7 +518,9 @@ function buildPlayerPrimeTitles(player, opts) {
   const ACHPINS_PFX = '__achpins:';
   const pt = [...(player.primeTitles || [])];
   const awards = opts.awards !== undefined ? opts.awards : (player.customAch || []);
-  if (awards && awards.length > 0) pt.push(CACH_PFX + JSON.stringify(awards));
+  // Always write __cach: when awards is explicitly passed (even empty []) so normalizePlayer
+  // knows this entry is authoritative and won't fall back to stale custom_ach data.
+  if (opts.awards !== undefined || (awards && awards.length > 0)) pt.push(CACH_PFX + JSON.stringify(awards));
   const catalog = opts.catalog !== undefined ? opts.catalog : player._catalogShared;
   if (catalog && catalog.length > 0) pt.push(CATALOG_PFX + JSON.stringify(catalog));
   const hof = opts.hof !== undefined ? opts.hof : player._hofShared;

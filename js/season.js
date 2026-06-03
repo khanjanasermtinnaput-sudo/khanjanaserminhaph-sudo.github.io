@@ -49,15 +49,16 @@ function renderPrimeSSTitles(player) {
 
 // ── CUSTOM ACHIEVEMENT SYSTEM ──────────────────────────────────
 const CACH_KEY = 'badminton_cach_catalog';
-const CACH_KEY_BAK = 'badminton_cach_catalog_bak'; // [NEW] backup key for robustness
+const CACH_KEY_BAK = 'badminton_cach_catalog_bak';
+const CACH_DELETED_KEY = 'bmt_cach_deleted';
+function _getCachDeleted() { try { return new Set(JSON.parse(localStorage.getItem(CACH_DELETED_KEY)||'[]')); } catch(e) { return new Set(); } }
+function _addCachDeleted(id) { const s = _getCachDeleted(); s.add(id); localStorage.setItem(CACH_DELETED_KEY, JSON.stringify([...s])); }
 
-// [FIXED] getCachCatalog — reads from 4 sources for maximum resilience
 function getCachCatalog() {
   const out = [];
   const seen = new Set();
   const add = (item) => { if (item && item.id && !seen.has(item.id)) { out.push(item); seen.add(item.id); } };
   // 1. Supabase shared catalog — รวมจาก _catalogShared ของแอดมิน "ทุกคน"
-  //    เพื่อให้แอดมินคนหนึ่งเห็น achievement ที่แอดมินคนอื่นสร้าง
   if (typeof db !== 'undefined' && db.players && db.players.length) {
     for (const p of [...db.players].sort((a,b)=>a.id-b.id)) {
       if (p._catalogShared && Array.isArray(p._catalogShared)) {
@@ -67,13 +68,14 @@ function getCachCatalog() {
   }
   // 2. Primary localStorage key
   try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY)||'[]')) add(item); } catch(e) {}
-  // 3. [NEW] Backup localStorage key (in case primary was overwritten or cleared)
+  // 3. Backup localStorage key
   try { for (const item of JSON.parse(localStorage.getItem(CACH_KEY_BAK)||'[]')) add(item); } catch(e) {}
-  // 4. Reconstruct from any awards already given out (last-resort backup)
+  // 4. Last-resort reconstruct from player awards — skip explicitly deleted IDs
   if (typeof db !== 'undefined' && db.players) {
+    const _deleted = _getCachDeleted();
     for (const p of db.players) {
       for (const a of (p.customAch||[])) {
-        if (a && a.id && !a.id.startsWith('sys_')) // skip system achievements
+        if (a && a.id && !a.id.startsWith('sys_') && !_deleted.has(a.id))
           add({ id:a.id, icon:a.icon||'🏆', title:a.title||'', desc:a.desc||'', frame:a.frame||'gold' });
       }
     }
@@ -246,16 +248,21 @@ function createCachDef() {
 }
 
 async function deleteCachDef(achId) {
+  // Track deletion so getCachCatalog source #4 won't reconstruct it from player awards
+  _addCachDeleted(achId);
   // 1. ลบออกจาก catalog (localStorage + Supabase)
   await saveCachCatalog(getCachCatalog().filter(a => a.id !== achId));
-  // 2. ลบออกจาก customAch ของผู้เล่นทุกคน — ไม่งั้น source 4 ใน getCachCatalog จะ reconstruct กลับมา
+  // 2. ลบออกจาก customAch ของผู้เล่นทุกคน — อัปเดตทั้ง prime_titles และ custom_ach column
   const affected = db.players.filter(p => (p.customAch||[]).some(a => a.id === achId));
   await Promise.all(affected.map(async player => {
     const cur = (player.customAch||[]).filter(a => a.id !== achId);
     saveCachAwardLS(player.id, cur);
     player.customAch = cur;
     try {
-      await dbUpdatePlayer(player.id, { prime_titles: buildPlayerPrimeTitles(player, { awards: cur }) });
+      await dbUpdatePlayer(player.id, {
+        prime_titles: buildPlayerPrimeTitles(player, { awards: cur }),
+        custom_ach: JSON.stringify(cur)
+      });
     } catch(e) {
       try { await dbUpdatePlayer(player.id, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
     }
