@@ -177,11 +177,7 @@ async function openPlayerProfile(playerId) {
       <div class="pp2-handle"></div>
       <div class="pp2-hero" id="pp2HeroEl" style="${_hasTG ? 'position:relative;isolation:isolate;border-radius:18px;padding:18px;margin:-4px;' : ''}">
         ${_hasTG ? '<div class="tcf-hero-glow"></div>' : ''}
-        <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">
-          ${getGachaFrameInner(p)}${getInitial(p.name)}
-          ${!getGachaFrameClass(p) ? `<div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>` : ''}
-          ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? _kingCrownHTML() : ''}
-        </div>
+        ${_hasTG ? thunderGodAvatarHTML(getAvatar(p.id, p.name).content, 80, colors[1], colors[0]) : `<div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}${!getGachaFrameClass(p)?`<div class="pp2-av-ring" style="background:${rankGradients[rank.id]||rankGradients.bronze}"></div>`:''}${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?_kingCrownHTML():''}</div>`}
         <div class="pp2-hero-text">
           <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>
           ${getPresenceHTML(p) ? `<div style="margin-top:4px">${getPresenceHTML(p)}</div>` : ''}

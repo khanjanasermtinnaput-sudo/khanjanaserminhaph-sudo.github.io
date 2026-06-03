@@ -111,6 +111,92 @@ function applyThunderCardFrame(el, radius, bw, sparks) {
   el.style.isolation = 'isolate';
   el.insertAdjacentHTML('beforeend', thunderCardFrameHTML(radius, bw, sparks));
 }
+
+// ── Thunder God Avatar Frame (octagon with lightning) ────────────────────────
+function _tgOctagon(cx, cy, r, rot) {
+  rot = (rot !== undefined) ? rot : -22.5;
+  const pts = [];
+  for (let i = 0; i < 8; i++) {
+    const a = (rot + i * 45) * Math.PI / 180;
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+  }
+  return pts;
+}
+function _tgPath(pts) {
+  return pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(2) + ',' + p[1].toFixed(2)).join(' ') + ' Z';
+}
+function _tgBolt(x1, y1, x2, y2, segs, spread, seed) {
+  let s = seed;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  const pts = [[x1, y1]];
+  for (let i = 1; i < segs; i++) {
+    const t = i / segs, mx = x1 + (x2 - x1) * t, my = y1 + (y2 - y1) * t;
+    const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy) || 1;
+    pts.push([mx + (-dy / len) * (rand() - 0.5) * spread, my + (dx / len) * (rand() - 0.5) * spread]);
+  }
+  pts.push([x2, y2]);
+  return 'M' + pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' L');
+}
+function _ensureTGDefs() {
+  if (document.getElementById('tg-defs-global')) return;
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.id = 'tg-defs-global';
+  s.style.cssText = 'position:absolute;width:0;height:0;overflow:hidden;pointer-events:none;z-index:-1';
+  s.innerHTML = `<defs>
+    <linearGradient id="tg-rim-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0f2fe"/><stop offset="40%" stop-color="#7dd3fc"/><stop offset="100%" stop-color="#38bdf8"/>
+    </linearGradient>
+    <filter id="tg-glow-g" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="tg-glow-sg" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>`;
+  document.body.appendChild(s);
+}
+let _tgClipIdx = 0;
+function thunderGodAvatarHTML(content, size, bgColor, textColor) {
+  _ensureTGDefs();
+  size = size || 40; bgColor = bgColor || '#082f49'; textColor = textColor || '#e0f2fe';
+  const VB = 240, cx = 120, cy = 120;
+  const outerR = VB * 0.46, midR = VB * 0.435, clipR = VB * 0.40;
+  const clipId = 'tg-c' + (++_tgClipIdx), shadeId = 'tg-s' + _tgClipIdx;
+  const clipPts = _tgOctagon(cx, cy, clipR), outerPts = _tgOctagon(cx, cy, outerR), midPts = _tgOctagon(cx, cy, midR);
+  const arcHTML = midPts.map((p1, i) => {
+    const p2 = midPts[(i + 1) % 8], d = _tgBolt(p1[0], p1[1], p2[0], p2[1], 4, 6, 2000 + i * 211);
+    return `<path d="${d}" fill="none" stroke="#bae6fd" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" filter="url(#tg-glow-g)" style="animation:tgArc 2.6s ${(i * .25).toFixed(2)}s ease-in-out infinite;opacity:0"/>`;
+  }).join('');
+  const boltsHTML = _tgOctagon(cx, cy, outerR + 8).map((v, i) => {
+    const a = (-22.5 + i * 45) * Math.PI / 180;
+    const d = _tgBolt(v[0], v[1], cx + (clipR + 4) * Math.cos(a), cy + (clipR + 4) * Math.sin(a), 5, 14, 1000 + i * 137);
+    const dl = (i * .45).toFixed(2);
+    return `<path d="${d}" fill="none" stroke="#7dd3fc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#tg-glow-sg)" style="animation:tgStrike 3.6s ${dl}s ease-out infinite;opacity:0"/>` +
+           `<path d="${d}" fill="none" stroke="#fff" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" style="animation:tgStrike 3.6s ${dl}s ease-out infinite;opacity:0"/>`;
+  }).join('');
+  const nodesHTML = _tgOctagon(cx, cy, clipR).map((pt, i) =>
+    `<g transform="translate(${pt[0].toFixed(1)},${pt[1].toFixed(1)})"><path d="M0,-3 L2.4,0 L0,3 L-2.4,0 Z" fill="#e0f2fe" stroke="#38bdf8" stroke-width="0.6" filter="url(#tg-glow-g)" style="animation:tgNode 2.4s ${(i * .3).toFixed(2)}s ease-in-out infinite"/></g>`
+  ).join('');
+  const ticksHTML = Array.from({length: 24}, (_, i) => {
+    const a = (i / 24) * Math.PI * 2, r1 = outerR + 3, r2 = outerR + (i % 3 === 0 ? 8 : 5);
+    return `<line x1="${(cx + r1 * Math.cos(a)).toFixed(1)}" y1="${(cy + r1 * Math.sin(a)).toFixed(1)}" x2="${(cx + r2 * Math.cos(a)).toFixed(1)}" y2="${(cy + r2 * Math.sin(a)).toFixed(1)}" stroke="#7dd3fc" stroke-width="${i % 3 === 0 ? 1.2 : 0.6}" stroke-opacity="${i % 3 === 0 ? .7 : .35}" stroke-linecap="round"/>`;
+  }).join('');
+  const cp = _tgPath(clipPts), op = _tgPath(outerPts);
+  return `<div class="tg-wrap" style="width:${size}px;height:${size}px;flex-shrink:0"><div class="tg-glow-bg"></div>` +
+    `<svg viewBox="0 0 ${VB} ${VB}" width="${size}" height="${size}" style="display:block;overflow:visible;position:relative">` +
+    `<defs><clipPath id="${clipId}"><path d="${cp}"/></clipPath>` +
+    `<radialGradient id="${shadeId}" cx="50%" cy="50%" r="50%"><stop offset="70%" stop-color="rgba(0,0,0,0)"/><stop offset="100%" stop-color="rgba(8,47,73,0.45)"/></radialGradient></defs>` +
+    `<g clip-path="url(#${clipId})"><foreignObject x="0" y="0" width="${VB}" height="${VB}">` +
+    `<div style="width:100%;height:100%;background:${bgColor};display:flex;align-items:center;justify-content:center;font-size:${Math.round(VB * .38)}px;color:${textColor};font-weight:700;line-height:1">${content}</div>` +
+    `</foreignObject><path d="${cp}" fill="url(#${shadeId})"/></g>` +
+    `<g>${arcHTML}</g>` +
+    `<path d="${cp}" fill="none" stroke="url(#tg-rim-g)" stroke-width="2.2" stroke-linejoin="miter" filter="url(#tg-glow-g)"/>` +
+    `<path d="${op}" fill="none" stroke="#7dd3fc" stroke-width="0.8" stroke-opacity="0.55" stroke-linejoin="miter"/>` +
+    `<g>${nodesHTML}</g><g>${boltsHTML}</g>` +
+    `<g style="transform-origin:center;animation:tgSpin 20s linear infinite">${ticksHTML}</g>` +
+    `</svg></div>`;
+}
+
 // Resolve player by id from db.players (for gacha lookup from minimal player refs in match data)
 function resolveGachaPlayer(p) {
   if (!p) return null;

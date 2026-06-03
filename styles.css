@@ -1025,3 +1025,14 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 [data-style="lite"] .tcf-spark,[data-style="lite"] .tcf-hero-glow{animation:none!important;opacity:.35!important}
 [data-style="lite"] .tcf-active{animation:none!important;box-shadow:0 0 0 1.5px rgba(56,189,248,.6)!important}
 @media(prefers-reduced-motion:reduce){.tcf-svg-overlay rect,.tcf-spark,.tcf-hero-glow,.tcf-active{animation:none!important}}
+
+/* ── Thunder God Avatar Frame (octagon) ───────────────────────────────────── */
+@keyframes tgBreath{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.04)}}
+@keyframes tgSpin{to{transform:rotate(360deg)}}
+@keyframes tgNode{0%,100%{opacity:.55}50%{opacity:1}}
+@keyframes tgArc{0%,100%{opacity:0}8%{opacity:.85}16%{opacity:.1}24%{opacity:.6}32%{opacity:0}}
+@keyframes tgStrike{0%{opacity:0}3%{opacity:1}7%{opacity:.3}11%{opacity:.9}16%,100%{opacity:0}}
+.tg-wrap{position:relative;display:inline-block}
+.tg-glow-bg{position:absolute;inset:-14%;background:radial-gradient(circle,rgba(125,211,252,.30) 0%,rgba(56,189,248,.12) 45%,transparent 70%);animation:tgBreath 3.2s ease-in-out infinite;pointer-events:none;border-radius:50%}
+[data-style="lite"] .tg-glow-bg{animation:none!important}
+@media(prefers-reduced-motion:reduce){.tg-glow-bg{animation:none!important}}
