@@ -135,6 +135,8 @@ async function toggleTourAchAward(achId, playerId, give) {
     try { await dbUpdatePlayer(playerId, { custom_ach: JSON.stringify(cur) }); } catch(e2) {}
   }
   toast(give ? `✅ มอบ "${achDef?.title || achId}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
+  await loadPlayers();
+  if (currentUser) currentUser = db.players.find(p => p.id === currentUser.id) || currentUser;
   renderCachAdmin();
 }
 
@@ -331,6 +333,8 @@ async function toggleCachAward(achId, playerId, give) {
     toast('⚠️ sync บางส่วนอาจไม่ครบ', 'info');
   }
   toast(give ? `✅ มอบ "${achDef?.title}" ให้ ${player.name} แล้ว` : `❌ ยกเลิก Achievement ของ ${player.name}`, 'success');
+  await loadPlayers();
+  if (currentUser) currentUser = db.players.find(p => p.id === currentUser.id) || currentUser;
   renderCachAdmin();
 }
 

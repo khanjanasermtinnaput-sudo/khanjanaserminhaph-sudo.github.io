@@ -100,14 +100,11 @@ function lbFilterBoard(q) {
 }
 
 // คืน HTML badge สำหรับแถวใน Leaderboard
-// ระบบ "ติก = โชว์": ติกใน Profile → โชว์ทั้ง Leaderboard และ Profile, ไม่ติก → ไม่โชว์
+// ระบบ "ติก = โชว์": ติกใน Profile → โชว์บน Leaderboard, ไม่ติก → ไม่โชว์
 function getPlayerLBBadges(p) {
-  const pinnedAchs = p.pinnedAchs; // null = ไม่เคยตั้งค่า (โชว์ทุก customAch ที่มี), array = ตั้งค่าแล้ว
-  if (pinnedAchs === null || pinnedAchs === undefined) {
-    // ยังไม่เคยตั้งค่า → โชว์ customAch ทั้งหมด (default)
-    return (p.customAch || []).map(a =>
-      `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
-    ).join('');
+  const pinnedAchs = p.pinnedAchs; // null/undefined = ยังไม่เคยตั้งค่า → ไม่โชว์บน LB
+  if (!pinnedAchs || !Array.isArray(pinnedAchs) || pinnedAchs.length === 0) {
+    return ''; // ยังไม่ได้ติก → ไม่โชว์อะไรบน Leaderboard
   }
   // ตั้งค่าแล้ว: รวม built-in + customAch แล้วโชว์เฉพาะที่ติก (pinned)
   const allDefs = (typeof ACHIEVEMENTS_DEF !== 'undefined' && typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined')
@@ -835,9 +832,11 @@ async function renderProfile() {
     if (!localStorage.getItem(peakPosKey) || rankPos < peakRankPos) { peakRankPos = rankPos; localStorage.setItem(peakPosKey, rankPos); }
     // Total days played
     const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
-    // ระบบติก=โชว์: ถ้าตั้งค่าแล้ว (pinnedAchs เป็น array) โชว์เฉพาะที่ติก, ถ้ายังไม่ตั้งค่า (null) โชว์ทั้งหมด
+    // ระบบติก=โชว์: โชว์ใน profile card เฉพาะที่ติกแล้วเท่านั้น, null = ยังไม่ได้ตั้งค่า = ไม่โชว์
     const _profPins = p.pinnedAchs;
-    const _profAch = (p.customAch||[]).filter(a => (_profPins === null || _profPins === undefined) ? true : _profPins.includes(a.id));
+    const _profAch = (_profPins && Array.isArray(_profPins) && _profPins.length > 0)
+      ? (p.customAch||[]).filter(a => _profPins.includes(a.id))
+      : [];
     const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
     const _profHasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     document.getElementById('profileCard').innerHTML = `

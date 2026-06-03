@@ -277,10 +277,10 @@ function renderAchievements(playerId) {
     return true;
   });
 
-  // pinnedAchs: null = ยังไม่ตั้งค่า (default แสดงทั้งหมดที่ unlock), array = ตั้งค่าแล้ว
+  // pinnedAchs: null = ยังไม่ตั้งค่า → checkbox ไม่ติก (ไม่โชว์บน LB), array = ตั้งค่าแล้ว
   const pinnedAchs = p.pinnedAchs;
   const isPinned = (id) => {
-    if (pinnedAchs === null || pinnedAchs === undefined) return true;
+    if (!pinnedAchs || !Array.isArray(pinnedAchs)) return false;
     return pinnedAchs.includes(id);
   };
 
