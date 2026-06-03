@@ -116,7 +116,10 @@
           inv.equippedElement = patch.equippedElement;
         }
         localStorage.setItem('bmt_gacha_inv_' + pid, JSON.stringify(inv));
-        _saveGachaInventoryToDB(pid, inv).catch(() => {});
+        _saveGachaInventoryToDB(pid, inv).catch(err => {
+          if (typeof toast === 'function') toast('⚠️ บันทึก Element ลง DB ไม่ได้ — ตรวจสอบคอลัมน์ gacha_inventory', 'error');
+          console.warn('[gacha-element] DB save failed:', err && err.message);
+        });
       }
     } catch (e) {}
   }
@@ -146,7 +149,7 @@
     return _mkEl('circle', { cx, cy, r, fill, stroke, 'stroke-width': sw });
   }
   function _mkRoot(W) {
-    const s = _mkEl('svg', { viewBox: `0 0 ${W} ${W}` });
+    const s = _mkEl('svg', { viewBox: `0 0 ${W} ${W}`, 'data-ge-frame': '1' });
     s.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;z-index:3;overflow:visible;pointer-events:none;';
     return s;
   }
@@ -819,24 +822,55 @@
     _geRenderInventory();
   }
 
+  // ── Remove all element-frame SVGs injected into any avatar wrap on screen ──────
+  function _geClearInjectedFrames() {
+    // Reset geInject flags so frames can be re-injected with the new element
+    document.querySelectorAll('[data-ge-inject]').forEach(av => {
+      const old = av.querySelector('svg[data-ge-frame]');
+      if (old) old.remove();
+      delete av.dataset.geInject;
+    });
+    // Also clear the profile avatar and player-sheet avatar
+    ['#profileCard .profile-avatar', '#ppSheet2 .pp2-av'].forEach(sel => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      const old = el.querySelector('svg[data-ge-frame]');
+      if (old) old.remove();
+      delete el.dataset.geInject;
+    });
+  }
+
   // ── Equip helpers ─────────────────────────────────────────────────────────────
   function _geEquip(elId) {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     _geSetData(currentUser.id, { equippedElement: elId, element: elId });
+    _geClearInjectedFrames();
     _geRenderInventory();
     _geRenderProfileInventory();
-    if (typeof renderLeaderboard === 'function') renderLeaderboard();
-    if (typeof renderProfile === 'function') renderProfile();
+    // Reload players from DB so other-player views pick up the new equippedElement
+    const _afterReload = () => {
+      if (typeof renderLeaderboard === 'function') renderLeaderboard();
+      if (typeof renderProfile === 'function') renderProfile();
+    };
+    if (typeof loadPlayers === 'function') {
+      loadPlayers().then(_afterReload).catch(_afterReload);
+    } else {
+      _afterReload();
+    }
   }
 
   function _geEquipFromPull(elId) {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     _geSetData(currentUser.id, { equippedElement: elId, element: elId });
+    _geClearInjectedFrames();
     const el = GACHA_ELEMENTS.find(e => e.id === elId);
     const ez = document.getElementById('geEquipZone');
     if (ez) ez.innerHTML = `<div style="color:var(--neon);font-size:.82rem">✅ Equip ${el ? el.name : elId} สำเร็จ!</div>`;
     _geRenderInventory();
+    if (typeof renderProfile === 'function') renderProfile();
     if (typeof toast === 'function') toast(`✅ Equip ${el ? el.name : elId}!`, 'success');
+    // Reload so the DB change is visible to others immediately on this device
+    if (typeof loadPlayers === 'function') loadPlayers().catch(() => {});
   }
 
   function _geToggleEmoji() {
