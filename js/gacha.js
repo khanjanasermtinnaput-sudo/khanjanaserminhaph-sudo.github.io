@@ -70,9 +70,10 @@ function renderGachaInventory() {
   const curName  = pl.gachaName  || null;
   const frameLabels = { void:'🌑 Void Abyss', halo:'✨ Celestial Halo', blaze:'🔥 Crimson Blaze', ice:'❄️ Phantom Ice', solar:'☀️ Solar Crown' };
   const nameLabels  = { void:'🌑 Void Corruption', halo:'✨ Celestial Script', blaze:'🔥 Blaze Script', ice:'❄️ Ice Script', solar:'☀️ Solar Script' };
-  const frames = inv.frames || (curFrame ? [curFrame] : []);
-  const names  = inv.names  || (curName  ? [curName]  : []);
-  if (!frames.length && !names.length) { el.innerHTML = '<div class="text-muted" style="font-size:0.78rem;text-align:center;padding:8px">ยังไม่มี Ultra Rare ในคลัง</div>'; return; }
+  const frames  = inv.frames  || (curFrame ? [curFrame] : []);
+  const names   = inv.names   || (curName  ? [curName]  : []);
+  const effects = inv.effects || [];
+  if (!frames.length && !names.length && !effects.length) { el.innerHTML = '<div class="text-muted" style="font-size:0.78rem;text-align:center;padding:8px">ยังไม่มี Ultra Rare ในคลัง</div>'; return; }
   let html = '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;font-weight:600">📦 คลัง Ultra Rare — แตะเพื่อเปลี่ยน</div>';
   if (frames.length) {
     html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px">FRAME</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
@@ -83,10 +84,20 @@ function renderGachaInventory() {
     html += '</div>';
   }
   if (names.length) {
-    html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px">NAME EFFECT</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px">NAME EFFECT</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">';
     names.forEach(n => {
       const active = (n === curName);
       html += `<button onclick="equipGachaName('${n}')" style="padding:5px 11px;border-radius:20px;border:1px solid ${active?'rgba(168,85,247,0.8)':'rgba(168,85,247,0.25)'};background:${active?'rgba(168,85,247,0.2)':'rgba(168,85,247,0.07)'};color:${active?'#c084fc':'var(--muted)'};font-size:0.75rem;cursor:pointer;font-family:inherit;transition:all .2s">${nameLabels[n]||n} ${active?'✓':''}</button>`;
+    });
+    html += '</div>';
+  }
+  if (effects.length) {
+    const efxLabels = { rotating_arcs: '⚡ Thunder God' };
+    const curEffects = pl.ownedEffects || [];
+    html += '<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px">AVATAR EFFECT</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
+    effects.forEach(e => {
+      const active = curEffects.includes(e);
+      html += `<button onclick="${active ? `unequipGachaEffect('${e}')` : `equipGachaEffect('${e}')`}" style="padding:5px 11px;border-radius:20px;border:1px solid ${active?'rgba(0,212,255,0.8)':'rgba(0,212,255,0.25)'};background:${active?'rgba(0,212,255,0.15)':'rgba(0,212,255,0.05)'};color:${active?'#00d4ff':'var(--muted)'};font-size:0.75rem;cursor:pointer;font-family:inherit;transition:all .2s">${efxLabels[e]||e}${active?' ✓':''}</button>`;
     });
     html += '</div>';
   }
@@ -127,6 +138,33 @@ async function equipGachaName(val) {
     renderProfile();
     toast('✨ เปลี่ยน Name Effect เป็น ' + val + ' แล้ว!', 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
+}
+async function equipGachaEffect(effectId) {
+  if (!currentUser) return;
+  try {
+    const pl = db.players.find(x => x.id === currentUser.id);
+    const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
+    owned.push(effectId);
+    await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) });
+    await loadPlayers();
+    renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
+    renderProfile();
+    toast('⚡ ใส่ Thunder God แล้ว!', 'success');
+  } catch(e) { toast('ใส่ไม่ได้: ' + e.message, 'error'); }
+}
+async function unequipGachaEffect(effectId) {
+  if (!currentUser) return;
+  try {
+    const pl = db.players.find(x => x.id === currentUser.id);
+    const owned = ((pl && pl.ownedEffects) || []).filter(e => e !== effectId);
+    await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify(owned) });
+    await loadPlayers();
+    renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
+    renderProfile();
+    toast('⚡ ถอด Thunder God แล้ว!', 'success');
+  } catch(e) { toast('ถอดไม่ได้: ' + e.message, 'error'); }
 }
 function openGachaPull() {
   if (!currentUser) return;

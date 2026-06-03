@@ -986,8 +986,8 @@
 
     // Also check regular gacha inventory
     const regInv = typeof getGachaInventory === 'function' ? getGachaInventory(pid) : {};
-    const regFrames = regInv.frames || [], regNames = regInv.names || [], regEmojis = regInv.emojis || [];
-    const hasRegItems = regFrames.length > 0 || regNames.length > 0 || regEmojis.length > 0;
+    const regFrames = regInv.frames || [], regNames = regInv.names || [], regEmojis = regInv.emojis || [], regEffects = regInv.effects || [];
+    const hasRegItems = regFrames.length > 0 || regNames.length > 0 || regEmojis.length > 0 || regEffects.length > 0;
 
     if (!inv.length && !hasRegItems) {
       card.style.display = 'none';
@@ -1034,9 +1034,10 @@
       ? `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:8px;font-weight:600">📦 ${inv.length} Element ในคลัง — แตะเพื่อ Equip</div>`
       : '';
 
-    // Regular gacha items (frames, names, emojis)
+    // Regular gacha items (frames, names, emojis, effects)
     const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid) || {};
     const curFrame = pl.gachaFrame || null, curName = pl.gachaName || null, curEmoji = pl.gachaEmoji || null;
+    const curOwnedEffects = pl.ownedEffects || [];
     const fLabels = { void:'🌑 Void Abyss', halo:'✨ Celestial Halo', blaze:'🔥 Crimson Blaze', ice:'❄️ Phantom Ice', solar:'☀️ Solar Crown' };
     const nLabels = { void:'🌑 Void Corruption', halo:'✨ Celestial Script', blaze:'🔥 Blaze Script', ice:'❄️ Ice Script', solar:'☀️ Solar Script' };
     let regHtml = '';
@@ -1054,8 +1055,17 @@
         inner += `</div>`;
       }
       if (regEmojis.length) {
-        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">AVATAR EMOJI</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">AVATAR EMOJI</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">`;
         regEmojis.forEach(e => { const a = e===curEmoji; inner += `<button onclick="equipGachaEmoji('${e}')" style="padding:5px 10px;border-radius:20px;border:1px solid ${a?'rgba(168,85,247,.8)':'rgba(168,85,247,.25)'};background:${a?'rgba(168,85,247,.2)':'rgba(168,85,247,.07)'};font-size:.9rem;cursor:pointer;font-family:inherit">${e}${a?' ✓':''}</button>`; });
+        inner += `</div>`;
+      }
+      if (regEffects.length) {
+        const efxLabels = { rotating_arcs: '⚡ Thunder God' };
+        inner += `<div style="font-size:0.68rem;color:var(--muted);margin-bottom:5px;font-weight:600">AVATAR EFFECT</div><div style="display:flex;flex-wrap:wrap;gap:6px">`;
+        regEffects.forEach(e => {
+          const isEq = curOwnedEffects.includes(e);
+          inner += `<button onclick="${isEq ? `unequipGachaEffect('${e}')` : `equipGachaEffect('${e}')`}" style="padding:5px 11px;border-radius:20px;border:1px solid ${isEq?'rgba(0,212,255,0.8)':'rgba(0,212,255,0.25)'};background:${isEq?'rgba(0,212,255,0.15)':'rgba(0,212,255,0.05)'};color:${isEq?'#00d4ff':'var(--muted)'};font-size:.75rem;cursor:pointer;font-family:inherit">${efxLabels[e]||e}${isEq?' ✓':''}</button>`;
+        });
         inner += `</div>`;
       }
       regHtml = inner;
