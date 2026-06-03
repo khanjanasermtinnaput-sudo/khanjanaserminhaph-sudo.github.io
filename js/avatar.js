@@ -193,8 +193,7 @@ async function renderProfileMailbox() {
 }
 
 async function claimMailItemProfile(mailId, itemType, itemValue, btn) {
-  if (btn) btn.disabled = true;
-  await claimMailItem(mailId, itemType, itemValue);
+  await claimMailItem(mailId, itemType, itemValue, btn);
   await renderProfileMailbox();
   await renderProfile();
   if (typeof renderGachaInventory === 'function') renderGachaInventory();

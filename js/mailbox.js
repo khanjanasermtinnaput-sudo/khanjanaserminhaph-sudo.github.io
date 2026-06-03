@@ -73,9 +73,9 @@ async function renderMailboxList() {
   }
 }
 
-async function claimMailItem(mailId, itemType, itemValue) {
+async function claimMailItem(mailId, itemType, itemValue, extBtn) {
   if (!currentUser) return;
-  const btn = document.querySelector(`#mail_${mailId} .mailbox-item-claim`);
+  const btn = extBtn || document.querySelector(`#mail_${mailId} .mailbox-item-claim`);
   if (btn) btn.disabled = true;
   try {
     const pl = db.players.find(x => x.id === currentUser.id);
