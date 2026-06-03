@@ -56,9 +56,12 @@ function getGachaInventory(userId) {
 
 async function _saveGachaInventoryToDB(userId, inv) {
   try {
-    await dbUpdatePlayer(userId, { gacha_inventory: JSON.stringify(inv) });
     const pl = db.players.find(x => x.id === userId);
-    if (pl) pl._dbGachaInv = inv;
+    // Merge with existing _dbGachaInv so fields from different subsystems don't overwrite each other
+    const existing = (pl && pl._dbGachaInv) ? Object.assign({}, pl._dbGachaInv) : {};
+    const merged = Object.assign(existing, inv);
+    await dbUpdatePlayer(userId, { gacha_inventory: JSON.stringify(merged) });
+    if (pl) pl._dbGachaInv = merged;
   } catch(e) { /* localStorage already saved */ }
 }
 function renderGachaInventory() {
