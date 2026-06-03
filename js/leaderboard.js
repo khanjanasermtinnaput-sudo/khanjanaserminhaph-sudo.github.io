@@ -159,7 +159,7 @@ function lbRenderBoard(data, animate = true) {
       <div class="lb-rrank">${posDisplay}</div>
       <div class="lb-rplyr">
         <div style="position:relative;flex-shrink:0;isolation:isolate">
-          <div class="lb-rav ${_hasThunderGod ? '' : getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${_hasThunderGod ? '' : getGachaFrameInner(p)}${av.content}</div>
+          <div class="lb-rav ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:32px;height:32px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`:''}
           ${_presenceAvatarDot}
         </div>
