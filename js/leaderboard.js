@@ -1303,7 +1303,15 @@ async function adminDeleteSingleAchievement(playerId, achId) {
   try {
     const newAch = (pl.customAch || []).filter(a => a.id !== achId);
     pl.customAch = newAch;
-    const ptStr = buildPlayerPrimeTitles(pl, { awards: newAch });
+
+    // When removing s1000 badge, also zero out the super1000Titles counter
+    let newS1000 = pl.super1000Titles || 0;
+    if (achId === 'sys_tour_s1000') {
+      newS1000 = 0;
+      pl.super1000Titles = 0;
+    }
+
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: newAch, s1000: newS1000 });
     await dbUpdatePlayer(playerId, { prime_titles: ptStr });
     toast(`ลบ "${ach.title}" แล้ว`, 'info');
     await openAdminManageRewards(playerId);

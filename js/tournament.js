@@ -1356,7 +1356,16 @@ async function executeDeleteHofTournament(tournamentId) {
       } catch(e) {}
     }
 
-    const champIds = Array.isArray(delHof.champion_ids) ? delHof.champion_ids : [];
+    let champIds = Array.isArray(delHof.champion_ids) ? [...delHof.champion_ids] : [];
+
+    // Fallback: if champion_ids not stored (older tournament), resolve from champion_name
+    if (champIds.length === 0 && delHof.champion_name) {
+      const names = delHof.champion_name.split(' & ').map(s => s.trim()).filter(Boolean);
+      for (const pl of db.players) {
+        if (names.includes(pl.name)) champIds.push(pl.id);
+      }
+    }
+
     if (champIds.length > 0) {
       // Count remaining wins per player from HOF rows that are NOT being deleted
       const remainingRows = _hofAllRows.filter(r => r.id !== tournamentId);
@@ -1401,15 +1410,13 @@ async function executeDeleteHofTournament(tournamentId) {
         if (achChanged) pl.customAch = filtered;
 
         const newS1000 = counts.s1000;
-        const s1000Changed = pl.super1000Titles !== newS1000;
-        if (s1000Changed) pl.super1000Titles = newS1000;
+        pl.super1000Titles = newS1000;
 
-        if (achChanged || s1000Changed) {
-          try {
-            const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: pl.super1000Titles });
-            await dbUpdatePlayer(pid, { prime_titles: ptStr });
-          } catch(e) { console.warn('[HOFDel] player rollback failed:', e.message); }
-        }
+        // Always save to DB to ensure both badge and counter are cleared
+        try {
+          const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: newS1000 });
+          await dbUpdatePlayer(pid, { prime_titles: ptStr });
+        } catch(e) { console.warn('[HOFDel] player rollback failed:', e.message); }
       }
     }
 
