@@ -95,8 +95,18 @@
       const needsDbSync = (patch.elementInventory !== undefined || patch.equippedElement !== undefined);
       if (needsDbSync && typeof _saveGachaInventoryToDB === 'function') {
         const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid);
-        // Use _dbGachaInv as base to preserve all existing fields (frames, equippedEffects, etc.)
-        const inv = Object.assign({}, (pl && pl._dbGachaInv) || {});
+        // Merge DB + localStorage so NO existing inventory (frames/names/emojis/effects/
+        // equippedEffects) is dropped — only element fields are touched here
+        const dbInv = (pl && pl._dbGachaInv) || {};
+        let lsInv = {};
+        try { lsInv = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + pid) || '{}'); } catch(e) {}
+        const inv = Object.assign({}, dbInv, lsInv);
+        ['frames','names','emojis','effects','elements'].forEach(k => {
+          inv[k] = [...new Set([...(dbInv[k] || []), ...(lsInv[k] || [])])];
+        });
+        if (dbInv.equippedEffects || lsInv.equippedEffects) {
+          inv.equippedEffects = lsInv.equippedEffects || dbInv.equippedEffects;
+        }
         if (patch.elementInventory !== undefined) {
           let newElems;
           try { newElems = JSON.parse(patch.elementInventory || '[]'); } catch(e) { newElems = []; }
@@ -1002,7 +1012,11 @@
 
     // Also check regular gacha inventory
     const regInv = typeof getGachaInventory === 'function' ? getGachaInventory(pid) : {};
-    const regFrames = regInv.frames || [], regNames = regInv.names || [], regEmojis = regInv.emojis || [], regEffects = regInv.effects || [];
+    const regFrames = regInv.frames || [], regNames = regInv.names || [], regEmojis = regInv.emojis || [];
+    // An equipped effect is always owned — merge ownedEffects so an active effect can never
+    // become a "ghost" (visible on avatar but missing from inventory, leaving no unequip button)
+    const _plEff = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid);
+    const regEffects = [...new Set([...(regInv.effects || []), ...((_plEff && _plEff.ownedEffects) || [])])];
     const hasRegItems = regFrames.length > 0 || regNames.length > 0 || regEmojis.length > 0 || regEffects.length > 0;
 
     if (!inv.length && !hasRegItems) {

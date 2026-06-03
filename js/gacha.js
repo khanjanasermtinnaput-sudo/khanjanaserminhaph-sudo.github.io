@@ -75,7 +75,8 @@ function renderGachaInventory() {
   const nameLabels  = { void:'🌑 Void Corruption', halo:'✨ Celestial Script', blaze:'🔥 Blaze Script', ice:'❄️ Ice Script', solar:'☀️ Solar Script' };
   const frames  = inv.frames  || (curFrame ? [curFrame] : []);
   const names   = inv.names   || (curName  ? [curName]  : []);
-  const effects = inv.effects || [];
+  // An equipped effect is always owned — merge so an active effect always keeps its unequip button
+  const effects = [...new Set([...(inv.effects || []), ...(pl.ownedEffects || [])])];
   if (!frames.length && !names.length && !effects.length) { el.innerHTML = '<div class="text-muted" style="font-size:0.78rem;text-align:center;padding:8px">ยังไม่มี Ultra Rare ในคลัง</div>'; return; }
   let html = '<div style="font-size:0.72rem;color:var(--muted);margin-bottom:8px;font-weight:600">📦 คลัง Ultra Rare — แตะเพื่อเปลี่ยน</div>';
   if (frames.length) {
