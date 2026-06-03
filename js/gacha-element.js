@@ -800,13 +800,29 @@
     if (typeof renderProfile === 'function') renderProfile();
   }
 
-  // ── Tab render ────────────────────────────────────────────────────────────────
   function gachaRenderTab() {
     const sec = document.getElementById('gachaSection');
     if (!sec) return;
     if (!sec.dataset.init) {
       sec.dataset.init = '1';
       sec.innerHTML = `<main>
+        <div class="card" style="border-color:rgba(168,85,247,0.35);background:rgba(168,85,247,0.04)">
+          <div class="card-title" style="color:#c084fc">🎰 Gacha ปกติ</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-size:1.1rem;font-weight:700">🪙 <span id="profileCoinBalance">0</span> เหรียญ</div>
+            <div style="font-size:0.75rem;color:var(--muted)">2 เหรียญ = 1 pull</div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#7c3aed,#a855f7);border:none" onclick="openGachaPull()">🎰 Gacha Pull (2🪙)</button>
+          <div id="gachaInventoryBox" style="margin-top:10px;padding:10px 12px;background:rgba(168,85,247,0.06);border:1px solid rgba(168,85,247,0.2);border-radius:12px;min-height:36px">
+            <div class="text-muted" style="font-size:0.78rem;text-align:center;padding:4px">⏳ กำลังโหลดคลัง...</div>
+          </div>
+          <div style="margin-top:10px;padding:8px 10px;background:rgba(0,0,0,0.2);border-radius:10px;font-size:0.72rem;color:var(--muted);line-height:1.8">
+            <span style="color:#ffd700">70%</span> ไม่ได้ของ &nbsp;·&nbsp;
+            <span style="color:#60a5fa">20%</span> Emoji โปรไฟล์ &nbsp;·&nbsp;
+            <span style="color:#34d399">7%</span> กรอบ Rainbow/Robot &nbsp;·&nbsp;
+            <span style="color:#c084fc">3%</span> ✨ Ultra Rare
+          </div>
+        </div>
         <div class="card">
           <div class="card-title" style="font-family:'Fredoka One',cursive;letter-spacing:2px;font-size:1.25rem">✦ ELEMENT GACHA ✦</div>
           <div style="font-family:'Press Start 2P',monospace;font-size:7px;color:var(--muted);letter-spacing:3px;text-align:center;margin-bottom:20px">SUMMON YOUR ELEMENT DESTINY</div>
@@ -840,6 +856,7 @@
     }
     _geUpdateCoinBal();
     _geRenderInventory();
+    if (typeof renderGachaInventory === 'function') renderGachaInventory();
   }
 
   // ── LB frame injection (called from lbRenderBoard monkey-patch) ──────────────
