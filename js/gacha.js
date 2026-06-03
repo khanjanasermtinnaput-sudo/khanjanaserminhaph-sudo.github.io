@@ -113,6 +113,10 @@ async function equipGachaFrame(val) {
   const isEquipped = pl && pl.gachaFrame === val;
   try {
     await dbUpdatePlayer(currentUser.id, { gacha_frame: isEquipped ? null : val });
+    const _gInv = getGachaInventory(currentUser.id);
+    _gInv.equippedFrame = isEquipped ? null : val;
+    localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_gInv));
+    _saveGachaInventoryToDB(currentUser.id, _gInv);
     await loadPlayers();
     renderGachaInventory();
     if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
@@ -144,6 +148,10 @@ async function equipGachaName(val) {
   const isEquipped = pl && pl.gachaName === val;
   try {
     await dbUpdatePlayer(currentUser.id, { gacha_name: isEquipped ? null : val });
+    const _gInv = getGachaInventory(currentUser.id);
+    _gInv.equippedName = isEquipped ? null : val;
+    localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_gInv));
+    _saveGachaInventoryToDB(currentUser.id, _gInv);
     await loadPlayers();
     renderGachaInventory();
     if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
@@ -390,6 +398,8 @@ async function doGachaPull() {
     if (!inv.names)  inv.names  = [];
     if (col === 'frame' && !inv.frames.includes(val)) inv.frames.push(val);
     if (col === 'name'  && !inv.names.includes(val))  inv.names.push(val);
+    if (col === 'frame') inv.equippedFrame = val;
+    else inv.equippedName = val;
     localStorage.setItem(invKey, JSON.stringify(inv));
     _saveGachaInventoryToDB(currentUser.id, inv); // async, ไม่ต้อง await
 
@@ -437,6 +447,7 @@ async function doGachaPull() {
     const invF = getGachaInventory(currentUser.id);
     if (!invF.frames) invF.frames = [];
     if (!invF.frames.includes(frame)) invF.frames.push(frame);
+    invF.equippedFrame = frame;
     localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(invF));
     _saveGachaInventoryToDB(currentUser.id, invF);
     // equip

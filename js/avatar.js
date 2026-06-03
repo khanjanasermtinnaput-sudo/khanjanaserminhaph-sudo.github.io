@@ -91,6 +91,10 @@ async function removeGachaFrame() {
   const lsKey = 'bmt_gacha_' + currentUser.id;
   const d = JSON.parse(localStorage.getItem(lsKey)||'{}'); delete d.gacha_frame;
   localStorage.setItem(lsKey, JSON.stringify(d));
+  const _gInv = typeof getGachaInventory === 'function' ? getGachaInventory(currentUser.id) : {};
+  _gInv.equippedFrame = null;
+  localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_gInv));
+  if (typeof _saveGachaInventoryToDB === 'function') _saveGachaInventoryToDB(currentUser.id, _gInv);
   toast('ถอดกรอบแล้ว', 'info'); openAvatarBuilder();
 }
 async function removeGachaName() {
@@ -99,6 +103,10 @@ async function removeGachaName() {
   const lsKey = 'bmt_gacha_' + currentUser.id;
   const d = JSON.parse(localStorage.getItem(lsKey)||'{}'); delete d.gacha_name;
   localStorage.setItem(lsKey, JSON.stringify(d));
+  const _gInv2 = typeof getGachaInventory === 'function' ? getGachaInventory(currentUser.id) : {};
+  _gInv2.equippedName = null;
+  localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_gInv2));
+  if (typeof _saveGachaInventoryToDB === 'function') _saveGachaInventoryToDB(currentUser.id, _gInv2);
   toast('ถอดเอฟเฟกต์ชื่อแล้ว', 'info'); openAvatarBuilder();
 }
 

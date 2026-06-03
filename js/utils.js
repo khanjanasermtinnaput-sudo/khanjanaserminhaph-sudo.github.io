@@ -466,13 +466,13 @@ function normalizePlayer(p) {
   // null = no setting (show all customAch by default); array = specific pinned IDs
   let pinnedAchs = null;
   if (achpinsEntry) { try { pinnedAchs = JSON.parse(achpinsEntry.slice(ACHPINS_PFX.length)); } catch(e) {} }
-  // ── localStorage gacha fallback (ถ้า DB column ยังไม่มี) ──
+  // ── gacha fallback chain: DB column → gacha_inventory JSON (cross-device) → localStorage (same-device only) ──
   let _lsGacha = {};
   try { _lsGacha = JSON.parse(localStorage.getItem('bmt_gacha_' + p.id) || '{}'); } catch(e) {}
-  const _gFrame = p.gacha_frame || _lsGacha.gacha_frame || null;
-  const _gName  = p.gacha_name  || _lsGacha.gacha_name  || null;
-  const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
   let _dbInv = {}; try { _dbInv = JSON.parse(p.gacha_inventory || '{}'); } catch(e) {}
+  const _gFrame = p.gacha_frame || _dbInv.equippedFrame || _lsGacha.gacha_frame || null;
+  const _gName  = p.gacha_name  || _dbInv.equippedName  || _lsGacha.gacha_name  || null;
+  const _gEmoji = p.gacha_emoji || _lsGacha.gacha_emoji  || null;
   let _ownedEffects = [];
   try { _ownedEffects = JSON.parse(p.owned_effects || '[]'); } catch(e) {}
   // gacha_inventory.equippedEffects — readable by ALL viewers (cross-device, no extra column needed)

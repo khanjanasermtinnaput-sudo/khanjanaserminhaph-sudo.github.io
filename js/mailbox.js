@@ -103,10 +103,20 @@ async function claimMailItem(mailId, itemType, itemValue, extBtn) {
       toast(`📈 รับ +${itemValue} ELO แล้ว!`, 'success');
     } else if (itemType === 'gacha_frame') {
       _addToInv('frames', itemValue);
+      if (typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
+        const _fi = getGachaInventory(currentUser.id); _fi.equippedFrame = itemValue;
+        localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_fi));
+        _saveGachaInventoryToDB(currentUser.id, _fi).catch(() => {});
+      }
       await _tryDb({ gacha_frame: itemValue });
       toast(`🖼️ รับ Frame: ${itemValue} แล้ว! (เข้า Inventory แล้ว)`, 'success');
     } else if (itemType === 'gacha_name') {
       _addToInv('names', itemValue);
+      if (typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
+        const _ni = getGachaInventory(currentUser.id); _ni.equippedName = itemValue;
+        localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_ni));
+        _saveGachaInventoryToDB(currentUser.id, _ni).catch(() => {});
+      }
       await _tryDb({ gacha_name: itemValue });
       toast(`✨ รับ Name Effect: ${itemValue} แล้ว! (เข้า Inventory แล้ว)`, 'success');
     } else if (itemType === 'gacha_emoji') {

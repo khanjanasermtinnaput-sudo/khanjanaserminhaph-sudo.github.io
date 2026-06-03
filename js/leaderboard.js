@@ -816,10 +816,26 @@ async function renderProfile() {
   try {
     await loadAll();
     const p = db.players.find(x=>x.id===currentUser.id) || currentUser;
-    // ── Merge localStorage gacha fallback (ถ้า DB ยังไม่มี column) ──
+    // ── Merge localStorage gacha fallback + sync to DB for cross-device visibility ──
     const _lsG = JSON.parse(localStorage.getItem('bmt_gacha_'+p.id)||'{}');
-    if (!p.gachaFrame && _lsG.gacha_frame) p.gachaFrame = _lsG.gacha_frame;
-    if (!p.gachaName  && _lsG.gacha_name)  p.gachaName  = _lsG.gacha_name;
+    if (!p.gachaFrame && _lsG.gacha_frame) {
+      p.gachaFrame = _lsG.gacha_frame;
+      dbUpdatePlayer(p.id, { gacha_frame: _lsG.gacha_frame }).catch(() => {});
+      if (typeof _saveGachaInventoryToDB === 'function' && typeof getGachaInventory === 'function') {
+        const _iv = getGachaInventory(p.id); _iv.equippedFrame = _lsG.gacha_frame;
+        localStorage.setItem('bmt_gacha_inv_' + p.id, JSON.stringify(_iv));
+        _saveGachaInventoryToDB(p.id, _iv).catch(() => {});
+      }
+    }
+    if (!p.gachaName && _lsG.gacha_name) {
+      p.gachaName = _lsG.gacha_name;
+      dbUpdatePlayer(p.id, { gacha_name: _lsG.gacha_name }).catch(() => {});
+      if (typeof _saveGachaInventoryToDB === 'function' && typeof getGachaInventory === 'function') {
+        const _iv2 = getGachaInventory(p.id); _iv2.equippedName = _lsG.gacha_name;
+        localStorage.setItem('bmt_gacha_inv_' + p.id, JSON.stringify(_iv2));
+        _saveGachaInventoryToDB(p.id, _iv2).catch(() => {});
+      }
+    }
     if (!p.gachaEmoji && _lsG.gacha_emoji) p.gachaEmoji = _lsG.gacha_emoji;
     currentUser = p;
     const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id), prog = rankProgress(p.pts);
