@@ -476,15 +476,18 @@ function normalizePlayer(p) {
   let _ownedEffects = [];
   try { _ownedEffects = JSON.parse(p.owned_effects || '[]'); } catch(e) {}
   // gacha_inventory.equippedEffects — readable by ALL viewers (cross-device, no extra column needed)
-  if (!_ownedEffects.length && _dbInv.equippedEffects && _dbInv.equippedEffects.length) {
-    _ownedEffects = _dbInv.equippedEffects;
+  if (!_ownedEffects.length && _dbInv.hasOwnProperty('equippedEffects')) {
+    _ownedEffects = _dbInv.equippedEffects || [];
   }
-  // localStorage fallback when owned_effects column missing
+  // localStorage: only fall back to full-inventory if bmt_owned_effects_* key has NEVER been set
+  // (if key exists but is [] it means user explicitly unequipped — respect that)
   if (!_ownedEffects.length) {
-    try { const _lsEq = JSON.parse(localStorage.getItem('bmt_owned_effects_' + p.id) || '[]'); if (_lsEq.length) _ownedEffects = _lsEq; } catch(e) {}
-  }
-  if (!_ownedEffects.length) {
-    try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects && _lsInvEf.effects.length) _ownedEffects = _lsInvEf.effects; } catch(e) {}
+    const _rawEq = localStorage.getItem('bmt_owned_effects_' + p.id);
+    if (_rawEq !== null) {
+      try { _ownedEffects = JSON.parse(_rawEq) || []; } catch(e) {}
+    } else {
+      try { const _lsInvEf = JSON.parse(localStorage.getItem('bmt_gacha_inv_' + p.id) || '{}'); if (_lsInvEf.effects && _lsInvEf.effects.length) _ownedEffects = _lsInvEf.effects; } catch(e) {}
+    }
   }
   // Auto-migrate: old thundergod frame/name → rotating_arcs
   if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {

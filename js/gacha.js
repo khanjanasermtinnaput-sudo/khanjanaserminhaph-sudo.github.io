@@ -105,38 +105,46 @@ function renderGachaInventory() {
 }
 async function equipGachaFrame(val) {
   if (!currentUser) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const isEquipped = pl && pl.gachaFrame === val;
   try {
-    await dbUpdatePlayer(currentUser.id, { gacha_frame: val });
+    await dbUpdatePlayer(currentUser.id, { gacha_frame: isEquipped ? null : val });
     await loadPlayers();
     renderGachaInventory();
     if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
     renderProfile();
-    toast('🖼️ เปลี่ยนกรอบเป็น ' + val + ' แล้ว!', 'success');
+    toast(isEquipped ? '🖼️ ถอดกรอบแล้ว' : `🖼️ ใส่กรอบ ${val} แล้ว!`, 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
 }
 async function equipGachaEmoji(emoji) {
   if (!currentUser) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const isEquipped = pl && pl.gachaEmoji === emoji;
   try {
-    await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji });
+    await dbUpdatePlayer(currentUser.id, { gacha_emoji: isEquipped ? null : emoji });
     await loadPlayers();
-    const sv = getCustomAvatar(currentUser.id);
-    sv.emoji = emoji;
-    localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+    if (!isEquipped) {
+      const sv = getCustomAvatar(currentUser.id);
+      sv.emoji = emoji;
+      localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+    }
     renderGachaInventory();
     if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
     renderProfile();
-    toast('🎭 เปลี่ยน Avatar Emoji เป็น ' + emoji + ' แล้ว!', 'success');
+    toast(isEquipped ? '🎭 ถอด Emoji แล้ว' : `🎭 ใส่ ${emoji} แล้ว!`, 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
 }
 async function equipGachaName(val) {
   if (!currentUser) return;
+  const pl = db.players.find(x => x.id === currentUser.id);
+  const isEquipped = pl && pl.gachaName === val;
   try {
-    await dbUpdatePlayer(currentUser.id, { gacha_name: val });
+    await dbUpdatePlayer(currentUser.id, { gacha_name: isEquipped ? null : val });
     await loadPlayers();
     renderGachaInventory();
     if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
     renderProfile();
-    toast('✨ เปลี่ยน Name Effect เป็น ' + val + ' แล้ว!', 'success');
+    toast(isEquipped ? '✨ ถอด Name Effect แล้ว' : `✨ ใส่ ${val} Name Effect แล้ว!`, 'success');
   } catch(e) { toast('เปลี่ยนไม่ได้: ' + e.message, 'error'); }
 }
 async function equipGachaEffect(effectId) {
