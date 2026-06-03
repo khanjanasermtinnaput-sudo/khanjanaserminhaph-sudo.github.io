@@ -1213,6 +1213,114 @@ async function deletePlayer() {
   try { await dbDeletePlayer(id); await loadPlayers(); closeModal('editPlayerModal'); renderAdmin(); toast('ลบผู้เล่นแล้ว', 'info'); }
   catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
 }
+
+// ── Admin: Manage player rewards (achievements + tournament wins) ──
+async function openAdminManageRewards(playerId) {
+  const p = db.players.find(x => x.id === playerId);
+  if (!p) return;
+
+  const titleEl = document.getElementById('adminManageRewardsTitle');
+  const bodyEl  = document.getElementById('adminManageRewardsBody');
+  if (titleEl) titleEl.textContent = `🏆 รางวัล — ${p.name}`;
+  if (bodyEl)  bodyEl.innerHTML = '<div style="text-align:center;color:var(--muted);padding:28px;font-size:0.84rem">⏳ กำลังโหลด...</div>';
+  openModal('adminManageRewardsModal');
+
+  // Fetch & cache HOF rows so executeDeleteHofTournament rollback logic works
+  let hofRows = [];
+  try { hofRows = await dbGetHOFTournaments(); } catch(e) {}
+  if (typeof _hofAllRows !== 'undefined') _hofAllRows = hofRows;
+
+  // Find tournaments where this player is a champion
+  const tourWins = hofRows.filter(row => {
+    try {
+      const g = typeof row.groups === 'string' ? JSON.parse(row.groups) : (row.groups || []);
+      const hof = g.find(x => x._hof) || {};
+      return Array.isArray(hof.champion_ids) && hof.champion_ids.includes(playerId);
+    } catch(e) { return false; }
+  });
+
+  const achs = p.customAch || [];
+  let html = '';
+
+  // ── Achievements section ──
+  html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏅 Achievement (${achs.length})</div>`;
+  if (!achs.length) {
+    html += `<div style="font-size:0.77rem;color:var(--muted);text-align:center;padding:12px 0;margin-bottom:14px">ไม่มี Achievement</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px">`;
+    for (const ach of achs) {
+      const safeId = ach.id.replace(/'/g, "\\'");
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
+        <span style="font-size:1.15rem;flex-shrink:0">${ach.icon || '🏆'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${ach.title}</div>
+          ${ach.desc ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${ach.desc}</div>` : ''}
+        </div>
+        <button onclick="adminDeleteSingleAchievement(${playerId},'${safeId}')" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  // ── Tournament wins section ──
+  html += `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">🏆 ประวัติชนะ Tournament (${tourWins.length})</div>`;
+  if (!tourWins.length) {
+    html += `<div style="font-size:0.77rem;color:var(--muted);text-align:center;padding:12px 0">ไม่มีประวัติ</div>`;
+  } else {
+    html += `<div style="display:flex;flex-direction:column;gap:6px">`;
+    for (const row of tourWins) {
+      let hof = {};
+      try {
+        const g = typeof row.groups === 'string' ? JSON.parse(row.groups) : (row.groups || []);
+        hof = g.find(x => x._hof) || {};
+      } catch(e) {}
+      const tierIcon = row.tier === 'Super 1000' ? '👑' : row.tier === 'Super 500' ? '🥈' : '🏸';
+      const date = (hof.ended_at || row.created_at)
+        ? new Date(hof.ended_at || row.created_at).toLocaleDateString('th-TH', { day:'numeric', month:'short', year:'2-digit' })
+        : '';
+      const safeName = (row.name || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
+        <span style="font-size:1.15rem;flex-shrink:0">${tierIcon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${row.name || '?'}</div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${row.tier}${date ? ' · ' + date : ''}</div>
+        </div>
+        <button onclick="adminDeletePlayerTourWin(${row.id},'${safeName}',${playerId})" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  if (bodyEl) bodyEl.innerHTML = html;
+}
+
+async function adminDeleteSingleAchievement(playerId, achId) {
+  const pl = db.players.find(x => x.id === playerId);
+  if (!pl) return;
+  const ach = (pl.customAch || []).find(a => a.id === achId);
+  if (!ach) return;
+  if (!confirm(`ลบ Achievement "${ach.title}" ของ ${pl.name}?\nย้อนกลับไม่ได้`)) return;
+  try {
+    const newAch = (pl.customAch || []).filter(a => a.id !== achId);
+    pl.customAch = newAch;
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: newAch });
+    await dbUpdatePlayer(playerId, { prime_titles: ptStr });
+    toast(`ลบ "${ach.title}" แล้ว`, 'info');
+    await openAdminManageRewards(playerId);
+  } catch(e) { toast('ลบไม่ได้: ' + e.message, 'error'); }
+}
+
+async function adminDeletePlayerTourWin(tournamentId, tournamentName, playerId) {
+  if (!confirm(`ลบประวัติ Tournament "${tournamentName}"?\nจะ rollback Achievement และ S1000 title ของผู้ชนะด้วย — ย้อนกลับไม่ได้`)) return;
+  // Ensure _hofAllRows is populated for the rollback logic inside executeDeleteHofTournament
+  if (typeof _hofAllRows !== 'undefined' && !_hofAllRows.length) {
+    try { _hofAllRows = await dbGetHOFTournaments(); } catch(e) {}
+  }
+  await executeDeleteHofTournament(tournamentId);
+  await loadPlayers();
+  await openAdminManageRewards(playerId);
+}
+
 function resetAllData() { toast('ฟีเจอร์นี้ต้องลบผ่าน Supabase Dashboard ครับ', 'info'); }
 function exportData() {
   const blob = new Blob([JSON.stringify({ players: db.players, matches: db.matches }, null, 2)], { type: 'application/json' });
