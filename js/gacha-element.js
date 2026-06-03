@@ -76,19 +76,35 @@
 
   // ── localStorage + Supabase helpers ──────────────────────────────────────────
   function _geGetData(pid) {
-    try { return JSON.parse(localStorage.getItem('bmt_gacha_' + pid) || '{}'); } catch (e) { return {}; }
+    let lsData = {};
+    try { lsData = JSON.parse(localStorage.getItem('bmt_gacha_' + pid) || '{}'); } catch (e) {}
+    // Fallback: read equippedElement from Supabase data so ALL viewers see the correct frame
+    if (!lsData.equippedElement) {
+      const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid);
+      const dbEq = pl && pl._dbGachaInv && pl._dbGachaInv.equippedElement;
+      if (dbEq) { lsData.equippedElement = dbEq; lsData.element = dbEq; }
+    }
+    return lsData;
   }
   function _geSetData(pid, patch) {
     try {
       const d = _geGetData(pid);
       const updated = Object.assign({}, d, patch);
       localStorage.setItem('bmt_gacha_' + pid, JSON.stringify(updated));
-      // Sync elementInventory to Supabase via gacha_inventory.elements
-      if (patch.elementInventory !== undefined && typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
-        let newElems;
-        try { newElems = JSON.parse(patch.elementInventory || '[]'); } catch(e) { newElems = []; }
-        const inv = getGachaInventory(pid);
-        inv.elements = [...new Set([...(inv.elements || []), ...newElems])];
+      // Sync elementInventory + equippedElement to Supabase via gacha_inventory column
+      const needsDbSync = (patch.elementInventory !== undefined || patch.equippedElement !== undefined);
+      if (needsDbSync && typeof _saveGachaInventoryToDB === 'function') {
+        const pl = (typeof db !== 'undefined' && db.players || []).find(x => x.id === pid);
+        // Use _dbGachaInv as base to preserve all existing fields (frames, equippedEffects, etc.)
+        const inv = Object.assign({}, (pl && pl._dbGachaInv) || {});
+        if (patch.elementInventory !== undefined) {
+          let newElems;
+          try { newElems = JSON.parse(patch.elementInventory || '[]'); } catch(e) { newElems = []; }
+          inv.elements = [...new Set([...(inv.elements || []), ...newElems])];
+        }
+        if (patch.equippedElement !== undefined) {
+          inv.equippedElement = patch.equippedElement;
+        }
         localStorage.setItem('bmt_gacha_inv_' + pid, JSON.stringify(inv));
         _saveGachaInventoryToDB(pid, inv).catch(() => {});
       }
