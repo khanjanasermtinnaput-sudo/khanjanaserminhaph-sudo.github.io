@@ -1039,27 +1039,31 @@ renderAdmin = async function() {
     if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('');
     if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   }
-  // Element Gacha Gift section
+  // Gacha Gift section
   if (!document.getElementById('adminElementSection')) {
     const ediv = document.createElement('div');
     ediv.id = 'adminElementSection';
     ediv.className = 'card';
-    const elOpts = (window._geElements || [
-      {id:'earth',name:'TERRA ดิน'},{id:'water',name:'AQUA น้ำ'},{id:'wind',name:'ZEPHYR ลม'},
-      {id:'fire',name:'IGNIS ไฟ'},{id:'lightning',name:'VOLT สายฟ้า'},{id:'yinyang',name:'YIN YANG'}
-    ]).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
     const plOpts = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-    ediv.innerHTML = `<div class="card-title">✦ เสก Element ให้ผู้เล่น</div>
+    ediv.innerHTML = `<div class="card-title">🎁 เสกของ Gacha ให้ผู้เล่น</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <select class="inp" id="elemGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">${plOpts}</select>
-        <select class="inp" id="elemGiveEl" style="flex:2;min-width:140px;font-size:0.82rem">${elOpts}</select>
-        <input class="inp" id="elemGiveMsg" placeholder="ข้อความ (optional)" style="flex:3;min-width:140px;font-size:0.82rem">
-        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveElement()">✦ เสก</button>
+        <select class="inp" id="gachaGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">${plOpts}</select>
+        <select class="inp" id="gachaGiveType" style="flex:2;min-width:130px;font-size:0.82rem" onchange="adminUpdateGachaGiveItems()">
+          <option value="element">✦ Element</option>
+          <option value="frame">🖼️ Frame</option>
+          <option value="name">✨ Name Effect</option>
+          <option value="emoji">🎭 Emoji</option>
+          <option value="thundergod">⚡ Thunder God</option>
+        </select>
+        <select class="inp" id="gachaGiveItem" style="flex:2;min-width:130px;font-size:0.82rem"></select>
+        <input class="inp" id="gachaGiveMsg" placeholder="ข้อความ (optional)" style="flex:3;min-width:140px;font-size:0.82rem">
+        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveGachaItem()">🎁 เสก</button>
       </div>`;
     main.insertBefore(ediv, main.children[1] || main.firstChild);
+    adminUpdateGachaGiveItems();
   } else {
-    const esel = document.getElementById('elemGivePlayer');
-    if (esel) esel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    const psel = document.getElementById('gachaGivePlayer');
+    if (psel) psel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   }
   // Tournament section — always re-render when admin is opened
   if (!document.getElementById('tournamentAdminSection')) {
@@ -1083,16 +1087,43 @@ async function adminGiveCoins() {
   } catch(e) { toast('ให้เหรียญไม่ได้: ' + e.message, 'error'); }
 }
 
-async function adminGiveElement() {
-  const pid  = parseInt(document.getElementById('elemGivePlayer')?.value);
-  const elId = (document.getElementById('elemGiveEl')?.value || '').trim();
-  const msg  = (document.getElementById('elemGiveMsg')?.value  || '').trim();
-  if (!pid || !elId) return toast('กรุณาเลือกผู้เล่นและ Element', 'error');
-  const elNames = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
+function adminUpdateGachaGiveItems() {
+  const type = document.getElementById('gachaGiveType')?.value;
+  const sel = document.getElementById('gachaGiveItem');
+  if (!sel) return;
+  const elEls = (window._geElements || [
+    {id:'earth',name:'TERRA ดิน'},{id:'water',name:'AQUA น้ำ'},{id:'wind',name:'ZEPHYR ลม'},
+    {id:'fire',name:'IGNIS ไฟ'},{id:'lightning',name:'VOLT สายฟ้า'},{id:'yinyang',name:'YIN YANG'}
+  ]);
+  const opts = {
+    element: elEls.map(e=>`<option value="${e.id}">${e.name}</option>`).join(''),
+    frame: [['rainbow','🌈 Rainbow'],['robot','🤖 Robot'],['void','🌑 Void Abyss'],['halo','✨ Celestial Halo'],
+            ['blaze','🔥 Crimson Blaze'],['ice','❄️ Phantom Ice'],['solar','☀️ Solar Crown']].map(([v,l])=>`<option value="${v}">${l}</option>`).join(''),
+    name: [['void','🌑 Void Corruption'],['halo','✨ Celestial Script'],['blaze','🔥 Blaze Script'],
+           ['ice','❄️ Ice Script'],['solar','☀️ Solar Script']].map(([v,l])=>`<option value="${v}">${l}</option>`).join(''),
+    emoji: ['🏸','🔥','⚡','🌟','💥','🎯','🦅','🌊','🎪','⚔️','🛡️','🎮'].map(e=>`<option value="${e}">${e}</option>`).join(''),
+    thundergod: `<option value="rotating_arcs">⚡ Thunder God</option>`
+  };
+  sel.innerHTML = opts[type] || '';
+}
+async function adminGiveGachaItem() {
+  const pid  = parseInt(document.getElementById('gachaGivePlayer')?.value);
+  const type = (document.getElementById('gachaGiveType')?.value || '');
+  const item = (document.getElementById('gachaGiveItem')?.value || '').trim();
+  const msg  = (document.getElementById('gachaGiveMsg')?.value  || '').trim();
+  if (!pid || !item) return toast('กรุณาเลือกผู้เล่นและไอเทม', 'error');
+  const mailType = { element:'gacha_element', frame:'gacha_frame', name:'gacha_name', emoji:'gacha_emoji', thundergod:'gacha_effect' }[type];
+  const defaultMsg = {
+    element: `Admin เสก Element ${item} ให้คุณ ✦`,
+    frame: `Admin เสก Frame ${item} ให้คุณ 🖼️`,
+    name: `Admin เสก Name Effect ${item} ให้คุณ ✨`,
+    emoji: `Admin เสก Emoji ${item} ให้คุณ 🎭`,
+    thundergod: 'Admin เสก ⚡ Thunder God ให้คุณ!'
+  }[type];
   try {
-    await dbSendMail(pid, 'gacha_element', elId, msg || `Admin เสก Element ${elNames[elId] || elId} ให้คุณ ✦`);
-    toast(`✦ เสก ${elNames[elId] || elId} ให้เรียบร้อย! ผู้เล่นรับได้จาก 📬`, 'success');
-    document.getElementById('elemGiveMsg').value = '';
+    await dbSendMail(pid, mailType, item, msg || defaultMsg);
+    toast(`🎁 เสก ${item} ให้เรียบร้อย! ผู้เล่นรับได้จาก 📬`, 'success');
+    document.getElementById('gachaGiveMsg').value = '';
   } catch(e) { toast('เสกไม่ได้: ' + e.message, 'error'); }
 }
 
