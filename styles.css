@@ -1015,8 +1015,10 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .tcf-spark{position:absolute;width:6px;height:6px;border-radius:50%;background:#e0f2fe;box-shadow:0 0 8px #38bdf8,0 0 16px #38bdf8;pointer-events:none;z-index:11;opacity:0}
 /* Outer glow for profile hero wraps */
 .tcf-hero-glow{position:absolute;inset:-14px;border-radius:32px;box-shadow:0 0 22px rgba(3,105,161,.45),0 0 48px rgba(56,189,248,.22);animation:tcfBreath 3s ease-in-out infinite;pointer-events:none;z-index:0}
-/* Row glow (leaderboard) — replaces box-shadow */
-.tcf-active{animation:tcfRowGlow 3s ease-in-out infinite!important}
+/* Row glow (leaderboard) — must NOT use !important so lbRowIn fade-in can still run */
+.tcf-active{animation:tcfRowGlow 3s ease-in-out infinite}
+/* When row is also visible: run fade-in first, then glow (delay keeps them sequential) */
+.lb-br.lbvis.tcf-active{animation:lbRowIn .58s cubic-bezier(.34,1.56,.64,1) forwards,tcfRowGlow 3s .6s ease-in-out infinite}
 
 /* lite / reduced-motion: kill animations, keep minimal visual */
 [data-style="lite"] .tcf-svg-overlay rect{animation:none!important}
