@@ -28,7 +28,19 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const newIdx = rankOrder.indexOf(effectiveNewRankId);
   if (newIdx > oldIdx) {
     const rc = RANKS_DATA_RU[effectiveNewRankId];
-    if (rc) showRankUp(rc, playerName, gainPts);
+    if (rc) {
+      // Session dedup: don't show animation twice for the same pts level
+      if (currentUser && currentUser.name === playerName) {
+        if (typeof _ruShownPts !== 'undefined' && _ruShownPts[currentUser.id] >= playerNewPts) {
+          // already shown this session — skip animation but still refresh baseline
+        } else {
+          if (typeof _ruShownPts !== 'undefined') _ruShownPts[currentUser.id] = playerNewPts;
+          showRankUp(rc, playerName, gainPts);
+        }
+      } else {
+        showRankUp(rc, playerName, gainPts);
+      }
+    }
   }
   // Refresh baseline so cross-device check on next loadAll doesn't re-trigger
   if (currentUser && currentUser.name === playerName) {
@@ -80,8 +92,12 @@ function _showStandardRankUp({ rc, playerName, gainPts }) {
   document.body.style.overflow = 'hidden';
 }
 
+let _kruSparkleStop = null;
+
 function _showKingRankUp({ playerName, gainPts }) {
   const overlay = document.getElementById('kingRankUpOverlay');
+  // Stop any running sparkle from previous show
+  if (_kruSparkleStop) { _kruSparkleStop(); _kruSparkleStop = null; }
   // Clone entire overlay to reset ALL CSS animations (mirrors demo approach)
   const fresh = overlay.cloneNode(true);
   fresh.querySelector('#kruBeams').innerHTML = '';
@@ -90,12 +106,20 @@ function _showKingRankUp({ playerName, gainPts }) {
   // Set dynamic content
   fresh.querySelector('#kruPlayerName').textContent = playerName;
   fresh.querySelector('#kruPts').innerHTML = `+<span>${gainPts}</span> คะแนน`;
+  // Set crown image src
+  const crownImg = fresh.querySelector('#kruCrownImg');
+  if (crownImg && typeof CROWN_SRC !== 'undefined') crownImg.src = CROWN_SRC;
   // Spawn beams + embers into the fresh clone
   kruSpawnBeams(fresh.querySelector('#kruBeams'));
   kruSpawnEmbers(fresh.querySelector('#kruEmbers'));
   fresh.classList.add('kru-show');
   document.body.dataset.ruLock = '1';
   document.body.style.overflow = 'hidden';
+  // Init sparkle canvas after overlay is visible
+  const crownCanvas = fresh.querySelector('#kruCrownCanvas');
+  if (crownCanvas && typeof initCrownSparkle === 'function') {
+    requestAnimationFrame(() => { _kruSparkleStop = initCrownSparkle(crownCanvas, 340, 340); });
+  }
 }
 
 function closeRankUp() {
@@ -116,6 +140,7 @@ function closeRankUp() {
 }
 
 function closeKingRankUp() {
+  if (_kruSparkleStop) { _kruSparkleStop(); _kruSparkleStop = null; }
   const overlay = document.getElementById('kingRankUpOverlay');
   overlay.style.transition = 'opacity 0.4s ease';
   overlay.style.opacity = '0';
@@ -216,7 +241,7 @@ function toggleEloX2(on) {
 const _calcEloBase = calcElo;
 calcElo = function(a,b,c,d,e,f) {
   const r = _calcEloBase(a,b,c,d,e,f);
-  return eloX2Active ? { gain: r.gain * 2, loss: r.loss * 2 } : r;
+  return eloX2Active ? { gain: r.gain * 2, loss: r.loss } : r;
 };
 
 // ── 2. Match Timer ───────────────────────────────

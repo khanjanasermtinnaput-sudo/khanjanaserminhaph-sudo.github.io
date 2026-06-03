@@ -176,24 +176,28 @@ async function renderProfileMailbox() {
     const items = await dbGetMailbox(currentUser.id);
     if (!items || items.length === 0) { card.style.display = 'none'; return; }
     card.style.display = '';
-    const typeLabel = { coins:'🪙 เหรียญ', elo:'📈 ELO', gacha_frame:'🖼️ Gacha Frame', gacha_emoji:'😎 Emoji' };
-    list.innerHTML = items.map(item => `
+    const typeLabel = { coins:'🪙 เหรียญ', elo:'📈 ELO', gacha_frame:'🖼️ Gacha Frame', gacha_name:'✨ Name Effect', gacha_emoji:'😎 Emoji', gacha_element:'✦ Element', gacha_effect:'⚡ Effect' };
+    list.innerHTML = items.map(item => {
+      const safeVal = String(item.item_value).replace(/'/g, "\\'");
+      return `
       <div class="mailbox-item">
         <div class="mailbox-item-icon">${typeLabel[item.item_type]?.split(' ')[0] || '🎁'}</div>
         <div class="mailbox-item-body">
           <div class="mailbox-item-title">${typeLabel[item.item_type] || item.item_type}: <strong>${item.item_value}</strong></div>
           ${item.message ? `<div class="mailbox-item-msg">${item.message}</div>` : ''}
         </div>
-        <button class="mailbox-item-claim" onclick="claimMailItemProfile(${item.id}, this)">รับ</button>
-      </div>`).join('');
+        <button class="mailbox-item-claim" onclick="claimMailItemProfile(${item.id},'${item.item_type}','${safeVal}',this)">รับ</button>
+      </div>`;
+    }).join('');
   } catch(e) { card.style.display = 'none'; }
 }
 
-async function claimMailItemProfile(mailId, btn) {
-  if (btn) btn.disabled = true;
-  await claimMailItem(mailId);
+async function claimMailItemProfile(mailId, itemType, itemValue, btn) {
+  await claimMailItem(mailId, itemType, itemValue, btn);
   await renderProfileMailbox();
   await renderProfile();
+  if (typeof renderGachaInventory === 'function') renderGachaInventory();
+  if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
 }
 
 // ═══════════════════════════════════════════════════════════
