@@ -1575,13 +1575,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     try {
       // Call the backend proxy — the Gemini key & system prompt live server-side.
+      // Use a "simple" request (text/plain, no auth headers) so the browser does
+      // NOT send a CORS preflight (OPTIONS). Some mobile networks mangle OPTIONS,
+      // which surfaced as "Failed to fetch". verify_jwt is off, so no auth needed.
       const res = await fetch(AI_ENDPOINT, {
         method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'apikey': AI_ANON_KEY,
-          'Authorization': 'Bearer ' + AI_ANON_KEY
-        },
+        headers: { 'content-type': 'text/plain;charset=UTF-8' },
         body: JSON.stringify({ model: getModel(), messages: aiHistory })
       });
       const data = await res.json().catch(() => ({}));
