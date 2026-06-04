@@ -119,7 +119,7 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn" id="navHist" onclick="showSection('history')">📋 ประวัติ</button>
     <button class="nav-btn" id="navProfile" onclick="showSection('profile')">👤 โปรไฟล์</button>
     <button class="nav-btn btn-sm" id="mailboxNavBtn" onclick="openMailbox()" style="padding:4px 10px;font-size:0.73rem;position:relative;display:none" data-loggedin-show="1">📬 กล่อง<span class="mb-dot" id="mailboxDot"></span></button>
-    <button class="nav-btn" id="navAI" onclick="showSection('ai')" style="display:none">🤖 AI</button>
+    <button class="nav-btn" id="navAI" onclick="showSection('ai')" style="display:none">🤖 AOF Assistance</button>
     <button class="nav-btn" id="adminNavBtn" onclick="showSection('admin')">⚙️ Admin</button>
     <div class="nav-user">
       <!-- NOTIFICATION BELL -->
@@ -341,7 +341,7 @@ function initCrownSparkle(canvas, W, H) {
 <div id="aiSection" class="section">
   <div class="lb-page">
     <div class="lb-hero">
-      <div class="lb-hero-title"><small>Badminton Club</small>🤖 AI ผู้ช่วย</div>
+      <div class="lb-hero-title"><small>Badminton Club</small>🤖 AOF Assistance</div>
     </div>
     <div class="card ai-card">
       <div class="tab-row ai-tab-row">
@@ -1423,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // ── AI ASSISTANT CHATBOT — Google Gemini (Admin only) ────────
 (function(){
-  const AI_SYSTEM_PROMPT = "คุณคือ AI ผู้ช่วยของเว็บ Badminton Club เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
+  const AI_SYSTEM_PROMPT = "คุณคือ AOF Assistance — AI ผู้ช่วยของเว็บ Badminton Club เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
   const AI_MODEL = "gemini-2.0-flash";
   const AI_KEY_STORAGE = 'bk_ai_key';
   const aiHistory = [];

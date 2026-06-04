@@ -1,6 +1,6 @@
 // Badminton Club — Service Worker
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
-const CACHE = 'bk-v7';
+const CACHE = 'bk-v8';
 
 // App shell to pre-cache (bare paths; runtime requests with ?v= query are matched via ignoreSearch)
 const ASSETS = [
