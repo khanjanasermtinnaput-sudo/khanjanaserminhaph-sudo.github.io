@@ -359,10 +359,10 @@ function initCrownSparkle(canvas, W, H) {
           <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
             <span style="font-size:0.68rem;color:var(--muted);flex-shrink:0">🤖 โมเดล</span>
             <select id="aiModelSelectChat" onchange="aiSaveModelChat()" style="flex:1;font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid var(--glass-border);background:var(--inp-bg);color:var(--text);cursor:pointer">
-              <option value="gemini-2.0-flash-lite">flash-lite · 30/นาที</option>
-              <option value="gemini-2.0-flash">flash · 15/นาที</option>
-              <option value="gemini-1.5-flash">1.5-flash · 15/นาที</option>
-              <option value="gemini-1.5-flash-8b">1.5-flash-8b · 15/นาที</option>
+              <option value="gemini-2.5-flash-lite">2.5-flash-lite (แนะนำ)</option>
+              <option value="gemini-2.5-flash">2.5-flash</option>
+              <option value="gemini-2.0-flash-lite">2.0-flash-lite</option>
+              <option value="gemini-2.0-flash">2.0-flash</option>
             </select>
           </div>
         </div>
@@ -379,10 +379,10 @@ function initCrownSparkle(canvas, W, H) {
         <div class="form-group" style="margin-top:4px">
           <label>โมเดล AI</label>
           <select class="inp" id="aiModelSelect" onchange="aiSaveModel()" style="cursor:pointer">
-            <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite — เร็ว · 30 req/นาที (แนะนำ)</option>
-            <option value="gemini-2.0-flash">gemini-2.0-flash — ฉลาดขึ้น · 15 req/นาที</option>
-            <option value="gemini-1.5-flash">gemini-1.5-flash — เสถียร · 15 req/นาที</option>
-            <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b — เล็ก/เร็ว · 15 req/นาที</option>
+            <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite — เร็ว ประหยัดโควต้า (แนะนำ)</option>
+            <option value="gemini-2.5-flash">gemini-2.5-flash — ฉลาดขึ้น</option>
+            <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite — รุ่นเก่า</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash — รุ่นเก่า</option>
           </select>
         </div>
         <div id="aiKeyStatus" style="font-size:0.75rem;color:var(--muted);margin-top:12px;text-align:center;line-height:1.6">
@@ -1453,14 +1453,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // server-side as a secret and is never exposed to the browser. The system
 // prompt / topic restriction also lives on the backend.
 (function(){
-  const AI_MODEL_DEFAULT = "gemini-2.0-flash-lite";
+  const AI_MODEL_DEFAULT = "gemini-2.5-flash-lite";
   const AI_MODEL_STORAGE = 'bk_ai_model';
   // Backend proxy endpoint (SUPA_URL / SUPA_KEY come from js/db.js)
   const AI_ENDPOINT = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : 'https://tprmqsfbeyqurwqpmpia.supabase.co') + '/functions/v1/rapid-worker';
   const AI_ANON_KEY = (typeof SUPA_KEY !== 'undefined') ? SUPA_KEY : '';
   const aiHistory = [];
 
-  function getModel(){ return localStorage.getItem(AI_MODEL_STORAGE) || AI_MODEL_DEFAULT; }
+  const AI_MODELS_VALID = ['gemini-2.5-flash-lite','gemini-2.5-flash','gemini-2.0-flash-lite','gemini-2.0-flash'];
+  function getModel(){
+    const m = localStorage.getItem(AI_MODEL_STORAGE);
+    // migrate away from retired/invalid models (e.g. gemini-1.5-*)
+    if (!m || AI_MODELS_VALID.indexOf(m) === -1){ saveModel(AI_MODEL_DEFAULT); return AI_MODEL_DEFAULT; }
+    return m;
+  }
   function saveModel(m){ localStorage.setItem(AI_MODEL_STORAGE, m); }
 
   function aiEl(id){ return document.getElementById(id); }

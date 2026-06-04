@@ -19,12 +19,12 @@ const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 
 // Models the client is allowed to request. Anything else falls back to default.
 const ALLOWED_MODELS = new Set([
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
   "gemini-2.0-flash-lite",
   "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
 ]);
-const DEFAULT_MODEL = "gemini-2.0-flash-lite";
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
 // ── Hard-constrained role: ONLY these three topics are allowed ────────────────
 const SYSTEM_PROMPT = `คุณคือ "AOF Assistance" — AI ผู้ช่วยประจำเว็บไซต์สโมสรแบดมินตัน (Badminton Club)
@@ -71,13 +71,11 @@ function json(body: unknown, status: number, cors: HeadersInit): Response {
 // Map Gemini errors to friendly Thai messages.
 function mapGeminiError(status: number, detail: string): string {
   if (status === 429) {
-    if (detail.includes("billing") || detail.includes("plan and billing")) {
-      return "โควต้ารายวันหมดแล้ว (Gemini free tier) — รอให้ถึงเที่ยงคืนเพื่อรีเซ็ต หรือเปลี่ยนโมเดลอื่นดูครับ";
-    }
     const m = detail.match(/retryDelay"?:\s*"?(\d+)s/);
-    const wait = m ? ` (ลองใหม่ในอีก ~${m[1]} วินาที)` : "";
-    return `ใช้งานถี่เกินไป${wait} — กรุณารอสักครู่แล้วลองใหม่ครับ`;
+    const wait = m ? ` ลองใหม่ในอีก ~${m[1]} วินาที` : "";
+    return `ใช้งานเกินโควต้าฟรีชั่วคราว.${wait} กรุณารอสักครู่แล้วลองใหม่ หรือเปลี่ยนโมเดลในแท็บ ⚙️ ตั้งค่าครับ`;
   }
+  if (status === 404) return "ไม่พบโมเดลนี้ (อาจถูกปิดบริการแล้ว) — ลองเปลี่ยนโมเดลในแท็บ ⚙️ ตั้งค่าครับ";
   if (status === 400) return "คำขอไม่ถูกต้อง หรือ API key ฝั่งเซิร์ฟเวอร์มีปัญหา";
   if (status === 403) return "API key ฝั่งเซิร์ฟเวอร์ไม่มีสิทธิ์ใช้งานโมเดลนี้";
   return `เกิดข้อผิดพลาดจาก AI (HTTP ${status})`;
