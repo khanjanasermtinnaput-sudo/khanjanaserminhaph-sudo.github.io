@@ -1,0 +1,6 @@
+project_id = "tprmqsfbeyqurwqpmpia"
+
+[functions.aof-chat]
+# JWT verification is turned off: this endpoint is a chat proxy guarded by an
+# Origin allow-list (*.github.io + localhost) inside the function itself.
+verify_jwt = false

@@ -349,7 +349,7 @@ function initCrownSparkle(canvas, W, H) {
         <button class="tab" id="aiTabSettings" onclick="aiShowTab('settings')">⚙️ ตั้งค่า</button>
       </div>
       <div id="aiPanelChat">
-        <div class="ai-head-sub" style="margin-bottom:8px">ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บได้เลยครับ</div>
+        <div class="ai-head-sub" style="margin-bottom:8px">ถามได้เรื่อง <b>เว็บสโมสร</b> · <b>เทคนิค/กติกาแบดมินตัน (BWF)</b> · <b>สุขภาพ–กายภาพนักแบด</b></div>
         <div class="ai-quota">
           <div class="ai-quota-head">
             <span>📊 โควต้าวันนี้</span>
@@ -367,7 +367,7 @@ function initCrownSparkle(canvas, W, H) {
           </div>
         </div>
         <div class="ai-messages" id="aiMessages">
-          <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บ Badminton Club ได้เลยครับ 🏸</div>
+          <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance 🏸 ถามได้เรื่องเว็บสโมสร, เทคนิค/กติกาแบดมินตันตามมาตรฐาน BWF และการดูแลสุขภาพ–กายภาพของนักแบดมินตันได้เลยครับ</div>
         </div>
         <div class="ai-input-row">
           <input type="text" class="ai-input" id="aiInput" placeholder="พิมพ์คำถาม..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();aiSend();}"/>
@@ -375,12 +375,8 @@ function initCrownSparkle(canvas, W, H) {
         </div>
       </div>
       <div id="aiPanelSettings" style="display:none">
-        <div class="ai-head-sub" style="margin-bottom:12px">ตั้งค่า Google Gemini API Key (ฟรี) — รับ key ได้ที่ aistudio.google.com/apikey</div>
-        <div class="form-group">
-          <label>API Key</label>
-          <input type="password" class="inp" id="aiKeyInput" placeholder="AIza... (Google Gemini API Key)" autocomplete="off"/>
-        </div>
-        <div class="form-group" style="margin-top:10px">
+        <div class="ai-head-sub" style="margin-bottom:12px">🔒 API Key ถูกเก็บอย่างปลอดภัยฝั่งเซิร์ฟเวอร์ (Supabase) — ไม่ต้องกรอกที่นี่อีกต่อไป</div>
+        <div class="form-group" style="margin-top:4px">
           <label>โมเดล AI</label>
           <select class="inp" id="aiModelSelect" onchange="aiSaveModel()" style="cursor:pointer">
             <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite — เร็ว · 30 req/นาที (แนะนำ)</option>
@@ -389,11 +385,9 @@ function initCrownSparkle(canvas, W, H) {
             <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b — เล็ก/เร็ว · 15 req/นาที</option>
           </select>
         </div>
-        <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-primary btn-sm" onclick="aiSaveKey()" style="width:auto;flex:1">💾 บันทึก Key</button>
-          <button class="btn btn-danger btn-sm" onclick="aiClearKey()" style="width:auto;flex:1">🗑️ ลบ Key</button>
+        <div id="aiKeyStatus" style="font-size:0.75rem;color:var(--muted);margin-top:12px;text-align:center;line-height:1.6">
+          AOF Assistance ตอบเฉพาะ 3 หัวข้อ:<br>เว็บสโมสร · เทคนิค/กติกาแบดมินตัน (BWF) · สุขภาพ–กายภาพนักแบด
         </div>
-        <div id="aiKeyStatus" style="font-size:0.75rem;color:var(--muted);margin-top:10px;text-align:center"></div>
       </div>
     </div>
   </div>
@@ -1454,19 +1448,22 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-// ── AI ASSISTANT CHATBOT — Google Gemini (Admin only) ────────
+// ── AI ASSISTANT CHATBOT — AOF Assistance (Admin only) ────────
+// Talks to the Supabase Edge Function "aof-chat" — the Gemini API key lives
+// server-side as a secret and is never exposed to the browser. The system
+// prompt / topic restriction also lives on the backend.
 (function(){
-  const AI_SYSTEM_PROMPT = "คุณคือ AOF Assistance — AI ผู้ช่วยของเว็บ Badminton Club ตอบได้เฉพาะเรื่องที่เกี่ยวกับเว็บนี้เท่านั้น เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge หากผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวกับเว็บนี้ ให้ปฏิเสธอย่างสุภาพว่า 'ขอโทษครับ ผมตอบได้เฉพาะเรื่องเกี่ยวกับเว็บ Badminton Club เท่านั้นครับ' — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
   const AI_MODEL_DEFAULT = "gemini-2.0-flash-lite";
   const AI_MODEL_STORAGE = 'bk_ai_model';
-  const AI_KEY_STORAGE = 'bk_ai_key';
+  // Backend proxy endpoint (SUPA_URL / SUPA_KEY come from js/db.js)
+  const AI_ENDPOINT = (typeof SUPA_URL !== 'undefined' ? SUPA_URL : 'https://tprmqsfbeyqurwqpmpia.supabase.co') + '/functions/v1/aof-chat';
+  const AI_ANON_KEY = (typeof SUPA_KEY !== 'undefined') ? SUPA_KEY : '';
   const aiHistory = [];
 
   function getModel(){ return localStorage.getItem(AI_MODEL_STORAGE) || AI_MODEL_DEFAULT; }
   function saveModel(m){ localStorage.setItem(AI_MODEL_STORAGE, m); }
 
   function aiEl(id){ return document.getElementById(id); }
-  function getKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ''; }
 
   // ── Daily quota tracking (free tier ≈ 1500 req/day) ──
   const AI_QUOTA_MAX = 1500;
@@ -1528,8 +1525,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!btn) return;
     btn.style.display = isAdminUser() ? '' : 'none';
     if (isAdminUser()){
-      const ki = aiEl('aiKeyInput');
-      if (ki && getKey()) ki.value = getKey();
       syncModelSelect();
       renderQuota();
     }
@@ -1541,24 +1536,7 @@ document.addEventListener('DOMContentLoaded', function() {
     aiEl('aiPanelSettings').style.display = tab === 'settings' ? '' : 'none';
     aiEl('aiTabChat').classList.toggle('active', tab === 'chat');
     aiEl('aiTabSettings').classList.toggle('active', tab === 'settings');
-    if (tab === 'settings'){
-      const ki = aiEl('aiKeyInput');
-      if (ki && getKey()) ki.value = getKey();
-      syncModelSelect();
-    }
-  };
-
-  // Save/clear key — accept any non-empty string (Gemini keys start with AIza)
-  window.aiSaveKey = function(){
-    const val = ((aiEl('aiKeyInput') || {}).value || '').trim();
-    if (!val){ aiEl('aiKeyStatus').textContent = '⚠️ กรุณากรอก API Key'; return; }
-    localStorage.setItem(AI_KEY_STORAGE, val);
-    aiEl('aiKeyStatus').textContent = '✅ บันทึกแล้ว';
-  };
-  window.aiClearKey = function(){
-    localStorage.removeItem(AI_KEY_STORAGE);
-    if (aiEl('aiKeyInput')) aiEl('aiKeyInput').value = '';
-    aiEl('aiKeyStatus').textContent = '🗑️ ลบ Key แล้ว';
+    if (tab === 'settings') syncModelSelect();
   };
 
   function aiAppend(role, text){
@@ -1580,59 +1558,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const text = input.value.trim();
     if (!text) return;
 
-    const key = getKey();
     input.value = '';
     aiAppend('user', text);
     aiHistory.push({ role: 'user', content: text });
-
-    if (!key) {
-      aiAppend('bot', 'ยังไม่ได้ตั้งค่า API key — ไปที่แท็บ ⚙️ ตั้งค่า เพื่อใส่ key ครับ');
-      return;
-    }
 
     if (btn) btn.disabled = true;
     const typing = aiAppend('bot', '...');
     if (typing) typing.classList.add('ai-typing');
 
     try {
-      // Build Gemini contents array (role: user/model)
-      const contents = [
-        { role: 'user', parts: [{ text: AI_SYSTEM_PROMPT + '\n\n(เริ่มการสนทนา)' }] },
-        { role: 'model', parts: [{ text: 'เข้าใจแล้วครับ พร้อมช่วยเหลือ!' }] },
-        ...aiHistory.map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.content }]
-        }))
-      ];
-      const res = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/' + getModel() + ':generateContent?key=' + key,
-        {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({
-            contents,
-            generationConfig: { maxOutputTokens: 400 }
-          })
-        }
-      );
+      // Call the backend proxy — the Gemini key & system prompt live server-side.
+      const res = await fetch(AI_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'apikey': AI_ANON_KEY,
+          'Authorization': 'Bearer ' + AI_ANON_KEY
+        },
+        body: JSON.stringify({ model: getModel(), messages: aiHistory })
+      });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        let detail = '';
-        try { detail = await res.text(); } catch(_) {}
-        if (res.status === 429) {
-          const isBillingQuota = detail.includes('billing') || detail.includes('plan and billing');
-          if (isBillingQuota) {
-            throw new Error('โควต้ารายวันหมดแล้ว (1,500 req/วัน) — รอให้ถึงเที่ยงคืนเพื่อรีเซ็ต หรือสร้าง API Key ใหม่จาก aistudio.google.com/apikey แล้วใส่ในแท็บ ⚙️ ตั้งค่าครับ');
-          }
-          const m = detail.match(/retryDelay"?:\s*"?(\d+)s/);
-          const wait = m ? (' (ลองใหม่ในอีก ~' + m[1] + ' วินาที)') : '';
-          throw new Error('ใช้งานถี่เกินไป' + wait + ' — โควต้าฟรี 30 ครั้ง/นาที, 1,500 ครั้ง/วัน กรุณารอสักครู่แล้วลองใหม่ครับ');
-        }
-        throw new Error('HTTP ' + res.status + ': ' + detail.slice(0, 300));
+        throw new Error(data.error || ('เซิร์ฟเวอร์ตอบกลับ HTTP ' + res.status));
       }
-      const data = await res.json();
       bumpQuota();
-      const parts = data.candidates?.[0]?.content?.parts || [];
-      const reply = parts.map(p => p.text || '').join('').trim() || 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
+      const reply = (data.reply || 'ขออภัย ตอนนี้ตอบไม่ได้ครับ').trim();
       aiHistory.push({ role: 'assistant', content: reply });
       if (typing){ typing.classList.remove('ai-typing'); typing.textContent = reply; }
       else aiAppend('bot', reply);
