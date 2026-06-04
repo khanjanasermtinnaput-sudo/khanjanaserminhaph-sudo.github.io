@@ -1,35 +1,37 @@
 // Badminton Club — Service Worker
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
-const CACHE = 'bk-v22';
+const CACHE = 'bk-v23';
 
-// App shell to pre-cache (bare paths; runtime requests with ?v= query are matched via ignoreSearch)
+// App shell to pre-cache. Paths are RELATIVE to the SW location so the app works
+// when served from a project-page subpath (…/<repo>/). Runtime requests with a
+// ?v= query are matched via ignoreSearch.
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/badminton_v6-4.html',
-  '/styles.css',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/assets/crown.png',
-  '/js/i18n.js',
-  '/js/db.js',
-  '/js/elo.js',
-  '/js/auth.js',
-  '/js/leaderboard.js',
-  '/js/profile.js',
-  '/js/stats.js',
-  '/js/season.js',
-  '/js/achievements.js',
-  '/js/rankup.js',
-  '/js/daily.js',
-  '/js/avatar.js',
-  '/js/gacha.js',
-  '/js/mailbox.js',
-  '/js/tournament.js',
-  '/js/utils.js',
-  '/js/notifications.js',
-  '/js/perf.js'
+  './',
+  'index.html',
+  'badminton_v6-4.html',
+  'styles.css',
+  'manifest.json',
+  'icon-192.png',
+  'icon-512.png',
+  'assets/crown.png',
+  'js/i18n.js',
+  'js/db.js',
+  'js/elo.js',
+  'js/auth.js',
+  'js/leaderboard.js',
+  'js/profile.js',
+  'js/stats.js',
+  'js/season.js',
+  'js/achievements.js',
+  'js/rankup.js',
+  'js/daily.js',
+  'js/avatar.js',
+  'js/gacha.js',
+  'js/mailbox.js',
+  'js/tournament.js',
+  'js/utils.js',
+  'js/notifications.js',
+  'js/perf.js'
 ];
 
 // ── Install: pre-cache shell (individually, so one 404 won't abort the rest) ──
@@ -77,7 +79,7 @@ self.addEventListener('fetch', event => {
       .catch(() =>
         // Offline: serve from cache (ignore ?v= query strings), fall back to the app shell for navigations.
         caches.match(req, { ignoreSearch: true })
-          .then(hit => hit || (req.mode === 'navigate' ? caches.match('/index.html') : undefined))
+          .then(hit => hit || (req.mode === 'navigate' ? caches.match('index.html') : undefined))
       )
   );
 });

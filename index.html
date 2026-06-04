@@ -1396,7 +1396,8 @@ loadAll = async function() {
 <!-- PWA: service worker registration -->
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').then(reg => {
+    // Relative path so it works under a project-page subpath (…/repo/sw.js)
+    navigator.serviceWorker.register('sw.js').then(reg => {
       reg.addEventListener('updatefound', () => {
         const newSW = reg.installing;
         newSW.addEventListener('statechange', () => {
