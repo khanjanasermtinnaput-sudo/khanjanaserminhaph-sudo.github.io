@@ -1403,7 +1403,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const AI_SYSTEM_PROMPT = "คุณคือ AI ผู้ช่วยของเว็บ Badminton Club เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
   const AI_MODEL = "claude-sonnet-4-20250514";
   // ⚠️ ใส่ Anthropic API key ที่นี่ (โปรดทราบ: ในเว็บ public key จะถูกเปิดเผยฝั่ง client)
-  const AI_API_KEY = "";
+  const AI_API_KEY = localStorage.getItem('ai_api_key') || '';
   const aiHistory = [];
 
   function aiEl(id){ return document.getElementById(id); }
