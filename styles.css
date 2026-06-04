@@ -1060,3 +1060,4 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .ai-send-btn:hover{filter:brightness(1.08);transform:translateY(-1px)}
 .ai-send-btn:active{transform:scale(0.97)}
 .ai-send-btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.ai-tab-row{margin-bottom:12px}

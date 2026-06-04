@@ -333,18 +333,38 @@ function initCrownSparkle(canvas, W, H) {
       </div>
     </div>
 
-    <!-- AI ASSISTANT CHATBOT -->
-    <div class="card ai-card">
-      <div class="ai-head">
-        <div class="ai-head-title">🤖 AI ผู้ช่วย</div>
-        <div class="ai-head-sub">ถามเรื่องเว็บได้เลย</div>
+    <!-- AI ASSISTANT CHATBOT (admin only) -->
+    <div class="card ai-card" id="aiCard" style="display:none">
+      <!-- Tab row -->
+      <div class="tab-row ai-tab-row">
+        <button class="tab active" id="aiTabChat" onclick="aiShowTab('chat')">🤖 AI ผู้ช่วย</button>
+        <button class="tab" id="aiTabSettings" onclick="aiShowTab('settings')">⚙️ ตั้งค่า</button>
       </div>
-      <div class="ai-messages" id="aiMessages">
-        <div class="ai-msg ai-msg-bot">สวัสดี! ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ได้เลยครับ 🏸</div>
+
+      <!-- CHAT TAB -->
+      <div id="aiPanelChat">
+        <div class="ai-head-sub" style="margin-bottom:8px">ถามเรื่องเว็บได้เลย</div>
+        <div class="ai-messages" id="aiMessages">
+          <div class="ai-msg ai-msg-bot">สวัสดี! ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ได้เลยครับ 🏸</div>
+        </div>
+        <div class="ai-input-row">
+          <input type="text" class="ai-input" id="aiInput" placeholder="พิมพ์คำถาม..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();aiSend();}"/>
+          <button class="ai-send-btn" id="aiSendBtn" onclick="aiSend()">ส่ง</button>
+        </div>
       </div>
-      <div class="ai-input-row">
-        <input type="text" class="ai-input" id="aiInput" placeholder="พิมพ์คำถาม..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();aiSend();}"/>
-        <button class="ai-send-btn" id="aiSendBtn" onclick="aiSend()">ส่ง</button>
+
+      <!-- SETTINGS TAB -->
+      <div id="aiPanelSettings" style="display:none">
+        <div class="ai-head-sub" style="margin-bottom:12px">ตั้งค่า Anthropic API Key — เก็บใน localStorage เท่านั้น</div>
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" class="inp" id="aiKeyInput" placeholder="sk-ant-api03-..." autocomplete="off"/>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:4px">
+          <button class="btn btn-primary btn-sm" onclick="aiSaveKey()" style="width:auto;flex:1">💾 บันทึก</button>
+          <button class="btn btn-danger btn-sm" onclick="aiClearKey()" style="width:auto;flex:1">🗑️ ลบ Key</button>
+        </div>
+        <div id="aiKeyStatus" style="font-size:0.75rem;color:var(--muted);margin-top:10px;text-align:center"></div>
       </div>
     </div>
 
@@ -1398,15 +1418,54 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
-// ── AI ASSISTANT CHATBOT (Leaderboard tab) ──────────────────
+// ── AI ASSISTANT CHATBOT (Admin only — Leaderboard tab) ──────
 (function(){
   const AI_SYSTEM_PROMPT = "คุณคือ AI ผู้ช่วยของเว็บ Badminton Club เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
   const AI_MODEL = "claude-sonnet-4-20250514";
-  // ⚠️ ใส่ Anthropic API key ที่นี่ (โปรดทราบ: ในเว็บ public key จะถูกเปิดเผยฝั่ง client)
-  const AI_API_KEY = localStorage.getItem('ai_api_key') || '';
+  const AI_KEY_STORAGE = 'bk_ai_key';
   const aiHistory = [];
 
   function aiEl(id){ return document.getElementById(id); }
+
+  function getKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ''; }
+
+  // Show/hide the AI card based on admin status — called after login
+  window.aiInitCard = function(){
+    const card = aiEl('aiCard');
+    if (!card) return;
+    if (isAdminUser()) {
+      card.style.display = '';
+      const ki = aiEl('aiKeyInput');
+      if (ki && getKey()) ki.value = getKey();
+    } else {
+      card.style.display = 'none';
+    }
+  };
+
+  // Tab switching
+  window.aiShowTab = function(tab){
+    aiEl('aiPanelChat').style.display    = tab === 'chat'     ? '' : 'none';
+    aiEl('aiPanelSettings').style.display = tab === 'settings' ? '' : 'none';
+    aiEl('aiTabChat').classList.toggle('active', tab === 'chat');
+    aiEl('aiTabSettings').classList.toggle('active', tab === 'settings');
+    if (tab === 'settings'){
+      const ki = aiEl('aiKeyInput');
+      if (ki && getKey()) ki.value = getKey();
+    }
+  };
+
+  // Save/clear key
+  window.aiSaveKey = function(){
+    const val = (aiEl('aiKeyInput') || {}).value || '';
+    if (!val.startsWith('sk-ant-')){ aiEl('aiKeyStatus').textContent = '⚠️ Key ไม่ถูกต้อง (ต้องขึ้นต้นด้วย sk-ant-)'; return; }
+    localStorage.setItem(AI_KEY_STORAGE, val.trim());
+    aiEl('aiKeyStatus').textContent = '✅ บันทึกแล้ว';
+  };
+  window.aiClearKey = function(){
+    localStorage.removeItem(AI_KEY_STORAGE);
+    if (aiEl('aiKeyInput')) aiEl('aiKeyInput').value = '';
+    aiEl('aiKeyStatus').textContent = '🗑️ ลบ Key แล้ว';
+  };
 
   function aiAppend(role, text){
     const list = aiEl('aiMessages');
@@ -1420,18 +1479,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   window.aiSend = async function(){
+    if (!isAdminUser()) return;
     const input = aiEl('aiInput');
-    const btn = aiEl('aiSendBtn');
+    const btn   = aiEl('aiSendBtn');
     if (!input) return;
     const text = input.value.trim();
     if (!text) return;
 
+    const key = getKey();
     input.value = '';
     aiAppend('user', text);
     aiHistory.push({ role: 'user', content: text });
 
-    if (!AI_API_KEY) {
-      aiAppend('bot', 'ยังไม่ได้ตั้งค่า API key สำหรับ AI ผู้ช่วยครับ 🙏');
+    if (!key) {
+      aiAppend('bot', 'ยังไม่ได้ตั้งค่า API key — ไปที่แท็บ ⚙️ ตั้งค่า เพื่อใส่ key ครับ');
       return;
     }
 
@@ -1444,7 +1505,7 @@ document.addEventListener('DOMContentLoaded', function() {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-api-key': AI_API_KEY,
+          'x-api-key': key,
           'anthropic-version': '2023-06-01',
           'anthropic-dangerous-direct-browser-access': 'true'
         },
@@ -1461,12 +1522,11 @@ document.addEventListener('DOMContentLoaded', function() {
         ? data.content[0].text.trim()
         : 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
       aiHistory.push({ role: 'assistant', content: reply });
-      if (typing) { typing.classList.remove('ai-typing'); typing.textContent = reply; }
+      if (typing){ typing.classList.remove('ai-typing'); typing.textContent = reply; }
       else aiAppend('bot', reply);
       const list = aiEl('aiMessages'); if (list) list.scrollTop = list.scrollHeight;
-    } catch (e) {
-      if (typing) { typing.classList.remove('ai-typing'); typing.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI ลองใหม่อีกครั้งครับ'; }
-      else aiAppend('bot', 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI');
+    } catch(e) {
+      if (typing){ typing.classList.remove('ai-typing'); typing.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI ลองใหม่อีกครั้งครับ'; }
     } finally {
       if (btn) btn.disabled = false;
       if (input) input.focus();

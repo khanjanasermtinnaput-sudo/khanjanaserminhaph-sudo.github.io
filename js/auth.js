@@ -107,6 +107,7 @@ function afterLogin() {
   document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('navName').textContent = currentUser.name;
   document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdminUser());
+  if (typeof aiInitCard === 'function') aiInitCard();
   // Show notification bell
   const bellWrap = document.getElementById('notifBellWrap');
   if (bellWrap) bellWrap.style.display = '';
