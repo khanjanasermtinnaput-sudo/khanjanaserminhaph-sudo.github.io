@@ -26,16 +26,7 @@ const ALLOWED_MODELS = new Set([
 ]);
 const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 
-// ── General-purpose assistant ─────────────────────────────────────────────────
-const SYSTEM_PROMPT = `คุณคือ "AOF Assistance" — AI ผู้ช่วยอัจฉริยะประจำเว็บไซต์สโมสรแบดมินตัน (Badminton Club)
-
-คุณสามารถช่วยได้ทุกเรื่อง ได้แก่:
-- เว็บไซต์สโมสร — ฟีเจอร์และวิธีใช้งาน: ระบบ ELO ranking, leaderboard, การบันทึก/อนุมัติแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha, tournament, daily challenge
-- เทคนิคการเล่นแบดมินตัน และกติกาสากลของ BWF
-- การดูแลสุขภาพและการกายภาพของผู้เล่นแบดมินตัน
-- คณิตศาสตร์, วิทยาศาสตร์, การเขียนโปรแกรม, ภาษา, ประวัติศาสตร์, ความรู้ทั่วไป และอื่นๆ อีกมากมาย
-
-ข้อกำหนดการตอบ: ตอบเป็นภาษาไทยสุภาพ กระชับ เข้าใจง่าย สำหรับคำแนะนำด้านสุขภาพ/การบาดเจ็บ ให้เสริมเสมอว่าหากอาการรุนแรงหรือเรื้อรังควรพบแพทย์หรือนักกายภาพบำบัดผู้เชี่ยวชาญ`;
+const SYSTEM_PROMPT = `You are a helpful assistant. Answer any question on any topic clearly and helpfully. Reply in the same language the user uses.`;
 
 // ── CORS: allow the GitHub Pages site + local dev ─────────────────────────────
 function allowOrigin(origin: string): string {
@@ -120,7 +111,7 @@ Deno.serve(async (req: Request) => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           contents,
-          generationConfig: { maxOutputTokens: 500, temperature: 0.7 },
+          generationConfig: { maxOutputTokens: 2048, temperature: 0.9 },
         }),
       },
     );
