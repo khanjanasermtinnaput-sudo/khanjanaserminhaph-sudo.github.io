@@ -411,7 +411,7 @@ function showSection(name) {
   document.getElementById(name + 'Section').classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   // Use ID map so position-based lookup isn't thrown off by hidden mailbox button
-  const navIdMap = { leaderboard:'navLb', stats:'navStats', match:'navMatch', tournament:'navTour', history:'navHist', profile:'navProfile', admin:'adminNavBtn' };
+  const navIdMap = { leaderboard:'navLb', stats:'navStats', match:'navMatch', tournament:'navTour', history:'navHist', profile:'navProfile', admin:'adminNavBtn', ai:'navAI' };
   const activeBtn = document.getElementById(navIdMap[name]);
   if (activeBtn) activeBtn.classList.add('active');
   if (name === 'leaderboard') renderLeaderboard();
