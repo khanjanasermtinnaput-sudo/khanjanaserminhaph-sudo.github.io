@@ -1,14 +1,44 @@
 {
   "name": "Badminton Club",
   "short_name": "BK Club",
-  "description": "ระบบจัดการแบดมินตันเพื่อน",
-  "start_url": "/",
+  "description": "ระบบจัดการแบดมินตันเพื่อน — ลีดเดอร์บอร์ด, สถิติ, ทัวร์นาเมนต์ และระบบจัดอันดับ ELO",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#0a0d12",
   "theme_color": "#f0c040",
   "orientation": "portrait",
+  "lang": "th",
+  "categories": ["sports", "games"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Leaderboard",
+      "short_name": "อันดับ",
+      "description": "ดูอันดับผู้เล่น",
+      "url": "./",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Match",
+      "short_name": "แมทช์",
+      "description": "บันทึกผลการแข่งขัน",
+      "url": "./#match",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Tournament",
+      "short_name": "ทัวร์",
+      "description": "ดูทัวร์นาเมนต์",
+      "url": "./#tournament",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
   ]
 }
