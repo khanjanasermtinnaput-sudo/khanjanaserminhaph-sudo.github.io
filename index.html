@@ -349,9 +349,9 @@ function initCrownSparkle(canvas, W, H) {
         <button class="tab" id="aiTabSettings" onclick="aiShowTab('settings')">⚙️ ตั้งค่า</button>
       </div>
       <div id="aiPanelChat">
-        <div class="ai-head-sub" style="margin-bottom:8px">ถามได้ทุกเรื่อง — ค้นข้อมูลล่าสุดจากอินเทอร์เน็ตได้ด้วย 🔎</div>
+        <div class="ai-head-sub" style="margin-bottom:8px">ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บได้เลยครับ</div>
         <div class="ai-messages" id="aiMessages">
-          <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามได้ทุกเรื่องเลย ทั้งเรื่องในเว็บและข่าวสารทั่วไป ผมค้นหาข้อมูลล่าสุดให้ได้ครับ 🏸</div>
+          <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บ Badminton Club ได้เลยครับ 🏸</div>
         </div>
         <div class="ai-input-row">
           <input type="text" class="ai-input" id="aiInput" placeholder="พิมพ์คำถาม..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();aiSend();}"/>
@@ -1423,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script>
 // ── AI ASSISTANT CHATBOT — Google Gemini (Admin only) ────────
 (function(){
-  const AI_SYSTEM_PROMPT = "คุณคือ AOF Assistance — AI ผู้ช่วยอัจฉริยะของเว็บ Badminton Club ที่ตอบได้ทุกเรื่อง ทั้งคำถามทั่วไปและข่าวสารปัจจุบัน เมื่อต้องการข้อมูลล่าสุดหรือข้อเท็จจริงจากภายนอก ให้ค้นหาจาก Google Search ก่อนตอบเสมอ และอ้างอิงแหล่งที่มาเมื่อเหมาะสม สำหรับเรื่องเว็บนี้: มีฟีเจอร์ ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทยเป็นหลัก กระชับ ตรงประเด็น เป็นกันเอง";
+  const AI_SYSTEM_PROMPT = "คุณคือ AOF Assistance — AI ผู้ช่วยของเว็บ Badminton Club ตอบได้เฉพาะเรื่องที่เกี่ยวกับเว็บนี้เท่านั้น เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge หากผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวกับเว็บนี้ ให้ปฏิเสธอย่างสุภาพว่า 'ขอโทษครับ ผมตอบได้เฉพาะเรื่องเกี่ยวกับเว็บ Badminton Club เท่านั้นครับ' — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
   const AI_MODEL = "gemini-2.0-flash";
   const AI_KEY_STORAGE = 'bk_ai_key';
   const aiHistory = [];
@@ -1517,8 +1517,7 @@ document.addEventListener('DOMContentLoaded', function() {
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             contents,
-            tools: [{ google_search: {} }],
-            generationConfig: { maxOutputTokens: 1024 }
+            generationConfig: { maxOutputTokens: 400 }
           })
         }
       );
