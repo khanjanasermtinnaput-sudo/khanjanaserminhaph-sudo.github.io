@@ -356,6 +356,7 @@ function initCrownSparkle(canvas, W, H) {
             <span id="aiQuotaLabel">0 / 1500</span>
           </div>
           <div class="ai-quota-track"><div class="ai-quota-fill" id="aiQuotaFill"></div></div>
+          <div id="aiModelLabel" style="font-size:0.68rem;color:var(--muted);margin-top:4px;text-align:right">🤖 <span id="aiModelName">gemini-2.0-flash-lite</span></div>
         </div>
         <div class="ai-messages" id="aiMessages">
           <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บ Badminton Club ได้เลยครับ 🏸</div>
@@ -371,8 +372,17 @@ function initCrownSparkle(canvas, W, H) {
           <label>API Key</label>
           <input type="password" class="inp" id="aiKeyInput" placeholder="AIza... (Google Gemini API Key)" autocomplete="off"/>
         </div>
+        <div class="form-group" style="margin-top:10px">
+          <label>โมเดล AI</label>
+          <select class="inp" id="aiModelSelect" onchange="aiSaveModel()" style="cursor:pointer">
+            <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite — เร็ว · 30 req/นาที (แนะนำ)</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash — ฉลาดขึ้น · 15 req/นาที</option>
+            <option value="gemini-1.5-flash">gemini-1.5-flash — เสถียร · 15 req/นาที</option>
+            <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b — เล็ก/เร็ว · 15 req/นาที</option>
+          </select>
+        </div>
         <div style="display:flex;gap:8px;margin-top:4px">
-          <button class="btn btn-primary btn-sm" onclick="aiSaveKey()" style="width:auto;flex:1">💾 บันทึก</button>
+          <button class="btn btn-primary btn-sm" onclick="aiSaveKey()" style="width:auto;flex:1">💾 บันทึก Key</button>
           <button class="btn btn-danger btn-sm" onclick="aiClearKey()" style="width:auto;flex:1">🗑️ ลบ Key</button>
         </div>
         <div id="aiKeyStatus" style="font-size:0.75rem;color:var(--muted);margin-top:10px;text-align:center"></div>
@@ -1431,9 +1441,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // ── AI ASSISTANT CHATBOT — Google Gemini (Admin only) ────────
 (function(){
   const AI_SYSTEM_PROMPT = "คุณคือ AOF Assistance — AI ผู้ช่วยของเว็บ Badminton Club ตอบได้เฉพาะเรื่องที่เกี่ยวกับเว็บนี้เท่านั้น เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge หากผู้ใช้ถามเรื่องอื่นที่ไม่เกี่ยวกับเว็บนี้ ให้ปฏิเสธอย่างสุภาพว่า 'ขอโทษครับ ผมตอบได้เฉพาะเรื่องเกี่ยวกับเว็บ Badminton Club เท่านั้นครับ' — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
-  const AI_MODEL = "gemini-2.0-flash-lite";
+  const AI_MODEL_DEFAULT = "gemini-2.0-flash-lite";
+  const AI_MODEL_STORAGE = 'bk_ai_model';
   const AI_KEY_STORAGE = 'bk_ai_key';
   const aiHistory = [];
+
+  function getModel(){ return localStorage.getItem(AI_MODEL_STORAGE) || AI_MODEL_DEFAULT; }
+  function saveModel(m){ localStorage.setItem(AI_MODEL_STORAGE, m); }
 
   function aiEl(id){ return document.getElementById(id); }
   function getKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ''; }
@@ -1457,8 +1471,9 @@ document.addEventListener('DOMContentLoaded', function() {
   function renderQuota(){
     const q = getQuota();
     const pct = Math.min(100, Math.round((q.count / AI_QUOTA_MAX) * 100));
-    const label = aiEl('aiQuotaLabel'), fill = aiEl('aiQuotaFill');
+    const label = aiEl('aiQuotaLabel'), fill = aiEl('aiQuotaFill'), mname = aiEl('aiModelName');
     if (label) label.textContent = q.count + ' / ' + AI_QUOTA_MAX + ' (' + pct + '%)';
+    if (mname) mname.textContent = getModel();
     if (fill){
       fill.style.width = pct + '%';
       fill.style.background = pct >= 90 ? 'linear-gradient(90deg,#ff4757,#ff6b35)'
@@ -1469,6 +1484,19 @@ document.addEventListener('DOMContentLoaded', function() {
   window.aiRenderQuota = renderQuota;
 
   // Show/hide AI nav button based on admin status — called after login
+  function syncModelSelect(){
+    const sel = aiEl('aiModelSelect');
+    if (sel) sel.value = getModel();
+  }
+  window.aiSaveModel = function(){
+    const sel = aiEl('aiModelSelect');
+    if (!sel) return;
+    saveModel(sel.value);
+    const st = aiEl('aiKeyStatus');
+    if (st) st.textContent = '✅ เปลี่ยนโมเดลเป็น ' + sel.value + ' แล้ว';
+    renderQuota();
+  };
+
   window.aiInitCard = function(){
     const btn = document.getElementById('navAI');
     if (!btn) return;
@@ -1476,6 +1504,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isAdminUser()){
       const ki = aiEl('aiKeyInput');
       if (ki && getKey()) ki.value = getKey();
+      syncModelSelect();
       renderQuota();
     }
   };
@@ -1489,6 +1518,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (tab === 'settings'){
       const ki = aiEl('aiKeyInput');
       if (ki && getKey()) ki.value = getKey();
+      syncModelSelect();
     }
   };
 
@@ -1549,7 +1579,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }))
       ];
       const res = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/' + AI_MODEL + ':generateContent?key=' + key,
+        'https://generativelanguage.googleapis.com/v1beta/models/' + getModel() + ':generateContent?key=' + key,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
