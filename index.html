@@ -1517,7 +1517,7 @@ document.addEventListener('DOMContentLoaded', function() {
           messages: aiHistory
         })
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
       const data = await res.json();
       const reply = (data.content && data.content[0] && data.content[0].text)
         ? data.content[0].text.trim()
@@ -1527,7 +1527,10 @@ document.addEventListener('DOMContentLoaded', function() {
       else aiAppend('bot', reply);
       const list = aiEl('aiMessages'); if (list) list.scrollTop = list.scrollHeight;
     } catch(e) {
-      if (typing){ typing.classList.remove('ai-typing'); typing.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI ลองใหม่อีกครั้งครับ'; }
+      // remove the unanswered user turn so a retry keeps roles alternating
+      if (aiHistory.length && aiHistory[aiHistory.length - 1].role === 'user') aiHistory.pop();
+      const msg = (e && e.message) ? String(e.message).slice(0, 300) : 'unknown';
+      if (typing){ typing.classList.remove('ai-typing'); typing.textContent = '⚠️ เชื่อมต่อ AI ไม่สำเร็จ: ' + msg; }
     } finally {
       if (btn) btn.disabled = false;
       if (input) input.focus();
