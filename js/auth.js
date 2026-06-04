@@ -89,15 +89,41 @@ function rejectQuickLogin() {
   document.getElementById('loginForm').classList.remove('hidden');
 }
 
+let _presenceInterval = null;
+function _onVisibilityResume() { if (!document.hidden && currentUser) dbUpdateLastSeen(currentUser.id); }
+function startPresenceHeartbeat() {
+  stopPresenceHeartbeat();
+  if (!currentUser) return;
+  dbUpdateLastSeen(currentUser.id);
+  _presenceInterval = setInterval(() => { if (currentUser) dbUpdateLastSeen(currentUser.id); }, 60000);
+  document.addEventListener('visibilitychange', _onVisibilityResume);
+}
+function stopPresenceHeartbeat() {
+  if (_presenceInterval) { clearInterval(_presenceInterval); _presenceInterval = null; }
+  document.removeEventListener('visibilitychange', _onVisibilityResume);
+}
+
 function afterLogin() {
   document.getElementById('mainNav').classList.remove('hidden');
   document.getElementById('navName').textContent = currentUser.name;
   document.getElementById('adminNavBtn').classList.toggle('hidden', !isAdminUser());
+  if (typeof aiInitCard === 'function') aiInitCard();
+  // Show notification bell
+  const bellWrap = document.getElementById('notifBellWrap');
+  if (bellWrap) bellWrap.style.display = '';
   showSection('leaderboard');
+  startPresenceHeartbeat();
+  if (typeof initNotifications === 'function') initNotifications();
   // แสดง rank-up ของผู้เล่นตัวเอง (กรณี Admin อนุมัติแมตช์ตอนที่ผู้เล่นออฟไลน์)
   setTimeout(() => { checkPendingRankUps(); checkSelfRankUpFromDB(); }, 1800);
 }
 function logout() {
+  stopPresenceHeartbeat();
+  if (typeof stopNotifications === 'function') stopNotifications();
+  const bellWrap = document.getElementById('notifBellWrap');
+  if (bellWrap) bellWrap.style.display = 'none';
+  const panel = document.getElementById('notifPanel');
+  if (panel) panel.classList.remove('open');
   currentUser = null; currentMatch = null; db = { players: [], matches: [] };
   document.getElementById('mainNav').classList.add('hidden');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));

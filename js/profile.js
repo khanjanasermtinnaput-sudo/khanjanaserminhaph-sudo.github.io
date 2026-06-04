@@ -1,4 +1,60 @@
 // ==================== PLAYER PROFILE BOTTOM SHEET ====================
+// ── King crown badge: glowing PNG crown + full sparkle canvas (rank King) ──
+// Falls back to the 👑 emoji if assets/crown.png isn't present yet.
+let _kingCrownRaf = null;
+function _kingCrownHTML() {
+  return `<div class="king-crown">
+    <canvas class="kc-spark" id="kcSparkCanvas"></canvas>
+    <img class="kc-img" src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="crown">
+  </div>`;
+}
+function _initKingCrownSparkles(canvas) {
+  if (_kingCrownRaf) { cancelAnimationFrame(_kingCrownRaf); _kingCrownRaf = null; }
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = canvas.offsetWidth || 120;
+  const H = canvas.height = canvas.offsetHeight || 96;
+  const CX = W / 2, CY = H * 0.6;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const ps = [];
+  function mk() {
+    const ang = rand(0, Math.PI * 2), rad = rand(8, Math.max(W, H) * 0.52), life = rand(0.5, 2);
+    return {
+      x: CX + Math.cos(ang) * rad, y: CY + Math.sin(ang) * rad * 0.7,
+      size: rand(0.8, 2.8), alpha: rand(0.2, 1), life, age: rand(0, life),
+      vx: rand(-0.25, 0.25), vy: rand(-0.6, -0.08),
+      color: `hsl(${rand(40, 55)},${rand(80, 100)}%,${rand(80, 100)}%)`,
+      star: Math.random() < 0.5
+    };
+  }
+  for (let i = 0; i < 56; i++) ps.push(mk());
+  let last = performance.now();
+  function loop(now) {
+    const dt = (now - last) / 1000; last = now;
+    ctx.clearRect(0, 0, W, H);
+    ps.forEach((p, i) => {
+      p.age += dt; p.x += p.vx; p.y += p.vy;
+      if (p.age >= p.life) { ps[i] = mk(); return; }
+      const t = p.age / p.life;
+      const a = (t < 0.3 ? t / 0.3 : t > 0.7 ? (1 - t) / 0.3 : 1) * p.alpha;
+      ctx.globalAlpha = a; ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 6;
+      const s = p.size * (1 - t * 0.4);
+      if (p.star) {
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.age * 1.5); ctx.beginPath();
+        for (let k = 0; k < 8; k++) {
+          const r = k % 2 === 0 ? s : s * 0.35, ang = k * Math.PI / 4;
+          k === 0 ? ctx.moveTo(Math.cos(ang) * r, Math.sin(ang) * r) : ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+        }
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      } else {
+        ctx.beginPath(); ctx.arc(p.x, p.y, s * 0.6, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+    });
+    _kingCrownRaf = requestAnimationFrame(loop);
+  }
+  _kingCrownRaf = requestAnimationFrame(loop);
+}
+
 async function openPlayerProfile(playerId) {
   const p = db.players.find(x => x.id === playerId);
   if (!p) return;
@@ -115,29 +171,28 @@ async function openPlayerProfile(playerId) {
     bronze: 'linear-gradient(135deg,#cd7f32,#a0522d)'
   };
 
+  const _hasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
   const html = `
   <div class="pp-overlay" id="ppOverlayEl" onclick="closePlayerProfile(event)">    <div class="pp-sheet2" id="ppSheet2">
       <div class="pp2-handle"></div>
-      <div class="pp2-hero">
-        <div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]}">
-          ${getGachaFrameInner(p)}${getInitial(p.name)}
-          <div class="pp2-av-ring" style="background:${rankGradients[rank.id] || rankGradients.bronze}"></div>
-          ${rank.id === 'king' && _resolveFrameKey(p.gachaFrame) !== 'solaremperor' ? '<div style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:1.5rem;z-index:5;filter:drop-shadow(0 2px 8px rgba(255,215,0,0.9));animation:kingCrownFloat 2.2s ease-in-out infinite;pointer-events:none">👑</div>' : ''}
-        </div>
+      <div class="pp2-hero" id="pp2HeroEl" style="${_hasTG ? 'position:relative;isolation:isolate;border-radius:18px;padding:18px;margin:-4px;' : ''}">
+        ${_hasTG ? '<div class="tcf-hero-glow"></div>' : ''}
+        ${_hasTG ? thunderGodAvatarHTML(getAvatar(p.id, p.name).content, 80, colors[1], colors[0]) : `<div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}${!getGachaFrameClass(p)?`<div class="pp2-av-ring" style="background:${rankGradients[rank.id]||rankGradients.bronze}"></div>`:''}${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?_kingCrownHTML():''}</div>`}
         <div class="pp2-hero-text">
           <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>
-          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px"><span class="rank-badge ${rank.class}">${getRankLabel(p.pts,p.id)}</span>${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
+          ${getPresenceHTML(p) ? `<div style="margin-top:4px">${getPresenceHTML(p)}</div>` : ''}
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--glass-border)">
               <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('cur_rank_pos')}</div>
               <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--neon);line-height:1">#${rankPos}</div>
-              <span class="rank-badge ${rank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${rank.label}</span>
+              ${getRankBadgeSVG(p.pts,p.id,36)}
             </div>
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid ${peakPos < rankPos?'rgba(255,215,0,0.4)':'var(--glass-border)'}">
               <div style="font-size:0.62rem;color:var(--muted);margin-bottom:4px;letter-spacing:0.03em">${t('peak_rank_pos')}${peakPos < rankPos?' 👑':''}</div>
               <div style="font-family:'Rajdhani';font-size:1.5rem;font-weight:700;color:var(--gold);line-height:1">#${peakPos}</div>
-              <span class="rank-badge ${peakRank.class}" style="font-size:0.58rem;margin-top:4px;display:inline-block">${peakRank.label}</span>
+              ${getRankBadgeSVG(peakElo,p.id,36)}
             </div>
           </div>
         </div>
@@ -218,10 +273,19 @@ async function openPlayerProfile(playerId) {
   overlay.style.display = 'block';
   document.body.dataset.ppLock = '1';
   document.body.style.overflow = 'hidden';
+  // Apply ThunderCardFrame to hero section for Thunder God players
+  if (_hasTG) {
+    const heroEl = document.getElementById('pp2HeroEl');
+    if (heroEl) applyThunderCardFrame(heroEl, 18, 2.5, true);
+  }
+  // Start the King crown sparkles once the sheet is in the DOM (King only).
+  const kcCanvas = document.getElementById('kcSparkCanvas');
+  if (kcCanvas) requestAnimationFrame(() => _initKingCrownSparkles(kcCanvas));
 }
 
 function closePlayerProfile(e) {
   if (e && e.target !== document.getElementById('ppOverlayEl')) return;
+  if (_kingCrownRaf) { cancelAnimationFrame(_kingCrownRaf); _kingCrownRaf = null; }
   const overlayEl = document.getElementById('ppOverlayEl');
   const sheet = document.getElementById('ppSheet2');
   if (!overlayEl) return;
@@ -342,6 +406,9 @@ function checkPendingRankUps() {
   }
 }
 
+// Session-level dedup: remember the highest pts level we already showed a rank-up for this session.
+const _ruShownPts = {};
+
 // Cross-device rank-up detection: compares stored pts baseline vs current DB pts.
 // Triggers when admin records a match for the player on a different device.
 function checkSelfRankUpFromDB() {
@@ -355,6 +422,9 @@ function checkSelfRankUpFromDB() {
   localStorage.setItem(key, String(me.pts));
   if (lastPts === null || !Number.isFinite(lastPts)) return;
   if (me.pts <= lastPts) return;
+  // Session dedup: skip if we already showed an animation for this pts level this session
+  if (_ruShownPts[currentUser.id] >= me.pts) return;
+  _ruShownPts[currentUser.id] = me.pts;
   checkAndShowRankUp(lastPts, me.pts, me.name, me.pts - lastPts);
 }
 
@@ -406,7 +476,27 @@ function getNemesis(playerId) {
 // ============================================================
 // ===== FEATURE: RANK SCORE OVER TIME CHART (full SVG) =====
 // ============================================================
-function buildRankingChart(playerId) {
+function buildRankingChart(playerId, rangeDays) {
+  return `<div id="rkHost_${playerId}">${_buildRankingChartInner(playerId, rangeDays)}</div>`;
+}
+
+// Re-render only the chart body when the user switches time range
+function setRankChartRange(playerId, rangeDays) {
+  const host = document.getElementById('rkHost_' + playerId);
+  if (host) host.innerHTML = _buildRankingChartInner(playerId, rangeDays);
+}
+
+// Time-range pills (7d / 30d / all) — lets you focus on recent movement
+function _rkRangeToggle(playerId, active) {
+  const opts = _lang === 'en'
+    ? [[7, '7d'], [30, '30d'], [0, 'All']]
+    : [[7, '7 วัน'], [30, '30 วัน'], [0, 'ทั้งหมด']];
+  return `<div class="rk-range">${opts.map(([v, l]) =>
+    `<button class="rk-range-btn${(active || 0) === v ? ' on' : ''}" onclick="setRankChartRange(${playerId},${v})">${l}</button>`
+  ).join('')}</div>`;
+}
+
+function _buildRankingChartInner(playerId, rangeDays) {
   // Reconstruct rank-score (pts) at each match point over time
   const p = db.players.find(x => x.id === playerId);
   if (!p) return '';
@@ -415,29 +505,57 @@ function buildRankingChart(playerId) {
     .filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId))
     .sort((a, b) => new Date(a.date || a.played_at) - new Date(b.date || b.played_at));
 
-  if (playerMatches.length < 2) return '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:14px 0">ยังไม่มีข้อมูลเพียงพอ (ต้องเล่นอย่างน้อย 2 แมตช์)</div>';
+  const _msg = m => `<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:14px 0">${m}</div>`;
+  if (playerMatches.length < 2)
+    return _msg(_lang === 'en' ? 'Not enough data yet (play at least 2 matches)' : 'ยังไม่มีข้อมูลเพียงพอ (ต้องเล่นอย่างน้อย 2 แมตช์)');
 
   // Walk backwards from current pts to reconstruct the forward score timeline
-  let pts = p.pts;
+  let walk = p.pts;
   const after = []; // pts AFTER each match, in forward order
+  const wins = [];  // true = win, false = loss for each match (forward order)
   [...playerMatches].reverse().forEach(m => {
-    after.unshift(pts);
     const inA = m.teamA.some(x => x.id === playerId);
     const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-    pts = win ? Math.max(0, pts - (m.pts?.gain || 0)) : Math.min(pts + (m.pts?.loss || 0), 9999);
+    after.unshift(walk);
+    wins.unshift(win);
+    walk = win ? Math.max(0, walk - (m.pts?.gain || 0)) : Math.min(walk + (m.pts?.loss || 0), 9999);
   });
-  const startPts = pts;                  // pts before the very first match
-  const series = [startPts, ...after];   // length = playerMatches.length + 1
+  const fullSeries  = [walk, ...after];  // index 0 = before first match
+  const fullDates   = [null, ...playerMatches.map(m => new Date(m.date || m.played_at))];
+  const fullResults = [null, ...wins];   // null = starting point, else true/false
+  const N = fullSeries.length;
+
+  // Default range: focus on the last 30 days when there is enough recent data
+  if (rangeDays === undefined || rangeDays === null) {
+    const cut30 = Date.now() - 30 * 86400000;
+    const recent = fullDates.filter(d => d && d.getTime() >= cut30).length;
+    rangeDays = recent >= 2 ? 30 : 0;
+  }
+  rangeDays = Number(rangeDays) || 0;
+  const toggle = _rkRangeToggle(playerId, rangeDays);
+
+  // Slice to the selected window (keep one anchor point just before it)
+  let series = fullSeries, dates = fullDates, matchResults = fullResults;
+  if (rangeDays > 0) {
+    const cut = Date.now() - rangeDays * 86400000;
+    let startIdx = -1;
+    for (let i = 1; i < N; i++) { if (fullDates[i] && fullDates[i].getTime() >= cut) { startIdx = i; break; } }
+    if (startIdx === -1)
+      return toggle + _msg(_lang === 'en' ? 'No matches in this period' : 'ไม่มีแมตช์ในช่วงนี้');
+    const from = Math.max(0, startIdx - 1);
+    series       = fullSeries.slice(from);
+    dates        = fullDates.slice(from);
+    matchResults = fullResults.slice(from);
+  }
+
   const n = series.length;
+  if (n < 2)
+    return toggle + _msg(_lang === 'en' ? 'Not enough data in this period' : 'ข้อมูลในช่วงนี้ไม่พอแสดงกราฟ');
 
-  // Date for each series point (index 0 = "เริ่ม", index k = after match k-1)
-  const dateAt = i => {
-    if (i === 0) return null;
-    const m = playerMatches[i - 1];
-    return m ? new Date(m.date || m.played_at) : null;
-  };
-  const fmtDate = d => d ? d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : 'เริ่ม';
+  // Date for each series point (index 0 may be the pre-window anchor; null = "เริ่ม")
+  const fmtDate = d => d ? d.toLocaleDateString(_lang === 'en' ? 'en-GB' : 'th-TH', { day: 'numeric', month: 'short' }) : (_lang === 'en' ? 'start' : 'เริ่ม');
 
+  const startPts = series[0];
   const curPts  = series[n - 1];
   const peakPts = Math.max(...series);
   const peakIdx = series.lastIndexOf(peakPts);
@@ -460,8 +578,8 @@ function buildRankingChart(playerId) {
   const toX = i => padL + (i / (n - 1)) * chartW;
   const toY = v => padT + (1 - (v - yMin) / (yMax - yMin)) * chartH;
 
-  const pathPts = series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`);
-  const pathD   = 'M' + pathPts.join(' L');
+  // Straight segments so every win (up) and loss (down) is visible as a distinct step
+  const pathD = 'M' + series.map((v, i) => `${toX(i).toFixed(1)},${toY(v).toFixed(1)}`).join(' L');
 
   // Area fill below the line
   const lx = toX(n - 1).toFixed(1), ly = toY(curPts).toFixed(1);
@@ -492,17 +610,21 @@ function buildRankingChart(playerId) {
   const step = Math.max(1, Math.floor(n / 5));
   const xAxisSVG = series.map((_, i) => {
     if (i % step !== 0 && i !== n - 1) return '';
-    const label = i === 0 ? 'เริ่ม' : (i === n - 1 ? 'ล่าสุด' : fmtDate(dateAt(i)));
+    const label = i === n - 1 ? (_lang === 'en' ? 'now' : 'ล่าสุด') : fmtDate(dates[i]);
     return `<text x="${toX(i).toFixed(1)}" y="${padT + chartH + 16}" fill="rgba(255,255,255,0.3)" font-size="8" text-anchor="middle" font-family="Rajdhani,sans-serif">${label}</text>`;
   }).join('');
 
-  // Dots at each data point
+  // Dots at each data point — green = win, red = loss, gold = peak
   const dotsSVG = series.map((v, i) => {
     const isPeak = i === peakIdx;
-    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="${isPeak ? 4 : 2.3}" fill="${isPeak ? '#ffd700' : lineColor}" opacity="${isPeak ? 1 : 0.55}"/>`;
+    const res = matchResults[i];
+    const dotColor = isPeak ? '#ffd700' : res === true ? '#00f5a0' : res === false ? '#ff4757' : 'rgba(255,255,255,0.4)';
+    const r = isPeak ? 4.5 : (res !== null ? 3 : 2);
+    return `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="${r}" fill="${dotColor}" opacity="${isPeak ? 1 : 0.85}"/>`;
   }).join('');
 
   return `
+  ${toggle}
   <div style="position:relative">
     <svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;overflow:visible">
       <defs>
@@ -542,6 +664,11 @@ function buildRankingChart(playerId) {
       <div style="margin-left:auto;font-family:'Rajdhani';font-size:0.95rem;font-weight:700;color:${lineColor}">
         ${improving ? '▲ +' : '▼ '}${delta} pts
       </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:6px">
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#00f5a0;display:inline-block"></span>${_lang==='en'?'Win':'ชนะ'}</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#ff4757;display:inline-block"></span>${_lang==='en'?'Loss':'แพ้'}</div>
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.68rem;color:var(--muted)"><span style="width:8px;height:8px;border-radius:50%;background:#ffd700;display:inline-block"></span>${_lang==='en'?'Peak':'สูงสุด'}</div>
     </div>
   </div>`;
 }

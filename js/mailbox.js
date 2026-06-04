@@ -46,13 +46,18 @@ async function renderMailboxList() {
       list.innerHTML = '<div class="text-muted" style="text-align:center;padding:20px">ไม่มีไอเทมในกล่องของขวัญ</div>';
       return;
     }
-    const typeIcon = { coins: '🪙', elo: '📈', gacha_frame: '🖼️', gacha_emoji: '😎' };
+    const typeIcon = { coins:'🪙', elo:'📈', gacha_frame:'🖼️', gacha_emoji:'🎭', gacha_element:'✦', gacha_name:'✨', gacha_effect:'⚡' };
+    const elNames  = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
+    const efxNames = { rotating_arcs:'Thunder God' };
     list.innerHTML = items.map(item => {
       const icon = typeIcon[item.item_type] || '🎁';
       const label = item.item_type === 'coins' ? `+${item.item_value} 🪙`
         : item.item_type === 'elo' ? `+${item.item_value} ELO`
-        : item.item_type === 'gacha_frame' ? `Frame: ${item.item_value}`
-        : item.item_type === 'gacha_emoji' ? `Emoji: ${item.item_value}`
+        : item.item_type === 'gacha_frame' ? `🖼️ Frame: ${item.item_value}`
+        : item.item_type === 'gacha_name' ? `✨ Name Effect: ${item.item_value}`
+        : item.item_type === 'gacha_emoji' ? `🎭 Emoji: ${item.item_value}`
+        : item.item_type === 'gacha_element' ? `✦ Element: ${elNames[item.item_value] || item.item_value}`
+        : item.item_type === 'gacha_effect' ? `⚡ ${efxNames[item.item_value] || item.item_value}`
         : item.item_value;
       return `<div class="mailbox-item" id="mail_${item.id}">
         <div class="mailbox-item-icon">${icon}</div>
@@ -68,34 +73,85 @@ async function renderMailboxList() {
   }
 }
 
-async function claimMailItem(mailId, itemType, itemValue) {
+async function claimMailItem(mailId, itemType, itemValue, extBtn) {
   if (!currentUser) return;
-  const btn = document.querySelector(`#mail_${mailId} .mailbox-item-claim`);
+  const btn = extBtn || document.querySelector(`#mail_${mailId} .mailbox-item-claim`);
   if (btn) btn.disabled = true;
   try {
-    await dbClaimMail(mailId);
     const pl = db.players.find(x => x.id === currentUser.id);
-    if (pl) {
-      if (itemType === 'coins') {
-        await dbAddCoins(currentUser.id, parseInt(itemValue) || 0);
-        toast(`🪙 รับ +${itemValue} เหรียญแล้ว!`, 'success');
-      } else if (itemType === 'elo') {
-        await dbUpdatePlayer(currentUser.id, { pts: (pl.pts || 0) + (parseInt(itemValue) || 0) });
-        toast(`📈 รับ +${itemValue} ELO แล้ว!`, 'success');
-      } else if (itemType === 'gacha_frame') {
-        await dbUpdatePlayer(currentUser.id, { gacha_frame: itemValue });
-        toast(`🖼️ รับ Frame: ${itemValue} แล้ว!`, 'success');
-      } else if (itemType === 'gacha_emoji') {
-        await dbUpdatePlayer(currentUser.id, { gacha_emoji: itemValue });
-        const sv = getCustomAvatar(currentUser.id);
-        sv.emoji = itemValue;
-        localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
-        toast(`${itemValue} รับ Emoji Avatar แล้ว!`, 'success');
+    // Save an item into the local gacha inventory — localStorage is the source of
+    // truth (normalizePlayer falls back to it), so this can never fail or lose data.
+    const _addToInv = (key, val) => {
+      const inv = typeof getGachaInventory === 'function' ? getGachaInventory(currentUser.id) : {};
+      if (!inv[key]) inv[key] = [];
+      if (!inv[key].includes(val)) inv[key].push(val);
+      localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(inv));
+      if (typeof _saveGachaInventoryToDB === 'function') _saveGachaInventoryToDB(currentUser.id, inv);
+    };
+    // Best-effort DB write — a missing column or a network blip must NOT abort the
+    // claim or make the item vanish, because the mail is consumed below.
+    const _tryDb = async (data) => {
+      try { await dbUpdatePlayer(currentUser.id, data); }
+      catch(e) { console.warn('claim DB write skipped:', e && e.message); }
+    };
+
+    if (itemType === 'coins') {
+      await dbAddCoins(currentUser.id, parseInt(itemValue) || 0);
+      toast(`🪙 รับ +${itemValue} เหรียญแล้ว!`, 'success');
+    } else if (itemType === 'elo') {
+      if (pl) { await _tryDb({ pts: (pl.pts || 0) + (parseInt(itemValue) || 0) }); }
+      toast(`📈 รับ +${itemValue} ELO แล้ว!`, 'success');
+    } else if (itemType === 'gacha_frame') {
+      _addToInv('frames', itemValue);
+      if (typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
+        const _fi = getGachaInventory(currentUser.id); _fi.equippedFrame = itemValue;
+        localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_fi));
+        _saveGachaInventoryToDB(currentUser.id, _fi).catch(() => {});
       }
+      await _tryDb({ gacha_frame: itemValue });
+      toast(`🖼️ รับ Frame: ${itemValue} แล้ว! (เข้า Inventory แล้ว)`, 'success');
+    } else if (itemType === 'gacha_name') {
+      _addToInv('names', itemValue);
+      if (typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {
+        const _ni = getGachaInventory(currentUser.id); _ni.equippedName = itemValue;
+        localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(_ni));
+        _saveGachaInventoryToDB(currentUser.id, _ni).catch(() => {});
+      }
+      await _tryDb({ gacha_name: itemValue });
+      toast(`✨ รับ Name Effect: ${itemValue} แล้ว! (เข้า Inventory แล้ว)`, 'success');
+    } else if (itemType === 'gacha_emoji') {
+      _addToInv('emojis', itemValue);
+      await _tryDb({ gacha_emoji: itemValue });
+      const sv = getCustomAvatar(currentUser.id);
+      sv.emoji = itemValue;
+      localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
+      toast(`${itemValue} รับ Emoji Avatar แล้ว! (เข้า Inventory แล้ว)`, 'success');
+    } else if (itemType === 'gacha_element') {
+      const elNames = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
+      if (typeof window._geAdminGrant === 'function') window._geAdminGrant(currentUser.id, itemValue);
+      // Also save to gacha_inventory.elements for permanent storage
+      _addToInv('elements', itemValue);
+      toast(`✦ รับ Element: ${elNames[itemValue] || itemValue} แล้ว! (เข้า Inventory ถาวรแล้ว)`, 'success');
+    } else if (itemType === 'gacha_effect') {
+      // Keep a localStorage copy too — normalizePlayer reads inv.effects as the
+      // ownedEffects fallback when the owned_effects column is missing.
+      _addToInv('effects', itemValue);
+      const efx = ((pl && pl.ownedEffects) || []).filter(e => e !== itemValue);
+      efx.push(itemValue);
+      await _tryDb({ owned_effects: JSON.stringify(efx) });
+      if (pl) pl.ownedEffects = efx;
+      toast(`⚡ รับ Thunder God แล้ว!`, 'success');
     }
+
+    // Consume the mail ONLY after the reward has been granted, so a failure above
+    // can never mark it claimed and make the item disappear.
+    await dbClaimMail(mailId);
+
     await loadPlayers();
     renderMailboxList();
     checkMailboxBadge();
+    if (typeof renderGachaInventory === 'function') renderGachaInventory();
+    if (typeof window._geRenderProfileInventory === 'function') window._geRenderProfileInventory();
   } catch(e) {
     toast('รับไม่ได้: ' + e.message, 'error');
     if (btn) btn.disabled = false;
