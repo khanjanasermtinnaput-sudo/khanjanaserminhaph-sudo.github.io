@@ -1518,6 +1518,7 @@ document.addEventListener('DOMContentLoaded', function() {
           body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 300 } })
         }
       );
+      if (res.status === 429) throw new Error('ใช้งาน AI เกิน quota แล้ว กรุณารอสักครู่แล้วลองใหม่ครับ');
       if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
       const data = await res.json();
       const reply = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
