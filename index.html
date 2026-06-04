@@ -1563,9 +1563,13 @@ document.addEventListener('DOMContentLoaded', function() {
         let detail = '';
         try { detail = await res.text(); } catch(_) {}
         if (res.status === 429) {
+          const isBillingQuota = detail.includes('billing') || detail.includes('plan and billing');
+          if (isBillingQuota) {
+            throw new Error('โควต้ารายวันหมดแล้ว (1,500 req/วัน) — รอให้ถึงเที่ยงคืนเพื่อรีเซ็ต หรือสร้าง API Key ใหม่จาก aistudio.google.com/apikey แล้วใส่ในแท็บ ⚙️ ตั้งค่าครับ');
+          }
           const m = detail.match(/retryDelay"?:\s*"?(\d+)s/);
           const wait = m ? (' (ลองใหม่ในอีก ~' + m[1] + ' วินาที)') : '';
-          throw new Error('เกิน quota การใช้งาน AI ชั่วคราว' + wait + ' — โควต้าฟรีจำกัด 15 ครั้ง/นาที, 1500 ครั้ง/วัน\n\nรายละเอียด: ' + detail.slice(0, 200));
+          throw new Error('ใช้งานถี่เกินไป' + wait + ' — โควต้าฟรี 30 ครั้ง/นาที, 1,500 ครั้ง/วัน กรุณารอสักครู่แล้วลองใหม่ครับ');
         }
         throw new Error('HTTP ' + res.status + ': ' + detail.slice(0, 300));
       }
