@@ -1396,18 +1396,29 @@ loadAll = async function() {
 <!-- PWA: service worker registration -->
 <script>
   if ('serviceWorker' in navigator) {
-    // Relative path so it works under a project-page subpath (…/repo/sw.js)
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    // Relative path (works under the project-page subpath …/repo/sw.js) +
+    // updateViaCache:'none' so the browser always revalidates the SW script and
+    // never serves it stale from HTTP cache — this is what lets an installed PWA
+    // reliably pick up new code on its own.
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
+      reg.update();  // actively check for a newer SW on every load
       reg.addEventListener('updatefound', () => {
         const newSW = reg.installing;
+        if (!newSW) return;
         newSW.addEventListener('statechange', () => {
-          // New SW installed and took control — reload to get fresh files
           if (newSW.state === 'activated') location.reload();
         });
       });
+      // Re-check whenever the PWA is reopened from the background
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) reg.update();
+      });
     }).catch(err => console.log('SW error:', err));
-    // If a new SW took control after this page loaded, reload once
-    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+    // When a new SW takes control, reload once (guarded against reload loops)
+    let _swReloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (_swReloaded) return; _swReloaded = true; location.reload();
+    });
   }
 </script>
 
