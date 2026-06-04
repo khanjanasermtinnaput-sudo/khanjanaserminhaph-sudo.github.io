@@ -1521,8 +1521,16 @@ document.addEventListener('DOMContentLoaded', function() {
           })
         }
       );
-      if (res.status === 429) throw new Error('ใช้งาน AI เกิน quota แล้ว กรุณารอสักครู่แล้วลองใหม่ครับ');
-      if (!res.ok) throw new Error('HTTP ' + res.status + ': ' + (await res.text()));
+      if (!res.ok) {
+        let detail = '';
+        try { detail = await res.text(); } catch(_) {}
+        if (res.status === 429) {
+          const m = detail.match(/retryDelay"?:\s*"?(\d+)s/);
+          const wait = m ? (' (ลองใหม่ในอีก ~' + m[1] + ' วินาที)') : '';
+          throw new Error('เกิน quota การใช้งาน AI ชั่วคราว' + wait + ' — โควต้าฟรีจำกัด 15 ครั้ง/นาที, 1500 ครั้ง/วัน\n\nรายละเอียด: ' + detail.slice(0, 200));
+        }
+        throw new Error('HTTP ' + res.status + ': ' + detail.slice(0, 300));
+      }
       const data = await res.json();
       const parts = data.candidates?.[0]?.content?.parts || [];
       const reply = parts.map(p => p.text || '').join('').trim() || 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
