@@ -333,6 +333,21 @@ function initCrownSparkle(canvas, W, H) {
       </div>
     </div>
 
+    <!-- AI ASSISTANT CHATBOT -->
+    <div class="card ai-card">
+      <div class="ai-head">
+        <div class="ai-head-title">🤖 AI ผู้ช่วย</div>
+        <div class="ai-head-sub">ถามเรื่องเว็บได้เลย</div>
+      </div>
+      <div class="ai-messages" id="aiMessages">
+        <div class="ai-msg ai-msg-bot">สวัสดี! ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ได้เลยครับ 🏸</div>
+      </div>
+      <div class="ai-input-row">
+        <input type="text" class="ai-input" id="aiInput" placeholder="พิมพ์คำถาม..." autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();aiSend();}"/>
+        <button class="ai-send-btn" id="aiSendBtn" onclick="aiSend()">ส่ง</button>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1381,6 +1396,83 @@ document.addEventListener('DOMContentLoaded', function() {
     el.style.cssText = 'width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:visible;padding:0';
   });
 });
+</script>
+<script>
+// ── AI ASSISTANT CHATBOT (Leaderboard tab) ──────────────────
+(function(){
+  const AI_SYSTEM_PROMPT = "คุณคือ AI ผู้ช่วยของเว็บ Badminton Club เว็บนี้มีฟีเจอร์: ระบบ ELO ranking, leaderboard, บันทึกแมตช์, ประวัติการแข่ง, โปรไฟล์ผู้เล่น, ระบบ gacha (frame/name effect), tournament, daily challenge — ตอบภาษาไทย กระชับ ไม่เกิน 3 ประโยค";
+  const AI_MODEL = "claude-sonnet-4-20250514";
+  // ⚠️ ใส่ Anthropic API key ที่นี่ (โปรดทราบ: ในเว็บ public key จะถูกเปิดเผยฝั่ง client)
+  const AI_API_KEY = "";
+  const aiHistory = [];
+
+  function aiEl(id){ return document.getElementById(id); }
+
+  function aiAppend(role, text){
+    const list = aiEl('aiMessages');
+    if (!list) return null;
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + (role === 'user' ? 'ai-msg-user' : 'ai-msg-bot');
+    div.textContent = text;
+    list.appendChild(div);
+    list.scrollTop = list.scrollHeight;
+    return div;
+  }
+
+  window.aiSend = async function(){
+    const input = aiEl('aiInput');
+    const btn = aiEl('aiSendBtn');
+    if (!input) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    aiAppend('user', text);
+    aiHistory.push({ role: 'user', content: text });
+
+    if (!AI_API_KEY) {
+      aiAppend('bot', 'ยังไม่ได้ตั้งค่า API key สำหรับ AI ผู้ช่วยครับ 🙏');
+      return;
+    }
+
+    if (btn) btn.disabled = true;
+    const typing = aiAppend('bot', '...');
+    if (typing) typing.classList.add('ai-typing');
+
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': AI_API_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: AI_MODEL,
+          max_tokens: 300,
+          system: AI_SYSTEM_PROMPT,
+          messages: aiHistory
+        })
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const reply = (data.content && data.content[0] && data.content[0].text)
+        ? data.content[0].text.trim()
+        : 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
+      aiHistory.push({ role: 'assistant', content: reply });
+      if (typing) { typing.classList.remove('ai-typing'); typing.textContent = reply; }
+      else aiAppend('bot', reply);
+      const list = aiEl('aiMessages'); if (list) list.scrollTop = list.scrollHeight;
+    } catch (e) {
+      if (typing) { typing.classList.remove('ai-typing'); typing.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI ลองใหม่อีกครั้งครับ'; }
+      else aiAppend('bot', 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI');
+    } finally {
+      if (btn) btn.disabled = false;
+      if (input) input.focus();
+    }
+  };
+})();
 </script>
 <script src="js/gacha-element.js?v=20260603e"></script>
 </body>
