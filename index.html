@@ -356,7 +356,15 @@ function initCrownSparkle(canvas, W, H) {
             <span id="aiQuotaLabel">0 / 1500</span>
           </div>
           <div class="ai-quota-track"><div class="ai-quota-fill" id="aiQuotaFill"></div></div>
-          <div id="aiModelLabel" style="font-size:0.68rem;color:var(--muted);margin-top:4px;text-align:right">🤖 <span id="aiModelName">gemini-2.0-flash-lite</span></div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <span style="font-size:0.68rem;color:var(--muted);flex-shrink:0">🤖 โมเดล</span>
+            <select id="aiModelSelectChat" onchange="aiSaveModelChat()" style="flex:1;font-size:0.7rem;padding:3px 6px;border-radius:8px;border:1px solid var(--glass-border);background:var(--inp-bg);color:var(--text);cursor:pointer">
+              <option value="gemini-2.0-flash-lite">flash-lite · 30/นาที</option>
+              <option value="gemini-2.0-flash">flash · 15/นาที</option>
+              <option value="gemini-1.5-flash">1.5-flash · 15/นาที</option>
+              <option value="gemini-1.5-flash-8b">1.5-flash-8b · 15/นาที</option>
+            </select>
+          </div>
         </div>
         <div class="ai-messages" id="aiMessages">
           <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บ Badminton Club ได้เลยครับ 🏸</div>
@@ -1487,13 +1495,23 @@ document.addEventListener('DOMContentLoaded', function() {
   function syncModelSelect(){
     const sel = aiEl('aiModelSelect');
     if (sel) sel.value = getModel();
+    const selChat = aiEl('aiModelSelectChat');
+    if (selChat) selChat.value = getModel();
   }
   window.aiSaveModel = function(){
     const sel = aiEl('aiModelSelect');
     if (!sel) return;
     saveModel(sel.value);
+    syncModelSelect();
     const st = aiEl('aiKeyStatus');
     if (st) st.textContent = '✅ เปลี่ยนโมเดลเป็น ' + sel.value + ' แล้ว';
+    renderQuota();
+  };
+  window.aiSaveModelChat = function(){
+    const sel = aiEl('aiModelSelectChat');
+    if (!sel) return;
+    saveModel(sel.value);
+    syncModelSelect();
     renderQuota();
   };
 
