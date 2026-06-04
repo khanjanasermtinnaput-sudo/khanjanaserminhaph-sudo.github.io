@@ -112,6 +112,7 @@ function initCrownSparkle(canvas, W, H) {
   <div class="nav-inner">
     <div class="nav-logo">🏸</div>
     <button class="nav-btn active" id="navLb" onclick="showSection('leaderboard')">🏆 อันดับ</button>
+    <button class="nav-btn" id="navAI" onclick="showSection('ai')" style="display:none">🤖 AOF Assistance</button>
     <button class="nav-btn" id="navStats" onclick="showSection('stats')">📊 สถิติ</button>
     <button class="nav-btn" id="navMatch" onclick="showSection('match')">⚔️ แมตช์</button>
     <button class="nav-btn" id="navTour" onclick="showSection('tournament')">🏸 Tournament</button>
@@ -119,7 +120,6 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn" id="navHist" onclick="showSection('history')">📋 ประวัติ</button>
     <button class="nav-btn" id="navProfile" onclick="showSection('profile')">👤 โปรไฟล์</button>
     <button class="nav-btn btn-sm" id="mailboxNavBtn" onclick="openMailbox()" style="padding:4px 10px;font-size:0.73rem;position:relative;display:none" data-loggedin-show="1">📬 กล่อง<span class="mb-dot" id="mailboxDot"></span></button>
-    <button class="nav-btn" id="navAI" onclick="showSection('ai')" style="display:none">🤖 AOF Assistance</button>
     <button class="nav-btn" id="adminNavBtn" onclick="showSection('admin')">⚙️ Admin</button>
     <div class="nav-user">
       <!-- NOTIFICATION BELL -->
@@ -790,14 +790,43 @@ END $$;</pre>
   <div class="patch-modal" id="patchModalBox">
     <div class="patch-header">
       <div>
-        <div class="patch-ver-tag">🚀 VERSION 6.0 — Gacha Economy + Tournament System</div>
-        <div class="patch-title">Coins, Gacha Pull, Mailbox, Divisions, Tournament Bracket & more</div>
-        <div class="patch-date">📅 พฤษภาคม 2569</div>
+        <div class="patch-ver-tag">🤖 VERSION 7.0 — AOF AI Upgrade + Element Gacha</div>
+        <div class="patch-title">Gemini 2.5, AI สำหรับทุกคน, กรอบธาตุ Mythic & PWA ใหม่</div>
+        <div class="patch-date">📅 มิถุนายน 2569</div>
       </div>
       <button class="patch-close" onclick="closePatchNotes()">✕</button>
     </div>
     <div class="patch-divider"></div>
     <div class="patch-body">
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🤖 AOF Assistance 2.0 — AI Upgrade (v7.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>✨ <strong>Gemini 2.5 Flash / Flash-Lite</strong> — อัปเกรดเป็น Google Gemini รุ่นใหม่ล่าสุด · เร็วขึ้น · ฉลาดขึ้น<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">รองรับ 4 โมเดล: gemini-2.5-flash-lite (default) · gemini-2.5-flash · gemini-2.0-flash-lite · gemini-2.0-flash</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🔒 <strong>Backend Proxy ปลอดภัย</strong> — AI key เก็บฝั่ง Server ผ่าน Supabase Edge Function · ไม่มี API key รั่วใน browser อีกต่อไป</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚙️ <strong>เลือกโมเดลได้เอง</strong> — สลับโมเดล AI ได้ทันทีเมื่อโควต้าหมด ไม่ต้องรอ · มี selector ทั้งใน ⚙️ ตั้งค่า และในแชทโดยตรง</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>📊 <strong>Daily Quota Bar</strong> — แถบแสดงปริมาณการใช้งาน AI ต่อวัน · รู้ทันทีว่าเหลือโควต้าเท่าไหร่</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌐 <strong>เปิดให้ทุกคนใช้ได้</strong> — AOF Assistance ไม่จำกัดเฉพาะ Admin แล้ว · ผู้เล่นทุกคนที่ล็อกอินใช้ได้เลย</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🎯 <strong>3 หัวข้อ Hard-Constrained</strong> — AI ตอบได้เฉพาะ: ฟีเจอร์เว็บ · เทคนิค/กติกาแบดมินตัน · การดูแลสุขภาพนักแบดฯ ป้องกัน jailbreak</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>💬 <strong>Error Message ภาษาไทย</strong> — เมื่อโควต้าหมดหรือ AI มีปัญหา แจ้งสาเหตุและวิธีแก้ชัดเจน พร้อมบอกเวลารอและโมเดลสำรอง</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">✦ Element Gacha — Mythic Animations & Polish (v7.0)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🔥 <strong>IGNIS Frame — Real Fire</strong> — กรอบไฟ Mythic มี 8 เปลวใหญ่ morphing + 8 เปลวเล็กสลับ + 12 ประกายถ่าน ember sparks ล้อมรอบ avatar</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>⚡ <strong>VOLT Frame — Lightning Arc</strong> — กรอบสายฟ้า Mythic มี arc กระแทกสว่างวาบ + ring เรืองแสงสีเหลือง/ขาว pulsing ต่อเนื่อง</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🌀 <strong>ZEPHYR Frame — Wind Blades</strong> — กรอบลม Uncommon มี arc หมุน 3 ชั้น + triangle ใบมีดลม 4 ทิศหมุนรอบ</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🔄 <strong>Equip Sync Real-time</strong> — เปลี่ยนกรอบธาตุแล้วอัปเดตทันทีทุกที่: Profile · Leaderboard · Podium · Player Sheet ไม่ต้อง refresh</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🙈 <strong>Toggle Emoji</strong> — ซ่อน/แสดง emoji ใน avatar ได้ใน Element Gacha panel · ให้กรอบธาตุโดดเด่นโดยไม่มี emoji บัง</div></div>
+      </div>
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-change">📱 PWA Improvements (v7.0)</div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>📲 <strong>Install Bottom Sheet</strong> — แทนที่ banner เดิม ด้วย bottom sheet แบบ native-feel · รองรับ iOS Safari พร้อม step-by-step guide</div></div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>🔄 <strong>Auto-Update อัตโนมัติ</strong> — เว็บโหลด version ใหม่ทันทีเมื่อ Service Worker อัปเดต ไม่ต้องกด refresh เอง</div></div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>⚡ <strong>PWA Shortcuts & Icons</strong> — เพิ่ม maskable icons · app shortcuts ลัดจาก home screen icon ได้เร็วขึ้น</div></div>
+      </div>
+
+      <div style="border-top:1px solid var(--glass-border);margin:18px 0 6px"></div>
 
       <div class="patch-section">
         <div class="patch-sec-title t-new">🪙 Coin & Gacha Economy (v6.0)</div>
@@ -955,7 +984,7 @@ END $$;</pre>
 
     </div>
     <div class="patch-footer">
-      🏸 Badminton Club — v4.0
+      🏸 Badminton Club — v7.0
       <button class="patch-read-btn" onclick="markPatchRead()">✅ รับทราบแล้ว</button>
     </div>
   </div>
