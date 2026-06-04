@@ -1402,9 +1402,17 @@ loadAll = async function() {
 <!-- PWA: service worker registration -->
 <script>
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js')
-      .then(() => console.log('SW registered'))
-      .catch(err => console.log('SW error:', err));
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      reg.addEventListener('updatefound', () => {
+        const newSW = reg.installing;
+        newSW.addEventListener('statechange', () => {
+          // New SW installed and took control — reload to get fresh files
+          if (newSW.state === 'activated') location.reload();
+        });
+      });
+    }).catch(err => console.log('SW error:', err));
+    // If a new SW took control after this page loaded, reload once
+    navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
   }
 </script>
 
