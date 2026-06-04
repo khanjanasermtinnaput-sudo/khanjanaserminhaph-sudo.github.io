@@ -350,6 +350,13 @@ function initCrownSparkle(canvas, W, H) {
       </div>
       <div id="aiPanelChat">
         <div class="ai-head-sub" style="margin-bottom:8px">ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บได้เลยครับ</div>
+        <div class="ai-quota">
+          <div class="ai-quota-head">
+            <span>📊 โควต้าวันนี้</span>
+            <span id="aiQuotaLabel">0 / 1500</span>
+          </div>
+          <div class="ai-quota-track"><div class="ai-quota-fill" id="aiQuotaFill"></div></div>
+        </div>
         <div class="ai-messages" id="aiMessages">
           <div class="ai-msg ai-msg-bot">สวัสดีครับ ผม AOF Assistance ถามเรื่อง ELO, แมตช์, หรือฟีเจอร์ต่างๆ ของเว็บ Badminton Club ได้เลยครับ 🏸</div>
         </div>
@@ -1431,6 +1438,36 @@ document.addEventListener('DOMContentLoaded', function() {
   function aiEl(id){ return document.getElementById(id); }
   function getKey(){ return localStorage.getItem(AI_KEY_STORAGE) || ''; }
 
+  // ── Daily quota tracking (free tier ≈ 1500 req/day) ──
+  const AI_QUOTA_MAX = 1500;
+  const AI_QUOTA_STORAGE = 'bk_ai_quota';
+  function todayStr(){ return new Date().toISOString().slice(0, 10); }
+  function getQuota(){
+    let q = {};
+    try { q = JSON.parse(localStorage.getItem(AI_QUOTA_STORAGE) || '{}'); } catch(_) {}
+    if (q.date !== todayStr()) q = { date: todayStr(), count: 0 };
+    return q;
+  }
+  function bumpQuota(){
+    const q = getQuota();
+    q.count = (q.count || 0) + 1;
+    localStorage.setItem(AI_QUOTA_STORAGE, JSON.stringify(q));
+    renderQuota();
+  }
+  function renderQuota(){
+    const q = getQuota();
+    const pct = Math.min(100, Math.round((q.count / AI_QUOTA_MAX) * 100));
+    const label = aiEl('aiQuotaLabel'), fill = aiEl('aiQuotaFill');
+    if (label) label.textContent = q.count + ' / ' + AI_QUOTA_MAX + ' (' + pct + '%)';
+    if (fill){
+      fill.style.width = pct + '%';
+      fill.style.background = pct >= 90 ? 'linear-gradient(90deg,#ff4757,#ff6b35)'
+        : pct >= 70 ? 'linear-gradient(90deg,#ffd700,#ff8c00)'
+        : 'linear-gradient(90deg,var(--neon),var(--neon2))';
+    }
+  }
+  window.aiRenderQuota = renderQuota;
+
   // Show/hide AI nav button based on admin status — called after login
   window.aiInitCard = function(){
     const btn = document.getElementById('navAI');
@@ -1439,6 +1476,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (isAdminUser()){
       const ki = aiEl('aiKeyInput');
       if (ki && getKey()) ki.value = getKey();
+      renderQuota();
     }
   };
 
@@ -1532,6 +1570,7 @@ document.addEventListener('DOMContentLoaded', function() {
         throw new Error('HTTP ' + res.status + ': ' + detail.slice(0, 300));
       }
       const data = await res.json();
+      bumpQuota();
       const parts = data.candidates?.[0]?.content?.parts || [];
       const reply = parts.map(p => p.text || '').join('').trim() || 'ขออภัย ตอนนี้ตอบไม่ได้ครับ';
       aiHistory.push({ role: 'assistant', content: reply });
