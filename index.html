@@ -1541,11 +1541,10 @@ document.addEventListener('DOMContentLoaded', function() {
   window.aiInitCard = function(){
     const btn = document.getElementById('navAI');
     if (!btn) return;
-    btn.style.display = isAdminUser() ? '' : 'none';
-    if (isAdminUser()){
-      syncModelSelect();
-      renderQuota();
-    }
+    // Available to every logged-in user (not admin-only)
+    btn.style.display = '';
+    syncModelSelect();
+    renderQuota();
   };
 
   // Tab switching
@@ -1569,7 +1568,6 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   window.aiSend = async function(){
-    if (!isAdminUser()) return;
     const input = aiEl('aiInput');
     const btn   = aiEl('aiSendBtn');
     if (!input) return;
