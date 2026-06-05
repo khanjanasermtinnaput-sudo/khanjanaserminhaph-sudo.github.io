@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Political AI Expert</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════
+   CSS VARIABLES & RESET
+═══════════════════════════════════════════ */
+:root {
+  --sky-100: #e0f2fe;
+  --sky-200: #bae6fd;
+  --sky-300: #7dd3fc;
+  --sky-400: #38bdf8;
+  --sky-500: #0ea5e9;
+  --sky-600: #0284c7;
+  --sky-700: #0369a1;
+  --white: #ffffff;
+  --glass-bg: rgba(255,255,255,0.22);
+  --glass-bg-strong: rgba(255,255,255,0.38);
+  --glass-border: rgba(255,255,255,0.55);
+  --glass-border-subtle: rgba(255,255,255,0.3);
+  --glass-shadow: 0 8px 32px rgba(14,165,233,0.12), 0 2px 8px rgba(0,0,0,0.06);
+  --glass-glow: 0 0 0 1px rgba(255,255,255,0.4), 0 0 40px rgba(14,165,233,0.08);
+  --blur: blur(22px);
+  --text-primary: #0c1a2e;
+  --text-secondary: #4a6080;
+  --text-muted: #8ba3bf;
+  --accent: #0ea5e9;
+  --accent-soft: rgba(14,165,233,0.15);
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --radius-sm: 12px;
+  --radius-md: 18px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --sidebar-w: 260px;
+  --header-h: 68px;
+  --input-h: 80px;
+  --transition: all 0.28s cubic-bezier(0.34,1.56,0.64,1);
+  --transition-fast: all 0.18s ease;
+}
+[data-theme="dark"] {
+  --glass-bg: rgba(10,20,40,0.45);
+  --glass-bg-strong: rgba(15,30,55,0.65);
+  --glass-border: rgba(14,165,233,0.22);
+  --glass-border-subtle: rgba(14,165,233,0.12);
+  --glass-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 2px 8px rgba(14,165,233,0.1);
+  --glass-glow: 0 0 0 1px rgba(14,165,233,0.2), 0 0 60px rgba(14,165,233,0.06);
+  --text-primary: #e8f4fd;
+  --text-secondary: #94b8d0;
+  --text-muted: #4a7090;
+  --white: #0a1428;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html { font-size:16px; scroll-behavior:smooth; }
+body {
+  font-family:'Outfit',sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  min-height:100vh;
+  overflow:hidden;
+  position:relative;
+}
+[data-theme="light"] body { --bg: #dff0fb; }
+[data-theme="dark"] body { --bg: #06101e; }
+
+/* ═══════════════════════════════════════════
+   ANIMATED BACKGROUND
+═══════════════════════════════════════════ */
+.bg-canvas {
+  position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;
+}
+[data-theme="light"] .bg-canvas { background: linear-gradient(135deg, #dff0fb 0%, #bae6fd 40%, #e0f7ff 70%, #f0f9ff 100%); }
+[data-theme="dark"] .bg-canvas { background: linear-gradient(135deg, #060f1e 0%, #091828 40%, #0a1f35 70%, #060f1e 100%); }
+
+.blob {
+  position:absolute; border-radius:50%; filter:blur(70px); opacity:0.45; animation:blobFloat 18s ease-in-out infinite;
+}
+.blob-1 { width:520px; height:520px; top:-80px; left:-120px; background:radial-gradient(circle, #7dd3fc, #38bdf8); animation-delay:0s; }
+.blob-2 { width:380px; height:380px; bottom:100px; right:-80px; background:radial-gradient(circle, #bae6fd, #0ea5e9); animation-delay:-6s; }
+.blob-3 { width:280px; height:280px; top:50%; left:40%; background:radial-gradient(circle, #e0f2fe, #7dd3fc); animation-delay:-12s; }
+[data-theme="dark"] .blob-1 { background:radial-gradient(circle, #0c2a4a, #0369a1); opacity:0.35; }
+[data-theme="dark"] .blob-2 { background:radial-gradient(circle, #061828, #0284c7); opacity:0.3; }
+[data-theme="dark"] .blob-3 { background:radial-gradient(circle, #0a2035, #0369a1); opacity:0.25; }
+
+@keyframes blobFloat {
+  0%,100% { transform:translate(0,0) scale(1); }
+  33% { transform:translate(30px,-25px) scale(1.06); }
+  66% { transform:translate(-20px,20px) scale(0.95); }
+}
+
+/* Floating particles */
+.particles { position:fixed; inset:0; z-index:0; pointer-events:none; }
+.particle {
+  position:absolute; border-radius:50%;
+  background:rgba(14,165,233,0.25);
+  animation:particleFloat linear infinite;
+}
+[data-theme="dark"] .particle { background:rgba(56,189,248,0.15); }
+
+@keyframes particleFloat {
+  0% { transform:translateY(100vh) rotate(0deg); opacity:0; }
+  10% { opacity:1; }
+  90% { opacity:0.6; }
+  100% { transform:translateY(-120px) rotate(360deg); opacity:0; }
+}
+
+/* ═══════════════════════════════════════════
+   GLASS UTILITY
+═══════════════════════════════════════════ */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-glow);
+}
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow), var(--glass-glow);
+}
+
+/* ═══════════════════════════════════════════
+   APP SHELL
+═══════════════════════════════════════════ */
+.app-shell {
+  position:relative; z-index:1; display:flex; height:100vh; overflow:hidden;
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+═══════════════════════════════════════════ */
+.sidebar {
+  width:var(--sidebar-w); flex-shrink:0;
+  display:flex; flex-direction:column; gap:10px;
+  padding:16px 12px;
+  background:var(--glass-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border-right:1px solid var(--glass-border);
+  box-shadow:2px 0 24px rgba(14,165,233,0.06);
+  transition:transform 0.38s cubic-bezier(0.4,0,0.2,1);
+  overflow-y:auto;
+  z-index:10;
+}
+.sidebar::-webkit-scrollbar { width:4px; }
+.sidebar::-webkit-scrollbar-track { background:transparent; }
+.sidebar::-webkit-scrollbar-thumb { background:rgba(14,165,233,0.3); border-radius:4px; }
+
+.sidebar-logo {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 6px 14px;
+  border-bottom:1px solid var(--glass-border-subtle);
+  margin-bottom:4px;
+}
+.logo-icon {
+  width:38px; height:38px; border-radius:12px; flex-shrink:0;
+  background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 4px 16px rgba(14,165,233,0.4);
+  font-size:18px;
+}
+.logo-text {
+  font-family:'Playfair Display',serif;
+  font-size:14px; font-weight:700;
+  color:var(--text-primary); line-height:1.2;
+}
+.logo-sub { font-size:10px; color:var(--text-muted); font-family:'Outfit',sans-serif; font-weight:400; }
+
+.new-chat-btn {
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:11px 16px; border-radius:var(--radius-md);
+  background:linear-gradient(135deg,#0ea5e9,#0284c7);
+  border:none; cursor:pointer; color:#fff;
+  font-family:'Outfit',sans-serif; font-size:14px; font-weight:600;
+  box-shadow:0 4px 20px rgba(14,165,233,0.35);
+  transition:var(--transition); width:100%;
+}
+.new-chat-btn:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(14,165,233,0.45); }
+.new-chat-btn:active { transform:translateY(0); }
+
+.sidebar-section-label {
+  font-size:11px; font-weight:600; letter-spacing:0.08em;
+  text-transform:uppercase; color:var(--text-muted); padding:4px 6px;
+}
+
+.history-item {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 10px; border-radius:var(--radius-sm);
+  cursor:pointer; transition:var(--transition-fast);
+  font-size:13px; color:var(--text-secondary); position:relative;
+  border:1px solid transparent;
+}
+.history-item:hover {
+  background:var(--glass-bg-strong); border-color:var(--glass-border-subtle);
+  color:var(--text-primary);
+}
+.history-item.active {
+  background:var(--accent-soft); border-color:rgba(14,165,233,0.25);
+  color:var(--accent);
+}
+.history-icon { font-size:14px; flex-shrink:0; }
+.history-text { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; flex:1; }
+.history-time { font-size:10px; color:var(--text-muted); }
+
+/* AI Info Card */
+.info-card {
+  border-radius:var(--radius-md);
+  padding:14px; margin-top:4px;
+  background:var(--glass-bg-strong);
+  border:1px solid var(--glass-border-subtle);
+}
+.info-card-title {
+  font-size:11px; font-weight:600; letter-spacing:0.06em;
+  text-transform:uppercase; color:var(--accent); margin-bottom:10px;
+}
+.info-model-name {
+  font-size:13px; font-weight:700; color:var(--text-primary); margin-bottom:3px;
+}
+.info-level { font-size:11px; color:var(--text-muted); margin-bottom:10px; }
+.expertise-tag {
+  display:inline-block; font-size:10px; padding:3px 8px;
+  border-radius:20px; background:var(--accent-soft);
+  color:var(--accent); border:1px solid rgba(14,165,233,0.25);
+  margin:2px 2px 2px 0; font-weight:500;
+}
+.online-dot {
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:#22c55e; box-shadow:0 0 8px #22c55e;
+  animation:pulse-dot 2s ease-in-out infinite; margin-right:5px;
+}
+@keyframes pulse-dot {
+  0%,100% { box-shadow:0 0 6px #22c55e; transform:scale(1); }
+  50% { box-shadow:0 0 14px #22c55e; transform:scale(1.15); }
+}
+
+/* Usage Card */
+.usage-card {
+  border-radius:var(--radius-md); padding:14px;
+  background:var(--glass-bg-strong); border:1px solid var(--glass-border-subtle);
+}
+.usage-title { font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px; }
+.usage-label-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:7px; }
+.usage-label { font-size:12px; color:var(--text-secondary); font-weight:500; }
+.usage-pct { font-size:13px; font-weight:700; color:var(--accent); }
+.progress-track {
+  height:8px; border-radius:8px;
+  background:rgba(14,165,233,0.12); overflow:hidden; margin-bottom:10px;
+  position:relative;
+}
+.progress-fill {
+  height:100%; border-radius:8px;
+  background:linear-gradient(90deg,#38bdf8,#0ea5e9);
+  transition:width 1.2s cubic-bezier(0.4,0,0.2,1), background 0.5s;
+  position:relative; overflow:hidden;
+}
+.progress-fill::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);
+  animation:shimmer 2.5s infinite;
+}
+@keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+.usage-stats { display:flex; justify-content:space-between; }
+.usage-stat { font-size:11px; color:var(--text-muted); }
+.usage-stat span { color:var(--text-secondary); font-weight:600; }
+
+/* ═══════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════ */
+.main-content {
+  flex:1; display:flex; flex-direction:column; min-width:0; position:relative;
+}
+
+/* ═══════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════ */
+.header {
+  height:var(--header-h); flex-shrink:0;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 20px 0 24px;
+  background:var(--glass-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border-bottom:1px solid var(--glass-border);
+  box-shadow:0 2px 20px rgba(14,165,233,0.06);
+  z-index:9; gap:16px;
+}
+
+.header-title {
+  display:flex; align-items:center; gap:10px;
+  font-family:'Playfair Display',serif; font-size:18px; font-weight:700;
+  color:var(--text-primary); white-space:nowrap;
+}
+.header-title .logo-icon { width:34px; height:34px; font-size:16px; flex-shrink:0; }
+
+/* Model Selector */
+.model-selector-wrap { position:relative; }
+.model-selector-btn {
+  display:flex; align-items:center; gap:8px;
+  padding:9px 14px; border-radius:var(--radius-md);
+  background:var(--glass-bg-strong);
+  border:1px solid var(--glass-border);
+  cursor:pointer; color:var(--text-primary);
+  font-family:'Outfit',sans-serif; font-size:13px; font-weight:500;
+  transition:var(--transition); white-space:nowrap;
+  box-shadow:var(--glass-shadow);
+}
+.model-selector-btn:hover { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+.model-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  background:linear-gradient(135deg,rgba(14,165,233,0.15),rgba(56,189,248,0.1));
+  border:1px solid rgba(14,165,233,0.3); border-radius:20px;
+  padding:2px 9px; font-size:11px; font-weight:600; color:var(--accent);
+}
+.chevron { font-size:11px; transition:transform 0.2s; }
+.model-selector-btn.open .chevron { transform:rotate(180deg); }
+
+.model-dropdown {
+  position:absolute; top:calc(100% + 8px); left:0; min-width:260px;
+  background:var(--glass-bg-strong); backdrop-filter:blur(28px); -webkit-backdrop-filter:blur(28px);
+  border:1px solid var(--glass-border); border-radius:var(--radius-md);
+  box-shadow:0 20px 60px rgba(0,0,0,0.15), var(--glass-glow);
+  z-index:100; overflow:hidden;
+  opacity:0; transform:translateY(-8px) scale(0.97);
+  pointer-events:none; transition:all 0.22s cubic-bezier(0.34,1.56,0.64,1);
+}
+.model-dropdown.show {
+  opacity:1; transform:translateY(0) scale(1); pointer-events:all;
+}
+.model-option {
+  display:flex; align-items:center; gap:10px;
+  padding:11px 14px; cursor:pointer;
+  transition:var(--transition-fast); border-bottom:1px solid var(--glass-border-subtle);
+}
+.model-option:last-child { border-bottom:none; }
+.model-option:hover { background:var(--accent-soft); }
+.model-option.selected { background:rgba(14,165,233,0.12); }
+.model-option-icon { font-size:16px; }
+.model-option-name { font-size:13px; font-weight:600; color:var(--text-primary); }
+.model-option-desc { font-size:11px; color:var(--text-muted); }
+
+.header-actions { display:flex; align-items:center; gap:8px; }
+
+.icon-btn {
+  width:38px; height:38px; border-radius:var(--radius-sm);
+  background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:17px; transition:var(--transition);
+  color:var(--text-secondary); flex-shrink:0;
+}
+.icon-btn:hover {
+  background:var(--accent-soft); border-color:rgba(14,165,233,0.4);
+  color:var(--accent); transform:translateY(-1px);
+  box-shadow:0 4px 16px rgba(14,165,233,0.2);
+}
+
+.status-chip {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 12px; border-radius:20px;
+  background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25);
+  font-size:12px; font-weight:600; color:#16a34a;
+  white-space:nowrap;
+}
+[data-theme="dark"] .status-chip { color:#4ade80; }
+.sidebar-toggle {
+  display:none; width:38px; height:38px; border-radius:var(--radius-sm);
+  background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+  align-items:center; justify-content:center; cursor:pointer; font-size:18px;
+  color:var(--text-secondary); transition:var(--transition);
+}
+
+/* ═══════════════════════════════════════════
+   CHAT AREA
+═══════════════════════════════════════════ */
+.chat-wrapper {
+  flex:1; overflow-y:auto; padding:28px 24px 16px;
+  scroll-behavior:smooth; position:relative;
+}
+.chat-wrapper::-webkit-scrollbar { width:5px; }
+.chat-wrapper::-webkit-scrollbar-track { background:transparent; }
+.chat-wrapper::-webkit-scrollbar-thumb { background:rgba(14,165,233,0.25); border-radius:5px; }
+
+.welcome-banner {
+  text-align:center; padding:32px 20px 24px; max-width:640px; margin:0 auto 20px;
+  animation:fadeUp 0.7s cubic-bezier(0.34,1.56,0.64,1);
+}
+.welcome-banner h1 {
+  font-family:'Playfair Display',serif; font-size:28px; font-weight:700;
+  color:var(--text-primary); margin-bottom:10px;
+}
+.welcome-banner p { font-size:14px; color:var(--text-secondary); line-height:1.65; }
+.disclaimer-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  margin-top:14px; padding:8px 16px; border-radius:20px;
+  background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25);
+  font-size:12px; color:#d97706; font-weight:500;
+}
+[data-theme="dark"] .disclaimer-chip { color:#fbbf24; }
+
+.suggestions-grid {
+  display:grid; grid-template-columns:repeat(2,1fr); gap:10px;
+  max-width:640px; margin:0 auto 16px;
+}
+.suggestion-card {
+  padding:14px; border-radius:var(--radius-md); cursor:pointer;
+  background:var(--glass-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--glass-border);
+  transition:var(--transition); animation:fadeUp 0.7s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.suggestion-card:hover {
+  transform:translateY(-3px); border-color:rgba(14,165,233,0.4);
+  background:var(--glass-bg-strong); box-shadow:0 8px 32px rgba(14,165,233,0.15);
+}
+.suggestion-icon { font-size:20px; margin-bottom:6px; }
+.suggestion-text { font-size:12.5px; color:var(--text-secondary); line-height:1.45; font-weight:500; }
+
+/* Messages */
+.messages-list { max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+
+.msg { display:flex; gap:12px; align-items:flex-end; animation:fadeUp 0.45s cubic-bezier(0.34,1.56,0.64,1); }
+.msg.user { flex-direction:row-reverse; }
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(20px) scale(0.97); }
+  to { opacity:1; transform:translateY(0) scale(1); }
+}
+
+.msg-avatar {
+  width:36px; height:36px; border-radius:12px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:17px;
+}
+.msg.ai .msg-avatar {
+  background:linear-gradient(135deg,#0ea5e9,#38bdf8);
+  box-shadow:0 4px 14px rgba(14,165,233,0.35);
+}
+.msg.user .msg-avatar {
+  background:linear-gradient(135deg,#475569,#334155);
+  box-shadow:0 4px 14px rgba(0,0,0,0.15);
+}
+
+.msg-bubble {
+  max-width:76%; border-radius:var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+  padding:14px 18px; position:relative;
+}
+.msg.ai .msg-bubble {
+  background:var(--glass-bg-strong); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border:1px solid var(--glass-border); box-shadow:var(--glass-shadow);
+}
+.msg.user .msg-bubble {
+  background:linear-gradient(135deg,#0ea5e9,#0284c7);
+  border-radius:var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+  color:#fff; box-shadow:0 4px 20px rgba(14,165,233,0.35);
+  border:1px solid rgba(255,255,255,0.2);
+}
+.msg-text { font-size:14px; line-height:1.7; color:var(--text-primary); }
+.msg.user .msg-text { color:#fff; }
+.msg-time { font-size:10px; color:var(--text-muted); margin-top:6px; }
+.msg.user .msg-time { color:rgba(255,255,255,0.65); text-align:right; }
+
+/* Markdown in messages */
+.msg-text h1,.msg-text h2,.msg-text h3 { font-family:'Playfair Display',serif; color:var(--text-primary); margin:10px 0 6px; }
+.msg-text h1 { font-size:18px; } .msg-text h2 { font-size:16px; } .msg-text h3 { font-size:14px; }
+.msg-text p { margin-bottom:8px; }
+.msg-text strong { font-weight:700; color:var(--accent); }
+.msg.user .msg-text strong { color:rgba(255,255,255,0.9); }
+.msg-text ul,.msg-text ol { padding-left:18px; margin-bottom:8px; }
+.msg-text li { margin-bottom:4px; }
+.msg-text code {
+  background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.2);
+  border-radius:6px; padding:1px 6px; font-size:12px; font-family:monospace;
+  color:var(--accent);
+}
+.msg-text pre {
+  background:rgba(6,18,36,0.75); border:1px solid rgba(14,165,233,0.2);
+  border-radius:var(--radius-sm); padding:14px; overflow-x:auto; margin:10px 0;
+}
+.msg-text pre code { background:none; border:none; color:#7dd3fc; font-size:13px; }
+.msg-text blockquote {
+  border-left:3px solid var(--accent); padding-left:12px;
+  color:var(--text-secondary); font-style:italic; margin:8px 0;
+}
+
+/* Msg actions */
+.msg-actions {
+  display:flex; gap:4px; margin-top:8px;
+  opacity:0; transition:opacity 0.2s;
+}
+.msg:hover .msg-actions { opacity:1; }
+.msg-action-btn {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:4px 9px; border-radius:8px; font-size:11px; font-weight:500;
+  background:var(--glass-bg); border:1px solid var(--glass-border-subtle);
+  color:var(--text-muted); cursor:pointer; transition:var(--transition-fast);
+}
+.msg-action-btn:hover { background:var(--accent-soft); color:var(--accent); border-color:rgba(14,165,233,0.3); }
+
+/* Typing indicator */
+.typing-indicator {
+  display:flex; align-items:center; gap:12px;
+  animation:fadeUp 0.35s ease; max-width:760px; margin:0 auto;
+}
+.typing-bubble {
+  display:flex; align-items:center; gap:5px;
+  padding:14px 20px; border-radius:var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+  background:var(--glass-bg-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border:1px solid var(--glass-border); box-shadow:var(--glass-shadow);
+}
+.typing-dot {
+  width:8px; height:8px; border-radius:50%;
+  background:var(--accent); animation:typingBounce 1.4s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay:0.2s; }
+.typing-dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes typingBounce {
+  0%,60%,100% { transform:translateY(0); opacity:0.5; }
+  30% { transform:translateY(-6px); opacity:1; }
+}
+
+/* ═══════════════════════════════════════════
+   INPUT AREA
+═══════════════════════════════════════════ */
+.input-area {
+  flex-shrink:0; padding:12px 20px 16px;
+  background:var(--glass-bg); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur);
+  border-top:1px solid var(--glass-border);
+  box-shadow:0 -2px 20px rgba(14,165,233,0.06);
+}
+.input-container {
+  max-width:760px; margin:0 auto;
+  display:flex; align-items:flex-end; gap:10px;
+}
+.input-field-wrap {
+  flex:1; position:relative;
+  background:var(--glass-bg-strong); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px);
+  border:1.5px solid var(--glass-border); border-radius:var(--radius-xl);
+  transition:var(--transition); box-shadow:var(--glass-shadow);
+  display:flex; flex-direction:column;
+}
+.input-field-wrap:focus-within {
+  border-color:rgba(14,165,233,0.6);
+  box-shadow:var(--glass-shadow), 0 0 0 3px rgba(14,165,233,0.12);
+}
+.chat-input {
+  width:100%; padding:14px 18px 10px; resize:none; outline:none;
+  background:transparent; border:none; font-family:'Outfit',sans-serif;
+  font-size:14px; color:var(--text-primary); min-height:48px; max-height:160px;
+  line-height:1.6; overflow-y:auto;
+}
+.chat-input::placeholder { color:var(--text-muted); }
+.chat-input::-webkit-scrollbar { display:none; }
+.input-toolbar {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:6px 12px 10px;
+}
+.input-tools { display:flex; gap:4px; }
+.tool-btn {
+  width:34px; height:34px; border-radius:10px;
+  background:transparent; border:1px solid var(--glass-border-subtle);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-size:16px; color:var(--text-muted); transition:var(--transition-fast);
+}
+.tool-btn:hover { background:var(--accent-soft); border-color:rgba(14,165,233,0.35); color:var(--accent); }
+.char-count { font-size:11px; color:var(--text-muted); }
+
+.send-btn {
+  width:52px; height:52px; border-radius:18px; flex-shrink:0;
+  background:linear-gradient(135deg,#0ea5e9,#0284c7);
+  border:none; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; font-size:20px; color:#fff;
+  box-shadow:0 6px 22px rgba(14,165,233,0.4);
+  transition:var(--transition); position:relative; overflow:hidden;
+}
+.send-btn:hover { transform:translateY(-2px) scale(1.05); box-shadow:0 10px 30px rgba(14,165,233,0.5); }
+.send-btn:active { transform:scale(0.96); }
+.send-btn::after {
+  content:''; position:absolute; inset:0; border-radius:inherit;
+  background:radial-gradient(circle at center,rgba(255,255,255,0.3),transparent);
+  opacity:0; transition:opacity 0.3s;
+}
+.send-btn:hover::after { opacity:1; }
+
+.input-hint { max-width:760px; margin:6px auto 0; font-size:11px; color:var(--text-muted); text-align:center; }
+
+/* ═══════════════════════════════════════════
+   RIPPLE
+═══════════════════════════════════════════ */
+.ripple {
+  position:absolute; border-radius:50%; pointer-events:none; z-index:10;
+  background:rgba(255,255,255,0.35);
+  transform:scale(0); animation:rippleAnim 0.5s linear;
+}
+@keyframes rippleAnim {
+  to { transform:scale(4); opacity:0; }
+}
+
+/* ═══════════════════════════════════════════
+   DARK MODE TOGGLE
+═══════════════════════════════════════════ */
+.theme-toggle {
+  width:52px; height:28px; border-radius:14px; cursor:pointer;
+  background:var(--glass-bg-strong); border:1px solid var(--glass-border);
+  position:relative; transition:var(--transition-fast); flex-shrink:0;
+}
+[data-theme="dark"] .theme-toggle { background:rgba(14,165,233,0.2); border-color:rgba(14,165,233,0.4); }
+.theme-toggle-thumb {
+  position:absolute; top:3px; left:3px;
+  width:20px; height:20px; border-radius:10px;
+  background:linear-gradient(135deg,#f59e0b,#fbbf24);
+  transition:var(--transition); display:flex; align-items:center; justify-content:center; font-size:11px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+[data-theme="dark"] .theme-toggle-thumb {
+  transform:translateX(24px);
+  background:linear-gradient(135deg,#38bdf8,#0ea5e9);
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width:768px) {
+  .sidebar {
+    position:fixed; left:0; top:0; bottom:0;
+    transform:translateX(-100%); z-index:50;
+    box-shadow:4px 0 40px rgba(0,0,0,0.2);
+  }
+  .sidebar.open { transform:translateX(0); }
+  .sidebar-toggle { display:flex !important; }
+  .sidebar-overlay {
+    position:fixed; inset:0; z-index:49;
+    background:rgba(0,0,0,0.35); backdrop-filter:blur(4px);
+    display:none;
+  }
+  .sidebar-overlay.show { display:block; }
+  .header-title { font-size:15px; }
+  .status-chip { display:none; }
+  .suggestions-grid { grid-template-columns:1fr; }
+  .input-area { padding:10px 12px 14px; }
+}
+
+/* Mouse glow follower */
+.glow-follower {
+  position:fixed; width:600px; height:600px; border-radius:50%;
+  pointer-events:none; z-index:0;
+  background:radial-gradient(circle, rgba(14,165,233,0.06) 0%, transparent 70%);
+  transform:translate(-50%,-50%);
+  transition:left 0.5s ease, top 0.5s ease;
+}
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-canvas">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+<div class="particles" id="particles"></div>
+<div class="glow-follower" id="glowFollower"></div>
+
+<!-- Sidebar overlay for mobile -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+<!-- App Shell -->
+<div class="app-shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar glass" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">⚖️</div>
+      <div>
+        <div class="logo-text">Political AI<br>Expert</div>
+      </div>
+    </div>
+
+    <button class="new-chat-btn" onclick="newChat()">
+      <span>✦</span> New Conversation
+    </button>
+
+    <!-- Chat History -->
+    <div class="sidebar-section-label">Recent Chats</div>
+    <div id="chatHistory">
+      <div class="history-item active">
+        <span class="history-icon">💬</span>
+        <div style="flex:1;min-width:0">
+          <div class="history-text">Electoral College System</div>
+          <div class="history-time">Today</div>
+        </div>
+      </div>
+      <div class="history-item">
+        <span class="history-icon">💬</span>
+        <div style="flex:1;min-width:0">
+          <div class="history-text">NATO Article 5 Obligations</div>
+          <div class="history-time">Yesterday</div>
+        </div>
+      </div>
+      <div class="history-item">
+        <span class="history-icon">💬</span>
+        <div style="flex:1;min-width:0">
+          <div class="history-text">Federal vs State Powers</div>
+          <div class="history-time">Mon</div>
+        </div>
+      </div>
+      <div class="history-item">
+        <span class="history-icon">💬</span>
+        <div style="flex:1;min-width:0">
+          <div class="history-text">First Amendment Analysis</div>
+          <div class="history-time">Sun</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Info Card -->
+    <div class="sidebar-section-label" style="margin-top:8px">Current Model</div>
+    <div class="info-card">
+      <div class="info-card-title">AI Expert Profile</div>
+      <div class="info-model-name" id="sidebarModelName">Gemini 2.5 Flash Lite</div>
+      <div class="info-level"><span class="online-dot"></span>Active · Expertise Level: Expert</div>
+      <div>
+        <span class="expertise-tag">Politics</span>
+        <span class="expertise-tag">Public Policy</span>
+        <span class="expertise-tag">Constitutional Law</span>
+        <span class="expertise-tag">Government Systems</span>
+        <span class="expertise-tag">International Affairs</span>
+        <span class="expertise-tag">Election Strategy</span>
+      </div>
+    </div>
+
+    <!-- Usage Card -->
+    <div class="usage-card">
+      <div class="usage-title">Daily Usage</div>
+      <div class="usage-label-row">
+        <span class="usage-label">Requests</span>
+        <span class="usage-pct" id="usagePct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="usage-stats">
+        <div class="usage-stat">Used: <span id="usedCount">0</span></div>
+        <div class="usage-stat">Limit: <span>1,000</span></div>
+        <div class="usage-stat">Left: <span id="remainCount">1000</span></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" style="display:none">☰</button>
+        <div class="header-title">
+          <div class="logo-icon">⚖️</div>
+          Political AI Expert
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;flex:1;justify-content:center;">
+        <!-- Model Selector -->
+        <div class="model-selector-wrap">
+          <button class="model-selector-btn" id="modelSelectorBtn" onclick="toggleDropdown()">
+            <span id="modelSelectorIcon">✦</span>
+            <span id="modelSelectorName">Gemini 2.5 Flash Lite</span>
+            <span class="model-badge">Free</span>
+            <span class="chevron">▾</span>
+          </button>
+          <div class="model-dropdown" id="modelDropdown">
+            <div class="model-option selected" onclick="selectModel(this,'Gemini 2.5 Flash Lite','✦','gemini-2.5-flash-lite-preview-06-17','Latest · Fastest · Free')">
+              <span class="model-option-icon">✦</span>
+              <div><div class="model-option-name">Gemini 2.5 Flash Lite</div><div class="model-option-desc">Latest · Fastest · Free</div></div>
+            </div>
+            <div class="model-option" onclick="selectModel(this,'Gemini 2.0 Flash Lite','⚡','gemini-2.0-flash-lite','Efficient · Reliable · Free')">
+              <span class="model-option-icon">⚡</span>
+              <div><div class="model-option-name">Gemini 2.0 Flash Lite</div><div class="model-option-desc">Efficient · Reliable · Free</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="status-chip">
+          <span class="online-dot" style="width:7px;height:7px;"></span>
+          Online
+        </div>
+        <button class="icon-btn" title="Export conversation" onclick="exportChat()">⬇</button>
+        <div class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+          <div class="theme-toggle-thumb">☀️</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CHAT AREA -->
+    <div class="chat-wrapper" id="chatWrapper">
+      <!-- Welcome Banner -->
+      <div class="welcome-banner" id="welcomeBanner">
+        <h1>⚖️ Political AI Expert</h1>
+        <p>Your sophisticated AI companion for political analysis, constitutional law, public policy, and governmental affairs. Ask complex questions and receive nuanced, expert-level insights.</p>
+        <div class="disclaimer-chip">⚠️ Responses are informational & analytical — not professional legal advice</div>
+      </div>
+
+      <!-- Suggestion Cards -->
+      <div class="suggestions-grid" id="suggestionsGrid">
+        <div class="suggestion-card" onclick="sendSuggestion(this)" style="animation-delay:0.1s">
+          <div class="suggestion-icon">🗳️</div>
+          <div class="suggestion-text">How does the Electoral College system work, and what are the arguments for and against reforming it?</div>
+        </div>
+        <div class="suggestion-card" onclick="sendSuggestion(this)" style="animation-delay:0.2s">
+          <div class="suggestion-icon">⚖️</div>
+          <div class="suggestion-text">Explain the constitutional basis for judicial review and landmark cases that shaped American law.</div>
+        </div>
+        <div class="suggestion-card" onclick="sendSuggestion(this)" style="animation-delay:0.3s">
+          <div class="suggestion-icon">🌐</div>
+          <div class="suggestion-text">What are the key mechanisms of NATO's collective defense obligations under Article 5?</div>
+        </div>
+        <div class="suggestion-card" onclick="sendSuggestion(this)" style="animation-delay:0.4s">
+          <div class="suggestion-icon">📋</div>
+          <div class="suggestion-text">Compare and contrast parliamentary vs. presidential systems of government.</div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="messages-list" id="messagesList"></div>
+
+      <!-- Typing indicator -->
+      <div class="typing-indicator" id="typingIndicator" style="display:none;max-width:760px;margin:0 auto;padding:0 0 8px;">
+        <div class="msg-avatar" style="background:linear-gradient(135deg,#0ea5e9,#38bdf8);box-shadow:0 4px 14px rgba(14,165,233,0.35);width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:17px;">⚖️</div>
+        <div class="typing-bubble">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT AREA -->
+    <div class="input-area">
+      <div class="input-container">
+        <div class="input-field-wrap">
+          <textarea class="chat-input" id="chatInput" placeholder="Ask a political or legal question..." rows="1"
+            onkeydown="handleKey(event)" oninput="handleInput(this)"></textarea>
+          <div class="input-toolbar">
+            <div class="input-tools">
+              <button class="tool-btn" title="Upload file" onclick="showToast('File upload coming soon!')">📎</button>
+              <button class="tool-btn" title="Voice input" onclick="showToast('Voice input coming soon!')">🎙️</button>
+            </div>
+            <span class="char-count" id="charCount">0 / 2000</span>
+          </div>
+        </div>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send message">
+          ➤
+        </button>
+      </div>
+      <div class="input-hint">Political AI Expert provides informational analysis only. Always consult qualified professionals for legal advice.</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" style="position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);z-index:1000;opacity:0;transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;">
+  <div style="background:rgba(14,165,233,0.9);backdrop-filter:blur(16px);color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 8px 28px rgba(14,165,233,0.4)"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════
+(function createParticles(){
+  const container = document.getElementById('particles');
+  for(let i=0;i<18;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = Math.random()*6+4;
+    p.style.cssText = `
+      width:${size}px;height:${size}px;
+      left:${Math.random()*100}%;
+      animation-duration:${Math.random()*20+14}s;
+      animation-delay:${Math.random()*-20}s;
+      opacity:${Math.random()*0.5+0.15};
+    `;
+    container.appendChild(p);
+  }
+})();
+
+// ═══════════════════════════════════════════
+// MOUSE GLOW FOLLOWER
+// ═══════════════════════════════════════════
+const glowFollower = document.getElementById('glowFollower');
+document.addEventListener('mousemove', e => {
+  glowFollower.style.left = e.clientX + 'px';
+  glowFollower.style.top = e.clientY + 'px';
+});
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+let isTyping = false;
+let usedRequests = 0;
+const maxRequests = 1000;
+let currentModel = 'Gemini 2.5 Flash Lite';
+let geminiModelId = 'gemini-2.5-flash-lite-preview-06-17';
+let conversationHistory = [];
+let isDark = false;
+
+// ═══════════════════════════════════════════
+// THEME TOGGLE
+// ═══════════════════════════════════════════
+function toggleTheme(){
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.querySelector('.theme-toggle-thumb').textContent = isDark ? '🌙' : '☀️';
+}
+
+// ═══════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+}
+
+// Responsive sidebar toggle visibility
+function checkSidebar(){
+  const toggle = document.getElementById('sidebarToggle');
+  toggle.style.display = window.innerWidth <= 768 ? 'flex' : 'none';
+}
+window.addEventListener('resize', checkSidebar);
+checkSidebar();
+
+// ═══════════════════════════════════════════
+// MODEL SELECTOR
+// ═══════════════════════════════════════════
+function toggleDropdown(){
+  const btn = document.getElementById('modelSelectorBtn');
+  const dd = document.getElementById('modelDropdown');
+  btn.classList.toggle('open');
+  dd.classList.toggle('show');
+}
+function selectModel(el, name, icon, modelId, desc){
+  currentModel = name;
+  geminiModelId = modelId;
+  document.getElementById('modelSelectorName').textContent = name;
+  document.getElementById('modelSelectorIcon').textContent = icon;
+  document.getElementById('sidebarModelName').textContent = name;
+  document.querySelectorAll('.model-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  toggleDropdown();
+  showToast(`Switched to ${name}`);
+}
+document.addEventListener('click', e => {
+  if(!e.target.closest('.model-selector-wrap')) {
+    document.getElementById('modelSelectorBtn').classList.remove('open');
+    document.getElementById('modelDropdown').classList.remove('show');
+  }
+});
+
+// ═══════════════════════════════════════════
+// INPUT HANDLING
+// ═══════════════════════════════════════════
+function handleInput(ta){
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 160) + 'px';
+  document.getElementById('charCount').textContent = `${ta.value.length} / 2000`;
+}
+function handleKey(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); sendMessage(); }
+}
+
+// ═══════════════════════════════════════════
+// SEND MESSAGE
+// ═══════════════════════════════════════════
+function sendSuggestion(card){
+  const text = card.querySelector('.suggestion-text').textContent;
+  document.getElementById('chatInput').value = text;
+  sendMessage();
+}
+
+async function sendMessage(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text || isTyping) return;
+
+  // Hide welcome UI
+  const wb = document.getElementById('welcomeBanner');
+  const sg = document.getElementById('suggestionsGrid');
+  if(wb) { wb.style.transition='opacity 0.4s'; wb.style.opacity=0; setTimeout(()=>wb.remove(),400); }
+  if(sg) { sg.style.transition='opacity 0.4s'; sg.style.opacity=0; setTimeout(()=>sg.remove(),400); }
+
+  // Append user message
+  appendMessage('user', text);
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('charCount').textContent = '0 / 2000';
+
+  // Add to history
+  conversationHistory.push({ role:'user', content: text });
+
+  // Show typing
+  isTyping = true;
+  const typing = document.getElementById('typingIndicator');
+  typing.style.display = 'flex';
+  scrollToBottom();
+
+  try {
+    const response = await callGeminiAPI(conversationHistory);
+    typing.style.display = 'none';
+    appendMessage('ai', response);
+    conversationHistory.push({ role:'assistant', content: response });
+    updateUsage();
+  } catch(err) {
+    typing.style.display = 'none';
+    appendMessage('ai', `**Analysis Error**\n\nI encountered an issue: ${err.message}\n\nPlease try again or rephrase your question.`);
+  }
+  isTyping = false;
+  scrollToBottom();
+}
+
+// ═══════════════════════════════════════════
+// API CALL — proxied through /api/chat
+// ═══════════════════════════════════════════
+async function callGeminiAPI(messages){
+  const systemPrompt = `You are a sophisticated ${currentModel} — an expert AI assistant specializing in political science, constitutional law, public policy, governmental systems, and international relations.
+
+Your expertise includes:
+• Political theory and comparative politics
+• Constitutional law and judicial interpretation
+• Public policy analysis and design
+• International relations and diplomacy
+• Electoral systems and campaign strategy
+• Government structures and democratic institutions
+• Legislative processes and regulatory frameworks
+
+Guidelines:
+- Provide nuanced, well-balanced analysis from multiple perspectives
+- Reference relevant laws, treaties, court cases, and scholarly frameworks
+- Use clear structure with headers and bullet points when helpful
+- Acknowledge complexity and different schools of thought
+- Always note when topics are contested or politically sensitive
+- Remind users that responses are informational/analytical only, not professional legal advice
+- Be academically rigorous yet accessible
+
+Format responses with markdown when appropriate. Be thorough but concise.`;
+
+  const res = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages,
+      modelId: geminiModelId,
+      systemPrompt,
+      generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+    }),
+  });
+
+  if(!res.ok){
+    const err = await res.json().catch(()=>({}));
+    throw new Error(err?.error || `API Error ${res.status}`);
+  }
+
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  return data.text || 'No response received.';
+}
+
+// ═══════════════════════════════════════════
+// APPEND MESSAGE
+// ═══════════════════════════════════════════
+function appendMessage(role, text){
+  const list = document.getElementById('messagesList');
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+
+  const now = new Date();
+  const time = now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const avatar = role === 'ai' ? '⚖️' : '👤';
+
+  const formattedText = role === 'ai' ? renderMarkdown(text) : escapeHtml(text);
+
+  div.innerHTML = `
+    <div class="msg-avatar">${avatar}</div>
+    <div>
+      <div class="msg-bubble">
+        <div class="msg-text">${formattedText}</div>
+        <div class="msg-time">${role === 'ai' ? currentModel + ' · ' : ''}${time}</div>
+        ${role === 'ai' ? `
+        <div class="msg-actions">
+          <button class="msg-action-btn" onclick="copyMsg(this)">📋 Copy</button>
+          <button class="msg-action-btn" onclick="regenerate()">↺ Regenerate</button>
+        </div>` : ''}
+      </div>
+    </div>
+  `;
+
+  list.appendChild(div);
+  scrollToBottom();
+}
+
+function escapeHtml(t){
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+}
+
+function renderMarkdown(text){
+  return text
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_,lang,code) => `<pre><code>${escapeHtmlCode(code.trim())}</code></pre>`)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+function escapeHtmlCode(t){ return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ═══════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════
+function copyMsg(btn){
+  const bubble = btn.closest('.msg-bubble');
+  const txt = bubble.querySelector('.msg-text').innerText;
+  navigator.clipboard.writeText(txt).then(()=>showToast('Copied to clipboard!'));
+}
+
+async function regenerate(){
+  if(isTyping || conversationHistory.length < 2) return;
+  const lastUser = [...conversationHistory].reverse().find(m => m.role === 'user');
+  if(!lastUser) return;
+  // Remove last AI message from DOM
+  const list = document.getElementById('messagesList');
+  const msgs = list.querySelectorAll('.msg.ai');
+  if(msgs.length) msgs[msgs.length-1].remove();
+  // Remove last AI from history
+  if(conversationHistory[conversationHistory.length-1].role === 'assistant') conversationHistory.pop();
+
+  isTyping = true;
+  const typing = document.getElementById('typingIndicator');
+  typing.style.display = 'flex';
+  try {
+    const response = await callGeminiAPI(conversationHistory);
+    typing.style.display = 'none';
+    appendMessage('ai', response);
+    conversationHistory.push({ role:'assistant', content: response });
+  } catch(e) {
+    typing.style.display = 'none';
+    appendMessage('ai', 'Regeneration failed. Please try again.');
+  }
+  isTyping = false;
+  scrollToBottom();
+}
+
+function newChat(){
+  conversationHistory = [];
+  document.getElementById('messagesList').innerHTML = '';
+  document.getElementById('typingIndicator').style.display = 'none';
+  isTyping = false;
+
+  // Restore welcome
+  const wrapper = document.getElementById('chatWrapper');
+  if(!document.getElementById('welcomeBanner')){
+    const wb = document.createElement('div');
+    wb.className = 'welcome-banner'; wb.id = 'welcomeBanner';
+    wb.innerHTML = `<h1>⚖️ Political AI Expert</h1>
+    <p>Your sophisticated AI companion for political analysis, constitutional law, public policy, and governmental affairs.</p>
+    <div class="disclaimer-chip">⚠️ Responses are informational & analytical — not professional legal advice</div>`;
+    wrapper.insertBefore(wb, wrapper.querySelector('#messagesList'));
+  }
+  if(!document.getElementById('suggestionsGrid')){
+    const sg = document.createElement('div');
+    sg.className = 'suggestions-grid'; sg.id = 'suggestionsGrid';
+    sg.innerHTML = `
+    <div class="suggestion-card" onclick="sendSuggestion(this)"><div class="suggestion-icon">🗳️</div><div class="suggestion-text">How does the Electoral College system work, and what are the arguments for and against reforming it?</div></div>
+    <div class="suggestion-card" onclick="sendSuggestion(this)"><div class="suggestion-icon">⚖️</div><div class="suggestion-text">Explain the constitutional basis for judicial review and landmark cases that shaped American law.</div></div>
+    <div class="suggestion-card" onclick="sendSuggestion(this)"><div class="suggestion-icon">🌐</div><div class="suggestion-text">What are the key mechanisms of NATO's collective defense obligations under Article 5?</div></div>
+    <div class="suggestion-card" onclick="sendSuggestion(this)"><div class="suggestion-icon">📋</div><div class="suggestion-text">Compare and contrast parliamentary vs. presidential systems of government.</div></div>`;
+    wrapper.insertBefore(sg, wrapper.querySelector('#messagesList'));
+  }
+  closeSidebar();
+  showToast('New conversation started');
+}
+
+function exportChat(){
+  if(conversationHistory.length === 0){ showToast('No messages to export'); return; }
+  let content = `Political AI Expert — Conversation Export\n${'═'.repeat(50)}\nModel: ${currentModel}\nDate: ${new Date().toLocaleDateString()}\n${'═'.repeat(50)}\n\n`;
+  conversationHistory.forEach(m => {
+    content += `[${m.role === 'user' ? 'You' : 'AI Expert'}]\n${m.content}\n\n${'─'.repeat(40)}\n\n`;
+  });
+  content += '\n⚠️ Note: These responses are informational and analytical only — not professional legal advice.';
+  const blob = new Blob([content],{type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `political-ai-export-${Date.now()}.txt`;
+  a.click();
+  showToast('Conversation exported!');
+}
+
+// ═══════════════════════════════════════════
+// USAGE TRACKER
+// ═══════════════════════════════════════════
+function updateUsage(){
+  usedRequests = Math.min(usedRequests + 1, maxRequests);
+  const pct = Math.round((usedRequests/maxRequests)*100);
+  document.getElementById('usagePct').textContent = pct + '%';
+  document.getElementById('usedCount').textContent = usedRequests;
+  document.getElementById('remainCount').textContent = maxRequests - usedRequests;
+  const fill = document.getElementById('progressFill');
+  fill.style.width = pct + '%';
+  if(pct >= 90){
+    fill.style.background = 'linear-gradient(90deg,#ef4444,#f97316)';
+    document.getElementById('usagePct').style.color = '#ef4444';
+  } else if(pct >= 70){
+    fill.style.background = 'linear-gradient(90deg,#f59e0b,#fbbf24)';
+    document.getElementById('usagePct').style.color = '#d97706';
+  }
+}
+
+// ═══════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════
+function scrollToBottom(){
+  const w = document.getElementById('chatWrapper');
+  requestAnimationFrame(()=>{ w.scrollTop = w.scrollHeight; });
+}
+
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.querySelector('div').textContent = msg;
+  toast.style.opacity = '1'; toast.style.transform = 'translateX(-50%) translateY(0)';
+  setTimeout(()=>{
+    toast.style.opacity = '0'; toast.style.transform = 'translateX(-50%) translateY(20px)';
+  }, 2600);
+}
+
+// Ripple effect on send button
+document.getElementById('sendBtn').addEventListener('click', function(e){
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = this.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  this.appendChild(ripple);
+  setTimeout(()=>ripple.remove(), 600);
+});
+</script>
+</body>
+</html>

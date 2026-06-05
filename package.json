@@ -1,0 +1,9 @@
+{
+  "name": "political-ai-expert",
+  "version": "1.0.0",
+  "description": "Political AI Expert chat app — Gemini API key secured via Supabase",
+  "engines": {
+    "node": ">=18"
+  },
+  "type": "module"
+}
