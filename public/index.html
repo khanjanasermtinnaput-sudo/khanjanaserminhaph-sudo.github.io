@@ -1064,7 +1064,8 @@ async function sendMessage(){
     }
   } catch(err) {
     typing.style.display = 'none';
-    appendMessage('ai', `**Error**\n\n${err.message}\n\nPlease try again or rephrase your question.`);
+    const msg = err instanceof Error ? err.message : (typeof err === 'string' ? err : JSON.stringify(err));
+    appendMessage('ai', `**Error**\n\n${msg}\n\nPlease try again or rephrase your question.`);
   }
   isTyping = false;
   scrollToBottom();
@@ -1077,8 +1078,11 @@ async function callFactCheck(claim) {
     body: JSON.stringify({ claim }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error || `API Error ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    const msg = typeof data?.error === 'string' ? data.error
+              : typeof data?.error?.message === 'string' ? data.error.message
+              : `Server error ${res.status}`;
+    throw new Error(msg);
   }
   return res.json();
 }
@@ -1146,8 +1150,11 @@ ${modeInstruction}`;
   });
 
   if(!res.ok){
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err?.error || `API Error ${res.status}`);
+    const data = await res.json().catch(()=>({}));
+    const msg = typeof data?.error === 'string' ? data.error
+              : typeof data?.error?.message === 'string' ? data.error.message
+              : `API Error ${res.status}`;
+    throw new Error(msg);
   }
 
   const data = await res.json();
