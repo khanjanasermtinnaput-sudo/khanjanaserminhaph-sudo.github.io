@@ -724,7 +724,7 @@ body {
     <div class="sidebar-section-label" style="margin-top:8px">Current Model</div>
     <div class="info-card">
       <div class="info-card-title">AI Expert Profile</div>
-      <div class="info-model-name" id="sidebarModelName">Gemini 2.0 Flash Lite</div>
+      <div class="info-model-name" id="sidebarModelName">Gemini 2.0 Flash</div>
       <div class="info-level"><span class="online-dot"></span>Active · Expertise Level: Expert</div>
       <div>
         <span class="expertise-tag">Politics</span>
@@ -773,14 +773,14 @@ body {
         <div class="model-selector-wrap">
           <button class="model-selector-btn" id="modelSelectorBtn" onclick="toggleDropdown()">
             <span id="modelSelectorIcon">✦</span>
-            <span id="modelSelectorName">Gemini 2.0 Flash Lite</span>
+            <span id="modelSelectorName">Gemini 2.0 Flash</span>
             <span class="model-badge">Free</span>
             <span class="chevron">▾</span>
           </button>
           <div class="model-dropdown" id="modelDropdown">
-            <div class="model-option selected" onclick="selectModel(this,'Gemini 2.0 Flash Lite','✦','gemini-2.0-flash-lite','Stable · Free Tier · Recommended')">
+            <div class="model-option selected" onclick="selectModel(this,'Gemini 2.0 Flash','✦','gemini-2.0-flash-latest','Latest · Free Tier · Recommended')">
               <span class="model-option-icon">✦</span>
-              <div><div class="model-option-name">Gemini 2.0 Flash Lite</div><div class="model-option-desc">Stable · Free Tier · Recommended</div></div>
+              <div><div class="model-option-name">Gemini 2.0 Flash</div><div class="model-option-desc">Latest · Free Tier · Recommended</div></div>
             </div>
             <div class="model-option" onclick="selectModel(this,'Gemini 2.0 Flash','⚡','gemini-2.0-flash','Fast · Latest · Free Tier')">
               <span class="model-option-icon">⚡</span>
@@ -910,8 +910,8 @@ document.addEventListener('mousemove', e => {
 let isTyping = false;
 let usedRequests = 0;
 const maxRequests = 1000;
-let currentModel = 'Gemini 2.0 Flash Lite';
-let geminiModelId = 'gemini-2.0-flash-lite';
+let currentModel = 'Gemini 2.0 Flash';
+let geminiModelId = 'gemini-2.0-flash-latest';
 let conversationHistory = [];
 let isDark = false;
 
