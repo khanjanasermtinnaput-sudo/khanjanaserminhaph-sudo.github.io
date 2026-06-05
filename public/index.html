@@ -317,6 +317,21 @@ body {
   padding:2px 9px; font-size:11px; font-weight:600; color:var(--accent);
 }
 .chevron { font-size:11px; transition:transform 0.2s; }
+
+/* Response Mode Toggle */
+.response-mode-btn {
+  display:flex; align-items:center; gap:6px;
+  padding:9px 13px; border-radius:var(--radius-md);
+  background:var(--glass-bg-strong);
+  border:1px solid var(--glass-border);
+  cursor:pointer; color:var(--text-primary);
+  font-family:'Outfit',sans-serif; font-size:12px; font-weight:600;
+  transition:var(--transition); white-space:nowrap;
+  box-shadow:var(--glass-shadow);
+}
+.response-mode-btn:hover { border-color:var(--accent); box-shadow:0 0 0 2px var(--accent-soft); }
+.response-mode-btn.short { border-color:rgba(56,189,248,0.5); color:var(--accent); }
+.response-mode-btn.long  { border-color:rgba(168,85,247,0.5); color:#a855f7; }
 .model-selector-btn.open .chevron { transform:rotate(180deg); }
 
 .model-dropdown {
@@ -761,6 +776,12 @@ body {
             </div>
           </div>
         </div>
+
+        <!-- Response Mode Toggle -->
+        <button class="response-mode-btn short" id="responseModeBtn" onclick="toggleResponseMode()" title="Toggle response length">
+          <span id="responseModeIcon">⚡</span>
+          <span id="responseModeLabel">Short</span>
+        </button>
       </div>
 
       <div class="header-actions">
@@ -889,6 +910,7 @@ let conversationHistory = [];
 let isDark = false;
 let chatSessions = []; // { title, time }
 let currentSessionRecorded = false;
+let responseMode = 'short'; // 'short' | 'long'
 
 // ═══════════════════════════════════════════
 // THEME TOGGLE
@@ -1012,29 +1034,21 @@ async function sendMessage(){
 // API CALL — proxied through /api/chat
 // ═══════════════════════════════════════════
 async function callGeminiAPI(messages){
-  const systemPrompt = `You are a seasoned political scientist and constitutional lawyer with 25 years of experience. You have served as a legal advisor to national assemblies, published extensively on comparative constitutional law, and advised multiple political parties on electoral strategy and legislative drafting.
+  const modeInstruction = responseMode === 'short'
+    ? `RESPONSE LENGTH: SHORT MODE — Answer in 3-5 sentences or bullet points max. Get straight to the point. No preamble, no self-introduction, no filler phrases. Just the core answer.`
+    : `RESPONSE LENGTH: LONG MODE — Provide thorough analysis with context, examples, and structured sections. Use headers and bullet points.`;
 
-Your dual expertise:
-**As a Political Expert:**
-• Deep knowledge of Thai and international political systems, party dynamics, and electoral strategy
-• Experience in coalition building, policy negotiation, and political communication
-• Understanding of grassroots movements, public opinion, and democratic governance
+  const systemPrompt = `You are an expert in political science and constitutional law. You have deep knowledge of Thai and international political systems, laws, and policy.
 
-**As a Legal Expert:**
-• Specialization in constitutional law, administrative law, and human rights law
-• Proficiency in drafting legislation, interpreting statutes, and citing case law
-• Familiarity with international law, treaties, and comparative legal frameworks
+Rules:
+- NEVER introduce yourself or describe your background
+- Get straight to the answer immediately
+- Reference real laws, institutions, and cases when relevant (e.g. รัฐธรรมนูญ 2560, ม.112, ICCPR)
+- Be direct and factual — no filler, no hedging
+- Respond in the same language the user writes in (Thai or English)
+- Legal responses are informational, not legal counsel
 
-Personality & style:
-- Speak with authority and confidence, like an experienced advisor who has sat in real negotiations
-- Use first-person perspective when sharing opinions: "In my experience...", "My view is..."
-- Be direct and practical — give actionable insights, not just textbook answers
-- When discussing Thai politics, reference real laws (e.g., รัฐธรรมนูญ 2560), real institutions, and real political dynamics
-- Balance academic rigor with street-level political realism
-- Always clarify when an opinion is personal vs. established legal fact
-- Remind users that legal analysis is informational, not a substitute for formal legal counsel
-
-Respond in the same language the user writes in (Thai or English). Use markdown formatting for clarity.`;
+${modeInstruction}`;
 
   const res = await fetch('/api/chat', {
     method: 'POST',
@@ -1043,7 +1057,7 @@ Respond in the same language the user writes in (Thai or English). Use markdown 
       messages,
       modelId: geminiModelId,
       systemPrompt,
-      generationConfig: { maxOutputTokens: 1500, temperature: 0.7 },
+      generationConfig: { maxOutputTokens: responseMode === 'short' ? 600 : 2000, temperature: 0.65 },
     }),
   });
 
@@ -1146,6 +1160,24 @@ async function regenerate(){
   }
   isTyping = false;
   scrollToBottom();
+}
+
+function toggleResponseMode() {
+  responseMode = responseMode === 'short' ? 'long' : 'short';
+  const btn = document.getElementById('responseModeBtn');
+  const icon = document.getElementById('responseModeIcon');
+  const label = document.getElementById('responseModeLabel');
+  if (responseMode === 'short') {
+    btn.className = 'response-mode-btn short';
+    icon.textContent = '⚡';
+    label.textContent = 'Short';
+    showToast('Short mode — concise answers');
+  } else {
+    btn.className = 'response-mode-btn long';
+    icon.textContent = '📋';
+    label.textContent = 'Long';
+    showToast('Long mode — detailed analysis');
+  }
 }
 
 function recordChatSession(firstMessage) {
