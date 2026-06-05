@@ -33,43 +33,42 @@ export default async (request) => {
       );
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not set');
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) throw new Error('GROQ_API_KEY is not set');
 
-    const contents = messages.map(m => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }],
-    }));
+    const model = modelId || 'llama-3.3-70b-versatile';
 
+    const groqMessages = [];
+    if (systemPrompt) groqMessages.push({ role: 'system', content: systemPrompt });
+    messages.forEach(m => groqMessages.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
+
+    const cfg = generationConfig || {};
     const body = {
-      contents,
-      generationConfig: generationConfig || { maxOutputTokens: 1500, temperature: 0.7 },
+      model,
+      messages: groqMessages,
+      max_tokens: cfg.maxOutputTokens || 1500,
+      temperature: cfg.temperature ?? 0.7,
     };
-    if (systemPrompt) {
-      body.system_instruction = { parts: [{ text: systemPrompt }] };
-    }
 
-    const model = modelId || 'gemini-2.0-flash-latest';
-    const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }
-    );
+    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+    });
 
     if (!upstream.ok) {
       const err = await upstream.json().catch(() => ({}));
       return new Response(
-        JSON.stringify({ error: err?.error?.message || `Gemini error ${upstream.status}` }),
+        JSON.stringify({ error: err?.error?.message || `Groq error ${upstream.status}` }),
         { status: upstream.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await upstream.json();
-    const text =
-      data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
+    const text = data.choices?.[0]?.message?.content || '';
 
     return new Response(JSON.stringify({ text }), {
       status: 200,
@@ -84,5 +83,4 @@ export default async (request) => {
   }
 };
 
-// Map this function to /api/chat so the HTML needs no changes
 export const config = { path: '/api/chat' };
