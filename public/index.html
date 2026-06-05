@@ -639,7 +639,13 @@ body {
   .status-chip { display:none; }
   .suggestions-grid { grid-template-columns:1fr; }
   .input-area { padding:10px 12px 14px; }
+  .send-btn { width:44px; height:44px; font-size:17px; border-radius:14px; flex-shrink:0; }
 }
+
+/* Ensure send button never disappears */
+.input-container { overflow:visible; }
+.input-field-wrap { min-width:0; }
+.send-btn { flex-shrink:0 !important; }
 
 /* Mouse glow follower */
 .glow-follower {
