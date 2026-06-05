@@ -690,34 +690,7 @@ body {
     <!-- Chat History -->
     <div class="sidebar-section-label">Recent Chats</div>
     <div id="chatHistory">
-      <div class="history-item active">
-        <span class="history-icon">💬</span>
-        <div style="flex:1;min-width:0">
-          <div class="history-text">Electoral College System</div>
-          <div class="history-time">Today</div>
-        </div>
-      </div>
-      <div class="history-item">
-        <span class="history-icon">💬</span>
-        <div style="flex:1;min-width:0">
-          <div class="history-text">NATO Article 5 Obligations</div>
-          <div class="history-time">Yesterday</div>
-        </div>
-      </div>
-      <div class="history-item">
-        <span class="history-icon">💬</span>
-        <div style="flex:1;min-width:0">
-          <div class="history-text">Federal vs State Powers</div>
-          <div class="history-time">Mon</div>
-        </div>
-      </div>
-      <div class="history-item">
-        <span class="history-icon">💬</span>
-        <div style="flex:1;min-width:0">
-          <div class="history-text">First Amendment Analysis</div>
-          <div class="history-time">Sun</div>
-        </div>
-      </div>
+      <div class="history-empty" id="historyEmpty" style="font-size:12px;color:var(--text-muted);padding:10px 4px;">No conversations yet</div>
     </div>
 
     <!-- AI Info Card -->
@@ -914,6 +887,8 @@ let currentModel = 'Llama 3.3 70B';
 let geminiModelId = 'llama-3.3-70b-versatile';
 let conversationHistory = [];
 let isDark = false;
+let chatSessions = []; // { title, time }
+let currentSessionRecorded = false;
 
 // ═══════════════════════════════════════════
 // THEME TOGGLE
@@ -1011,6 +986,7 @@ async function sendMessage(){
 
   // Add to history
   conversationHistory.push({ role:'user', content: text });
+  if (!currentSessionRecorded) { currentSessionRecorded = true; recordChatSession(text); }
 
   // Show typing
   isTyping = true;
@@ -1172,8 +1148,40 @@ async function regenerate(){
   scrollToBottom();
 }
 
+function recordChatSession(firstMessage) {
+  const title = firstMessage.length > 45 ? firstMessage.slice(0, 45) + '…' : firstMessage;
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  chatSessions.unshift({ title, time });
+  if (chatSessions.length > 20) chatSessions.pop();
+  renderChatHistory();
+}
+
+function renderChatHistory() {
+  const container = document.getElementById('chatHistory');
+  const empty = document.getElementById('historyEmpty');
+  if (chatSessions.length === 0) {
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  // Remove existing dynamic items
+  container.querySelectorAll('.history-item').forEach(el => el.remove());
+  chatSessions.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'history-item' + (i === 0 ? ' active' : '');
+    el.innerHTML = `<span class="history-icon">💬</span>
+      <div style="flex:1;min-width:0">
+        <div class="history-text">${s.title}</div>
+        <div class="history-time">${s.time}</div>
+      </div>`;
+    container.appendChild(el);
+  });
+}
+
 function newChat(){
   conversationHistory = [];
+  currentSessionRecorded = false;
   document.getElementById('messagesList').innerHTML = '';
   document.getElementById('typingIndicator').style.display = 'none';
   isTyping = false;
