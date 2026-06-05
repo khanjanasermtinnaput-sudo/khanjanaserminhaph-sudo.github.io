@@ -660,7 +660,17 @@ body {
 }
 
 /* ═══════════════════════════════════════════
-   RESPONSIVE
+   HEADER STRUCTURE
+═══════════════════════════════════════════ */
+.header-left  { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.header-center {
+  display:flex; align-items:center; gap:8px;
+  flex:1; justify-content:center;
+}
+.header-actions { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — TABLET
 ═══════════════════════════════════════════ */
 @media (max-width:768px) {
   .sidebar {
@@ -676,11 +686,71 @@ body {
     display:none;
   }
   .sidebar-overlay.show { display:block; }
-  .header-title { font-size:15px; }
   .status-chip { display:none; }
   .suggestions-grid { grid-template-columns:1fr; }
   .input-area { padding:10px 12px 14px; }
-  .send-btn { width:44px; height:44px; font-size:17px; border-radius:14px; flex-shrink:0; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — MOBILE
+═══════════════════════════════════════════ */
+@media (max-width:600px) {
+  /* Header wraps to 2 rows */
+  .header {
+    height:auto;
+    flex-wrap:wrap;
+    padding:8px 12px 0;
+    gap:0;
+  }
+  .header-left {
+    flex:1; min-width:0; padding-bottom:8px;
+  }
+  .header-title {
+    font-size:14px;
+  }
+  .header-title .logo-icon { width:28px; height:28px; font-size:14px; }
+  .header-actions { padding-bottom:8px; gap:6px; }
+
+  /* Controls strip: full width, horizontally scrollable */
+  .header-center {
+    order:10;
+    width:100%;
+    justify-content:flex-start;
+    overflow-x:auto;
+    overflow-y:visible;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:6px 0 10px;
+    gap:6px;
+    border-top:1px solid var(--glass-border-subtle);
+    margin-top:2px;
+  }
+  .header-center::-webkit-scrollbar { display:none; }
+
+  /* Compact buttons on mobile */
+  .model-selector-btn {
+    padding:7px 10px; font-size:12px; gap:5px;
+    white-space:nowrap;
+  }
+  .model-badge, .chevron { display:none; }
+  .response-mode-btn {
+    padding:7px 10px; font-size:12px;
+    white-space:nowrap;
+  }
+  /* Shorten labels on very narrow screens */
+  #factCheckLabel { display:none; }
+  #responseModeLabel { display:none; }
+
+  /* Input area */
+  .input-area { padding:8px 10px 12px; }
+  .send-btn { width:42px; height:42px; font-size:16px; border-radius:12px; flex-shrink:0 !important; }
+  .input-hint { font-size:10px; }
+
+  /* Chat */
+  .chat-wrapper { padding:16px 12px 8px; }
+  .welcome-banner h1 { font-size:20px; }
+  .welcome-banner p { font-size:13px; }
+  .msg-bubble { font-size:14px; }
 }
 
 /* Ensure send button never disappears */
@@ -774,7 +844,7 @@ body {
 
     <!-- HEADER -->
     <header class="header">
-      <div style="display:flex;align-items:center;gap:10px;">
+      <div class="header-left">
         <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" style="display:none">☰</button>
         <div class="header-title">
           <div class="logo-icon">⚖️</div>
@@ -782,7 +852,7 @@ body {
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;gap:10px;flex:1;justify-content:center;">
+      <div class="header-center">
         <!-- Model Selector -->
         <div class="model-selector-wrap">
           <button class="model-selector-btn" id="modelSelectorBtn" onclick="toggleDropdown()">
