@@ -1097,7 +1097,7 @@ function appendFactCheckResult({ analysis, sources }) {
     <div class="msg-avatar">🔍</div>
     <div class="msg-content">
       <div class="factcheck-banner">🔍 ผลการตรวจสอบข่าว — ข้อมูลจากเว็บจริง</div>
-      <div class="msg-bubble">${marked.parse(analysis || '')}</div>
+      <div class="msg-bubble">${renderMarkdown(analysis || '')}</div>
       ${sourcesHtml ? `<div class="factcheck-sources"><div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px">แหล่งข้อมูล</div>${sourcesHtml}</div>` : ''}
       <div class="msg-time">${time}</div>
     </div>`;
