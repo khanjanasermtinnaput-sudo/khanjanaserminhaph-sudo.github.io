@@ -10,30 +10,10 @@ function corsHeaders(reqOrigin) {
   };
 }
 
-async function fetchGeminiKey() {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey  = process.env.SUPABASE_SERVICE_KEY;
-  const table       = process.env.SUPABASE_TABLE      || 'api_keys';
-  const keyColumn   = process.env.SUPABASE_KEY_COLUMN || 'value';
-  const keyName     = process.env.SUPABASE_KEY_NAME   || 'gemini';
-
-  const res = await fetch(
-    `${supabaseUrl}/rest/v1/${table}?name=eq.${encodeURIComponent(keyName)}&select=${encodeURIComponent(keyColumn)}&limit=1`,
-    {
-      headers: {
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-      },
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error(`Supabase fetch failed: ${res.status}`);
-  }
-
-  const rows = await res.json();
-  if (!rows.length) throw new Error('Gemini API key not found in Supabase');
-  return rows[0][keyColumn];
+function fetchGeminiKey() {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) throw new Error('GEMINI_API_KEY environment variable is not set');
+  return key;
 }
 
 export default async function handler(req, res) {
