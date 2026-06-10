@@ -53,12 +53,9 @@ async function checkDCRewardsFor(pid, notify) {
     if (getDCProg(q, pid) >= q.goal) {
       done[q.id] = true;
       granted = true;
-      try {
-        await dbAddCoins(pid, q.coins);
-        _setLsCoins(pid, _lsCoins(pid) + q.coins);
-      } catch(e) {
-        _setLsCoins(pid, _lsCoins(pid) + q.coins);
-      }
+      await dbAddCoins(pid, q.coins);
+      // localStorage shadow copy — getEffectiveCoins falls back to it when the DB coins column is missing
+      _setLsCoins(pid, _lsCoins(pid) + q.coins);
       if (notify) {
         toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
         const pcEl = document.getElementById('profileCoinBalance');
@@ -70,12 +67,6 @@ async function checkDCRewardsFor(pid, notify) {
     localStorage.setItem(_dcKey(pid), JSON.stringify(done));
     if (notify) renderDailyChallenge();
   }
-}
-
-// backward-compat: ตรวจให้ currentUser
-async function checkDCRewards() {
-  if (!currentUser) return;
-  await checkDCRewardsFor(currentUser.id, true);
 }
 
 // ── 13. Player of the Day ────────────────────────

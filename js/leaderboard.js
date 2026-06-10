@@ -330,7 +330,6 @@ function clearSlot(label) {
   window._matchSel = sel;
   renderPlayerGrid();
 }
-function renderDoublesPlayers() { renderPlayerGrid(); } // legacy shim
 function startSingles() {
   const sel = window._matchSel || { A: [], B: [] };
   if (!sel.A[0] || !sel.B[0]) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');

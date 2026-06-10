@@ -1,22 +1,6 @@
 // ── Global store: tournament data keyed by id (avoids JSON-in-onclick quoting bugs) ──
 const _tourStore = {};
 
-// ── 5. FORM INDICATOR ─────────────────────────────────────
-function getFormIndicator(playerId) {
-  const myMatches = db.matches.filter(m => [...m.teamA, ...m.teamB].some(x => x.id === playerId));
-  const last5 = myMatches.slice(0, 5);
-  if (last5.length < 3) return { arrow: '→', cls: 'neutral' };
-  let wins = 0, losses = 0;
-  last5.forEach(m => {
-    const inA = m.teamA.some(x => x.id === playerId);
-    const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-    win ? wins++ : losses++;
-  });
-  if (wins >= 3) return { arrow: '↑', cls: 'up' };
-  if (losses >= 3) return { arrow: '↓', cls: 'down' };
-  return { arrow: '→', cls: 'neutral' };
-}
-
 // ── 6. BEST DAY OF WEEK ───────────────────────────────────
 function getBestDayOfWeek(playerId) {
   const thDays = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
@@ -245,17 +229,6 @@ function renderModeBadge(matchType) {
 }
 
 // ── Best-of-3 helpers ──────────────────────────────────────────────────────────
-function _renderBo3Input(prefix) {
-  return `<div style="margin-top:6px">
-    ${[1,2,3].map(g => `<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px">
-      <span style="font-size:0.62rem;color:var(--muted);width:36px;flex-shrink:0">เกม ${g}</span>
-      <input class="inp" type="number" id="${prefix}_g${g}a" placeholder="-" style="width:46px;font-size:0.75rem;padding:4px 5px;text-align:center" min="0">
-      <span style="color:var(--muted);font-size:0.8rem">-</span>
-      <input class="inp" type="number" id="${prefix}_g${g}b" placeholder="-" style="width:46px;font-size:0.75rem;padding:4px 5px;text-align:center" min="0">
-    </div>`).join('')}
-  </div>`;
-}
-
 function _readBo3(prefix) {
   let wA = 0, wB = 0;
   for (let g = 1; g <= 3; g++) {
@@ -1021,8 +994,6 @@ function renderRewardCards(tournamentId, tierName) {
 // ── 2v2 team builder ──────────────────────────────────────────────────────────
 let _t2v2TeamCount = 0;
 
-function onTournamentModeChange() { _updateTournamentCreateForm(); }
-
 function _updateTournamentCreateForm() {
   const tier = document.getElementById('tournamentTier')?.value || 'Regular';
   const mode = document.getElementById('tournamentMatchType')?.value || '1v1';
@@ -1108,19 +1079,6 @@ function _get2v2Teams() {
     });
   });
   return teams;
-}
-
-async function recordFixture(tournamentId, groupLetter, anchorA, anchorB) {
-  const prefix = `f_${tournamentId}_${groupLetter}_${anchorA}_${anchorB}`;
-  const { wA, wB } = _readBo3(prefix);
-  if (wA + wB === 0) return toast('กรอกคะแนนอย่างน้อย 1 เกม', 'error');
-  if (wA === wB) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
-  const winnerId = wA > wB ? anchorA : anchorB;
-  try {
-    await dbAddTournamentMatch(tournamentId, groupLetter, anchorA, anchorB, wA, wB, winnerId);
-    toast('บันทึกแมตช์แล้ว ✅', 'success');
-    renderTournamentSection();
-  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
 }
 
 // ── TOURNAMENT HALL OF FAME ────────────────────────────────────────────────
@@ -2050,115 +2008,6 @@ function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
   }
   html += `</div>`;
   return html;
-}
-
-async function registerForTournament(tournamentId) {
-  if (!currentUser) return toast('กรุณาเข้าสู่ระบบก่อน', 'error');
-  try {
-    const t = await dbGetTournamentById(tournamentId);
-    let gs = [];
-    try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
-    const cfg = getTournamentConfig(gs);
-    if (!cfg?.registrationOpen) return toast('ปิดรับสมัครแล้ว', 'error');
-    const regs = cfg.registrations || [];
-    if (cfg.matchType === '2v2') {
-      const partnerEl = document.getElementById(`tour_partner_${tournamentId}`);
-      const partnerId = partnerEl ? parseInt(partnerEl.value) : 0;
-      if (!partnerId || isNaN(partnerId)) return toast('กรุณาเลือกคู่หูก่อน', 'error');
-      if (partnerId === currentUser.id) return toast('ไม่สามารถเลือกตัวเองเป็นคู่หูได้', 'error');
-      const max = cfg.numGroups * cfg.teamsPerGroup;
-      const allIds = regs.flatMap(r => r.playerIds || []);
-      if (allIds.includes(currentUser.id)) return toast('คุณสมัครไปแล้ว', 'error');
-      if (allIds.includes(partnerId)) return toast('คู่หูที่เลือกสมัครไปแล้ว', 'error');
-      if (regs.length >= max) return toast(`เต็มแล้ว (${max} ทีม)`, 'error');
-      cfg.registrations = [...regs, { anchor: currentUser.id, playerIds: [currentUser.id, partnerId] }];
-    } else {
-      const max = cfg.numGroups * cfg.playersPerGroup;
-      if (regs.includes(currentUser.id)) return toast('คุณสมัครไปแล้ว', 'error');
-      if (regs.length >= max) return toast(`เต็มแล้ว (${max} คน)`, 'error');
-      cfg.registrations = [...regs, currentUser.id];
-    }
-    await _patchTournamentConfig(tournamentId, cfg);
-    toast('สมัครแข่งแล้ว ✅', 'success');
-    renderTournamentTab();
-  } catch(e) { toast('สมัครไม่ได้: ' + e.message, 'error'); }
-}
-
-async function unregisterFromTournament(tournamentId) {
-  if (!currentUser) return;
-  try {
-    const t = await dbGetTournamentById(tournamentId);
-    let gs = [];
-    try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
-    const cfg = getTournamentConfig(gs);
-    if (!cfg?.registrationOpen) return toast('ปิดรับสมัครแล้ว', 'error');
-    if (cfg.matchType === '2v2') {
-      cfg.registrations = (cfg.registrations || []).filter(r => r.anchor !== currentUser.id);
-    } else {
-      cfg.registrations = (cfg.registrations || []).filter(id => id !== currentUser.id);
-    }
-    await _patchTournamentConfig(tournamentId, cfg);
-    toast('ถอนสมัครแล้ว', 'success');
-    renderTournamentTab();
-  } catch(e) { toast('ถอนสมัครไม่ได้: ' + e.message, 'error'); }
-}
-
-async function startTournament(tournamentId) {
-  try {
-    const t = await dbGetTournamentById(tournamentId);
-    let gs = [];
-    try { gs = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
-    const cfg = getTournamentConfig(gs);
-    if (!cfg) return toast('ไม่พบการตั้งค่า', 'error');
-    let groupEntries;
-
-    if (cfg.slots) {
-      // ── Slot-based registration ──
-      if (cfg.matchType === '2v2') {
-        groupEntries = Object.entries(cfg.slots).sort().map(([letter, teamSlots]) => ({
-          letter, matchType: '2v2',
-          teams: teamSlots.filter(t => t[0] || t[1]).map(t => ({ playerIds: t.filter(Boolean) }))
-        }));
-        const totalTeams = groupEntries.reduce((s, g) => s + g.teams.length, 0);
-        if (totalTeams < 2) return toast('ต้องมีอย่างน้อย 2 ทีม', 'error');
-      } else {
-        groupEntries = Object.entries(cfg.slots).sort().map(([letter, playerSlots]) => ({
-          letter, playerIds: playerSlots.filter(Boolean)
-        }));
-        const totalPlayers = groupEntries.reduce((s, g) => s + g.playerIds.length, 0);
-        if (totalPlayers < 2) return toast('ต้องมีผู้เล่นอย่างน้อย 2 คน', 'error');
-      }
-    } else {
-      // ── Legacy: registrations array ──
-      const regs = cfg.registrations || [];
-      if (cfg.matchType === '2v2') {
-        if (regs.length < 2) return toast(`ต้องมีอย่างน้อย 2 ทีม`, 'error');
-        const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.teamsPerGroup || 3))));
-        groupEntries = Array.from({length: numGroups}, (_, i) => ({ letter: String.fromCharCode(65+i), matchType: '2v2', teams: [] }));
-        regs.forEach((r, i) => groupEntries[i % numGroups].teams.push({ playerIds: r.playerIds }));
-      } else {
-        if (regs.length < 4) return toast(`ต้องมีผู้เล่นอย่างน้อย 4 คน`, 'error');
-        const numGroups = Math.min(cfg.numGroups, Math.max(1, Math.ceil(regs.length / (cfg.playersPerGroup || 4))));
-        groupEntries = Array.from({length: numGroups}, (_, i) => ({ letter: String.fromCharCode(65+i), playerIds: [] }));
-        regs.forEach((id, i) => groupEntries[i % numGroups].playerIds.push(id));
-      }
-    }
-
-    const newGs = [
-      ...gs.filter(g => g._meta),
-      { ...cfg, registrationOpen: false },
-      ...groupEntries
-    ];
-    await supaFetch(`tournaments?id=eq.${tournamentId}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ groups: JSON.stringify(newGs) }),
-      prefer: 'return=minimal'
-    });
-    delete _tourStore[tournamentId];
-    toast('เริ่มการแข่งขันแล้ว! 🏆', 'success');
-    renderTournamentTab();
-    if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
-  } catch(e) { toast('เริ่มไม่ได้: ' + e.message, 'error'); }
 }
 
 // ════════════════════════════════════════════════════════════

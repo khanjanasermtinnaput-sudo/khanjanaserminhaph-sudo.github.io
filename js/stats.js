@@ -129,40 +129,6 @@ function _srPtsAt(tl, t) {
   return v;
 }
 
-// Monotone cubic Hermite interpolation (Fritsch–Carlson) for a list of {x,y}.
-// Unlike Catmull-Rom this never overshoots between data points, so flat stretches
-// stay flat and sharp single-match jumps don't create loops/tangles.
-function _srMonotone(pts) {
-  const n = pts.length;
-  if (n < 2) return n ? `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}` : '';
-  if (n === 2) return `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} L${pts[1].x.toFixed(1)},${pts[1].y.toFixed(1)}`;
-  const dx = [], dy = [], slope = [];
-  for (let i = 0; i < n - 1; i++) {
-    dx[i] = pts[i + 1].x - pts[i].x;
-    dy[i] = pts[i + 1].y - pts[i].y;
-    slope[i] = dx[i] !== 0 ? dy[i] / dx[i] : 0;
-  }
-  const m = new Array(n);
-  m[0] = slope[0];
-  m[n - 1] = slope[n - 2];
-  for (let i = 1; i < n - 1; i++) {
-    m[i] = (slope[i - 1] * slope[i] <= 0) ? 0 : (slope[i - 1] + slope[i]) / 2;
-  }
-  // Limit tangents so each segment stays monotone (no overshoot)
-  for (let i = 0; i < n - 1; i++) {
-    if (slope[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
-    const a = m[i] / slope[i], b = m[i + 1] / slope[i], s = a * a + b * b;
-    if (s > 9) { const tau = 3 / Math.sqrt(s); m[i] = tau * a * slope[i]; m[i + 1] = tau * b * slope[i]; }
-  }
-  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`;
-  for (let i = 0; i < n - 1; i++) {
-    const c1x = pts[i].x + dx[i] / 3, c1y = pts[i].y + m[i] * dx[i] / 3;
-    const c2x = pts[i + 1].x - dx[i] / 3, c2y = pts[i + 1].y - m[i + 1] * dx[i] / 3;
-    d += ` C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${pts[i + 1].x.toFixed(1)},${pts[i + 1].y.toFixed(1)}`;
-  }
-  return d;
-}
-
 // ── controls: time-range + Top-N pills ──
 function _srControls(rangeDays, topN) {
   const isEn = _lang === 'en';

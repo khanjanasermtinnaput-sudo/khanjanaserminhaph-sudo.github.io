@@ -1,14 +1,15 @@
 // Badminton Club — Service Worker
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
-const CACHE = 'bk-v27';
+const CACHE = 'bk-v28';
 
 // App shell to pre-cache. Paths are RELATIVE to the SW location so the app works
 // when served from a project-page subpath (…/<repo>/). Runtime requests with a
 // ?v= query are matched via ignoreSearch.
+// (legacy badminton_v6-*.html pages are intentionally NOT pre-cached — they are
+// kept only as archived URLs and would waste ~230KB of every install)
 const ASSETS = [
   './',
   'index.html',
-  'badminton_v6-4.html',
   'styles.css',
   'manifest.json',
   'icon-192.png',
