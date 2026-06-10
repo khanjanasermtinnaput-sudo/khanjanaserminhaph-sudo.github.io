@@ -7,8 +7,8 @@ function getRankLabel(pts, playerId) {
     silver:   [[101,166,'III'],[167,233,'II'],[234,300,'I']],
     gold:     [[301,367,'III'],[368,433,'II'],[434,500,'I']],
     platinum: [[501,600,'III'],[601,700,'II'],[701,800,'I']],
-    diamond:  [[801,1033,'III'],[1034,1266,'II'],[1267,1499,'I']],
-    master:   [[1500,1999,'III'],[2000,2499,'II'],[2500,2999,'I']],
+    diamond:  [[801,933,'III'],[934,1066,'II'],[1067,1200,'I']],
+    master:   [[1201,1466,'III'],[1467,1732,'II'],[1733,1999,'I']],
   };
   const icon = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'💠', master:'🔥' };
   const name = { bronze:'Bronze', silver:'Silver', gold:'Gold', platinum:'Platinum', diamond:'Diamond', master:'Master' };

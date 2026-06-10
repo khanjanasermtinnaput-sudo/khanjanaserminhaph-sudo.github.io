@@ -350,7 +350,7 @@ function showMatchPlaying() {
   document.getElementById('classicMode').classList.add('hidden');
   // ตั้งชื่อล่วงหน้าสำหรับทั้ง 2 mode
   const _kingSorted = db.players && db.players.length ? [...db.players].sort((a,b)=>b.pts-a.pts) : [];
-  const _kingMatchName = _kingSorted[0] && _kingSorted[0].pts >= 3000 ? _kingSorted[0].name : null;
+  const _kingMatchName = _kingSorted[0] && _kingSorted[0].pts >= 2000 ? _kingSorted[0].name : null;
   const _kc = getKingChallenge();
   const _addBadge = n => {
     let s = n;
@@ -681,7 +681,7 @@ async function saveMatch() {
   let _kcActive = false, _kcChallengerId = null;
   if (_kcData && Date.now() - _kcData.ts < 86400000) {
     const _kingSorted2 = [...db.players].sort((a,b)=>b.pts-a.pts);
-    const _kingMatch = _kingSorted2[0] && _kingSorted2[0].pts >= 3000 ? _kingSorted2[0] : null;
+    const _kingMatch = _kingSorted2[0] && _kingSorted2[0].pts >= 2000 ? _kingSorted2[0] : null;
     if (_kingMatch) {
       const kingInLosers = losers.some(p => p.id === _kingMatch.id);
       const challengerInWinners = winners.some(p => p.id === _kcData.id);
@@ -979,7 +979,7 @@ async function approvePending(pendingId) {
     let _kcApActive = false, _kcApChallengerId = null;
     if (_kcAp && Date.now() - _kcAp.ts < 86400000) {
       const _kingSortedAp = [...db.players].sort((a,b)=>b.pts-a.pts);
-      const _kingAp = _kingSortedAp[0] && _kingSortedAp[0].pts >= 3000 ? _kingSortedAp[0] : null;
+      const _kingAp = _kingSortedAp[0] && _kingSortedAp[0].pts >= 2000 ? _kingSortedAp[0] : null;
       if (_kingAp) {
         const kingInWin = winners.some(p => p.id === _kingAp.id);
         const kingInLose = losers.some(p => p.id === _kingAp.id);

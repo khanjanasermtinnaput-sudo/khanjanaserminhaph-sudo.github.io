@@ -1,6 +1,6 @@
 const RANKS = [
-  { id: 'king',     label: '👑 King of Badminton', min: 3000, class: 'rank-king'     },
-  { id: 'master',   label: '🔥 Master Player',      min: 1500, class: 'rank-master'   },
+  { id: 'king',     label: '👑 King of Badminton', min: 2000, class: 'rank-king'     },
+  { id: 'master',   label: '🔥 Master Player',      min: 1201, class: 'rank-master'   },
   { id: 'diamond',  label: '💠 Diamond',             min: 801,  class: 'rank-diamond'  },
   { id: 'platinum', label: '💎 Platinum',            min: 501,  class: 'rank-platinum' },
   { id: 'gold',     label: '🥇 Gold',                min: 301,  class: 'rank-gold'     },
@@ -9,7 +9,7 @@ const RANKS = [
 ];
 
 function getRank(pts, playerId) {
-  if (pts >= 3000) { const sorted = [...db.players].sort((a,b)=>b.pts-a.pts); if (sorted.length > 0 && sorted[0].id === playerId) return RANKS[0]; }
+  if (pts >= 2000) { const sorted = [...db.players].sort((a,b)=>b.pts-a.pts); if (sorted.length > 0 && sorted[0].id === playerId) return RANKS[0]; }
   for (let i = 1; i < RANKS.length; i++) { if (pts >= RANKS[i].min) return RANKS[i]; }
   return RANKS[RANKS.length - 1];
 }
@@ -21,7 +21,7 @@ function rankProgress(pts) {
     if (!next) return { pct: 100, next: null };
     if (pts >= cur.min && pts < next.min) return { pct: Math.round(((pts - cur.min) / (next.min - cur.min)) * 100), next };
   }
-  if (pts >= 1500) return { pct: Math.min(100, Math.round(((pts - 1500) / (3000 - 1500)) * 100)), next: pts >= 3000 ? null : RANKS[0] };
+  if (pts >= 1201) return { pct: Math.min(100, Math.round(((pts - 1201) / (2000 - 1201)) * 100)), next: pts >= 2000 ? null : RANKS[0] };
   return { pct: 0, next: RANKS[RANKS.length-2] };
 }
 

@@ -255,7 +255,7 @@ async function openPlayerProfile(playerId) {
         ${histHTML}
         ${(() => {
           const sorted2 = db.players && db.players.length ? [...db.players].sort((a,b)=>b.pts-a.pts) : [];
-          const kingPlayer = sorted2[0] && sorted2[0].pts >= 3000 ? sorted2[0] : null;
+          const kingPlayer = sorted2[0] && sorted2[0].pts >= 2000 ? sorted2[0] : null;
           const kc = getKingChallenge();
           const isPendingChallenger = kc && kc.id === p.id;
           if (!kingPlayer || kingPlayer.id === p.id) return '';
@@ -351,12 +351,12 @@ function buildEloChart(data) {
 // Helper: detect if a player crossed INTO King rank (for broadcasting king anim to everyone watching)
 function didCrossIntoKing(oldPts, newPts, playerId) {
   let wasKing = false;
-  if (oldPts >= 3000) {
+  if (oldPts >= 2000) {
     const sortedOld = [...db.players].sort((a, b) => b.pts - a.pts);
     wasKing = !!(sortedOld[0] && sortedOld[0].id === playerId);
   }
   let willBeKing = false;
-  if (newPts >= 3000) {
+  if (newPts >= 2000) {
     // Project the new state for this player
     const projected = db.players.map(p => p.id === playerId ? {...p, pts: newPts} : p);
     const sortedNew = [...projected].sort((a, b) => b.pts - a.pts);
@@ -373,12 +373,12 @@ function queueRankUpForPlayer(playerId, oldPts, newPts, playerName, gainPts) {
   const newRank = getRankByPts(newPts);
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
   let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && oldPts >= 3000) {
+  if (oldRank.id === 'master' && oldPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
   }
   let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && newPts >= 3000) {
+  if (newRank.id === 'master' && newPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }
