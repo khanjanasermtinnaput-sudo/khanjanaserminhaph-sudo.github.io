@@ -114,7 +114,7 @@ function renderTodayHist() {
     const timeStr=new Date(m.date).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});
     return `<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--glass-border);font-size:.78rem">
       <span style="color:var(--muted);font-size:.65rem;flex-shrink:0">${timeStr}</span>
-      <span style="flex:1"><b>${w}</b> ชนะ ${m.scoreA}-${m.scoreB}</span>
+      <span style="flex:1"><b>${w}</b> ชนะ ${m.scoreA}-${m.scoreB}${m.mood ? ' ' + m.mood : ''}</span>
       <span>${m.type==='doubles'?'👥':'👤'}</span></div>`;
   }).join('')+(ms.length>6?`<div style="font-size:.7rem;color:var(--muted);text-align:center;margin-top:5px">+${ms.length-6} แมตช์</div>`:'');
 }

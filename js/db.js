@@ -18,6 +18,18 @@ async function supaFetch(path, options = {}) {
   return text ? JSON.parse(text) : [];
 }
 
+// ดึง "ทุกแถว" แบบแบ่งหน้า — PostgREST จำกัด ~1000 แถวต่อคำขอ
+async function supaFetchAll(pathWithQuery, pageSize = 1000) {
+  const sep = pathWithQuery.includes('?') ? '&' : '?';
+  const out = [];
+  for (let offset = 0; ; offset += pageSize) {
+    const batch = await supaFetch(`${pathWithQuery}${sep}limit=${pageSize}&offset=${offset}`);
+    out.push(...batch);
+    if (batch.length < pageSize) break;
+  }
+  return out;
+}
+
 let db = { players: [], matches: [] };
 let currentUser = null;
 let currentMatch = null;
@@ -44,9 +56,18 @@ async function dbUpdatePlayer(id, data) {
 }
 async function dbDeletePlayer(id) { await supaFetch('players?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' }); }
 async function dbAddPending(match) {
+  const row = { type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss, submitted_by: match.submittedBy };
+  if (match.mood) row.mood = match.mood;
+  const post = () => supaFetch("pending_matches", { method: "POST", body: JSON.stringify(row), prefer: "return=minimal" });
   try {
-    await supaFetch("pending_matches", { method: "POST", body: JSON.stringify({ type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss, submitted_by: match.submittedBy }), prefer: "return=minimal" });
+    await post();
   } catch(e) {
+    // คอลัมน์ mood ยังไม่ถูกสร้าง → บันทึกแบบไม่มี mood แทน (ดู SQL ในหน้า Admin)
+    if (row.mood && e.message && (e.message.includes('PGRST204') || e.message.includes('mood'))) {
+      delete row.mood;
+      await post();
+      return;
+    }
     // ถ้า table pending_matches ไม่มี ให้แจ้ง admin ทาง toast พิเศษ
     if (e.message && (e.message.includes('does not exist') || e.message.includes('relation') || e.message.includes('42P01'))) {
       throw new Error('⚠️ ยังไม่มีตาราง pending_matches ใน Supabase — กรุณาสร้างตารางก่อน (ดูวิธีในหน้า Admin)');
@@ -76,7 +97,17 @@ async function dbDeleteMatchesByPlayer(playerId) {
   await Promise.all(toDelete.map(m => supaFetch('matches?id=eq.' + m.id, { method: 'DELETE', prefer: 'return=minimal' })));
 }
 async function dbAddMatch(match) {
-  await supaFetch('matches', { method: 'POST', body: JSON.stringify({ type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss }), prefer: 'return=minimal' });
+  const row = { type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss };
+  if (match.mood) row.mood = match.mood;
+  try {
+    await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=minimal' });
+  } catch(e) {
+    // คอลัมน์ mood ยังไม่ถูกสร้าง → บันทึกแบบไม่มี mood แทน (ดู SQL ในหน้า Admin)
+    if (row.mood && e.message && (e.message.includes('PGRST204') || e.message.includes('mood'))) {
+      delete row.mood;
+      await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=minimal' });
+    } else throw e;
+  }
 }
 async function dbUpdateLastSeen(id) {
   try { await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ last_seen: new Date().toISOString() }), prefer: 'return=minimal' }); } catch(e) {}

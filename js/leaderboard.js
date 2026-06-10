@@ -713,7 +713,7 @@ async function saveMatch() {
           await dbUpdatePlayer(p.id, { pts: Math.max(0, pl.pts - actualLoss), losses: pl.losses + 1 });
         }
       }
-      await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss } });
+      await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
       await loadAll();
       closeModal('finishModal');
       currentMatch = null;
@@ -731,7 +731,7 @@ async function saveMatch() {
       }, 500);
     } else {
       // ผู้เล่นทั่วไป → ส่งรอ Admin ยืนยันก่อน ยังไม่บันทึกคะแนน
-      await dbAddPending({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, submittedBy: currentUser.id });
+      await dbAddPending({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, submittedBy: currentUser.id, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
       await loadAll();
       closeModal('finishModal');
       currentMatch = null;
@@ -781,6 +781,7 @@ async function renderHistory() {
       const winner = m.winTeam === 'A' ? nameA : nameB, loser = m.winTeam === 'A' ? nameB : nameA;
       const date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
       const typeLabel = m.type === 'doubles' ? '👥 Doubles' : '👤 Singles';
+      const moodTag = m.mood ? ` <span style="font-size:0.95rem" title="บรรยากาศแมตช์">${m.mood}</span>` : '';
       // Highlight if filtered player won/lost
       let resultHint = '';
       if (filterPlayerId) {
@@ -793,7 +794,7 @@ async function renderHistory() {
         : '';
       return `<div class="hist-item">
         <div class="hist-header">
-          <div style="font-size:0.82rem;font-weight:600">${typeLabel}${resultHint}</div>
+          <div style="font-size:0.82rem;font-weight:600">${typeLabel}${moodTag}${resultHint}</div>
           <div style="display:flex;align-items:center;gap:6px"><div class="hist-date">${date}</div>${undoBtn}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
@@ -896,7 +897,7 @@ async function renderProfile() {
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
       const opp = inA ? m.teamB : m.teamA, date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
-      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts</div></div>`;
+      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts${m.mood ? ' · ' + m.mood : ''}</div></div>`;
     }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_match')}</div>`;
   } catch(e) { console.error(e); }
 }
@@ -1007,7 +1008,7 @@ async function approvePending(pendingId) {
         }
       }
     }
-    await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss } });
+    await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss }, mood: r.mood || null });
     await dbDeletePending(pendingId);
     await loadAll();
     toast('✅ ยืนยันแมตช์สำเร็จ! คะแนนถูกบันทึกแล้ว 🎉', 'success');
@@ -1385,12 +1386,88 @@ async function adminDeletePlayerTourWin(tournamentId, tournamentName, playerId) 
 }
 
 function resetAllData() { toast('ฟีเจอร์นี้ต้องลบผ่าน Supabase Dashboard ครับ', 'info'); }
-function exportData() {
-  const blob = new Blob([JSON.stringify({ players: db.players, matches: db.matches }, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `badminton_backup_${Date.now()}.json`; a.click();
-  toast('ส่งออกสำเร็จ', 'success');
+
+// ── Backup: ส่งออก "แถวดิบ" จาก DB ทั้งหมด (ไม่ใช่ cache 50 แมตช์) ──
+// เก็บเป็นแถวดิบเพื่อให้ import เขียนกลับแบบคอลัมน์ต่อคอลัมน์ได้ตรงๆ
+async function exportData() {
+  if (!isAdminUser()) return;
+  toast('กำลังเตรียมไฟล์สำรอง...', 'info');
+  try {
+    const [players, matches] = await Promise.all([
+      supaFetchAll('players?order=id.asc'),
+      supaFetchAll('matches?order=played_at.asc')
+    ]);
+    const payload = { format: 'bk-backup', version: 2, exported_at: new Date().toISOString(), players, matches };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `badminton_backup_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    toast(`ส่งออกสำเร็จ — ผู้เล่น ${players.length} คน · แมตช์ ${matches.length} รายการ`, 'success');
+  } catch(e) { toast('ส่งออกไม่ได้: ' + e.message, 'error'); }
 }
-function importData(e) { toast('Import ผ่าน Supabase Dashboard ครับ', 'info'); }
+
+// ── Restore: อัปเดตสถิติผู้เล่นที่มีอยู่ + เติมแมตช์ที่ขาดหาย ──
+// ไม่ insert id ตรงๆ (กัน sequence ชน) — แมตช์ใหม่ให้ DB ออก id เอง เทียบซ้ำด้วย played_at
+async function importData(e) {
+  if (!isAdminUser()) return;
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  e.target.value = ''; // เคลียร์เพื่อให้เลือกไฟล์เดิมซ้ำได้
+  let data;
+  try { data = JSON.parse(await file.text()); } catch(_) { return toast('ไฟล์ไม่ใช่ JSON ที่ถูกต้อง', 'error'); }
+  if (data.format !== 'bk-backup' || !Array.isArray(data.players) || !Array.isArray(data.matches)) {
+    return toast('ไม่รองรับไฟล์รูปแบบนี้ — ใช้ไฟล์จากปุ่ม "ส่งออกข้อมูล" เวอร์ชันล่าสุดเท่านั้น', 'error');
+  }
+  if (!confirm(`กู้คืนจากไฟล์สำรอง (${(data.exported_at || '').slice(0,10) || 'ไม่ระบุวันที่'})\n\n• อัปเดตสถิติผู้เล่นที่ตรงกัน ${data.players.length} คน\n• เติมแมตช์ที่ขาดหาย (ในไฟล์มี ${data.matches.length} รายการ)\n\nข้อมูลปัจจุบันของผู้เล่นที่ตรงกันจะถูกเขียนทับด้วยค่าในไฟล์ — ดำเนินการต่อ?`)) return;
+  toast('กำลังกู้คืน...', 'info');
+  try {
+    await loadPlayers();
+    // 1) ผู้เล่น: จับคู่ด้วย id ก่อน แล้วค่อยชื่อ — เขียนเฉพาะคอลัมน์ที่มีในไฟล์
+    const RESTORE_COLS = ['pin','pts','wins','losses','is_admin','coins','prime_titles','custom_ach','gacha_frame','gacha_name','gacha_emoji','owned_effects','gacha_inventory','consecutive_losses'];
+    let updated = 0; const missing = [];
+    for (const bp of data.players) {
+      const live = db.players.find(x => x.id === bp.id)
+        || db.players.find(x => x.name && bp.name && x.name.toLowerCase() === String(bp.name).toLowerCase());
+      if (!live) { missing.push(bp.name || ('#' + bp.id)); continue; }
+      const payload = {};
+      for (const c of RESTORE_COLS) if (bp[c] !== undefined) payload[c] = bp[c];
+      if (!Object.keys(payload).length) continue;
+      try {
+        await supaFetch('players?id=eq.' + live.id, { method: 'PATCH', body: JSON.stringify(payload), prefer: 'return=minimal' });
+      } catch(err) {
+        // บางคอลัมน์เสริมอาจยังไม่ถูกสร้างในตาราง → กู้เฉพาะสถิติหลัก
+        const core = {};
+        for (const c of ['pin','pts','wins','losses','is_admin']) if (bp[c] !== undefined) core[c] = bp[c];
+        await supaFetch('players?id=eq.' + live.id, { method: 'PATCH', body: JSON.stringify(core), prefer: 'return=minimal' });
+      }
+      updated++;
+    }
+    // 2) แมตช์: เติมเฉพาะที่ยังไม่มี (เทียบด้วย played_at)
+    const existing = new Set((await supaFetchAll('matches?select=played_at')).map(r => r.played_at));
+    const MATCH_COLS = ['type','team_a','team_b','score_a','score_b','win_team','pts_gain','pts_loss','played_at','mood'];
+    const toInsert = data.matches
+      .filter(m => m.played_at && !existing.has(m.played_at))
+      .map(m => { const row = {}; for (const c of MATCH_COLS) if (m[c] !== undefined && m[c] !== null) row[c] = m[c]; return row; });
+    for (let i = 0; i < toInsert.length; i += 200) {
+      const batch = toInsert.slice(i, i + 200);
+      try {
+        await supaFetch('matches', { method: 'POST', body: JSON.stringify(batch), prefer: 'return=minimal' });
+      } catch(err) {
+        // เผื่อคอลัมน์ mood ยังไม่ถูกสร้าง → ลองใหม่แบบไม่มี mood
+        const noMood = batch.map(({ mood, ...rest }) => rest);
+        await supaFetch('matches', { method: 'POST', body: JSON.stringify(noMood), prefer: 'return=minimal' });
+      }
+    }
+    await loadAll();
+    renderAdmin();
+    const missTxt = missing.length
+      ? ` · ไม่พบผู้เล่น ${missing.length} คน (${missing.slice(0,3).join(', ')}${missing.length > 3 ? '…' : ''}) ต้องสมัครใหม่ก่อนแล้วค่อยกู้อีกรอบ`
+      : '';
+    toast(`✅ กู้คืนสำเร็จ — อัปเดต ${updated} ผู้เล่น · เพิ่ม ${toInsert.length} แมตช์${missTxt}`, 'success');
+  } catch(err) { toast('กู้คืนไม่สำเร็จ: ' + err.message, 'error'); }
+}
 
 function openModal(id) { document.getElementById(id).classList.remove('hidden') }
 function closeModal(id) { document.getElementById(id).classList.add('hidden') }
@@ -1442,7 +1519,7 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-const CURRENT_VERSION = '7.0';
+const CURRENT_VERSION = '7.1';
 
 function showPatchNotes() {
   const bg = document.getElementById('patchModal');
