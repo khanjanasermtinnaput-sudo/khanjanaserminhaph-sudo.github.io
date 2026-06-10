@@ -626,6 +626,10 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
 
+      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.1 — Match Mood (อีโมจิบรรยากาศแมตช์)</div>
+      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE matches ADD COLUMN IF NOT EXISTS mood text;
+ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS mood text;</pre>
+
       <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.0 — Online/Offline Status</div>
       <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE players ADD COLUMN IF NOT EXISTS last_seen timestamptz;</pre>
 
@@ -790,14 +794,25 @@ END $$;</pre>
   <div class="patch-modal" id="patchModalBox">
     <div class="patch-header">
       <div>
-        <div class="patch-ver-tag">🤖 VERSION 7.0 — AOF AI Upgrade + Element Gacha</div>
-        <div class="patch-title">Gemini 2.5, AI สำหรับทุกคน, กรอบธาตุ Mythic & PWA ใหม่</div>
+        <div class="patch-ver-tag">🧹 VERSION 7.1 — Quality of Life</div>
+        <div class="patch-title">เร็วขึ้น เบาลง · Match Mood · กาชาออกซ้ำคืนเหรียญ · Backup เต็มระบบ</div>
         <div class="patch-date">📅 มิถุนายน 2569</div>
       </div>
       <button class="patch-close" onclick="closePatchNotes()">✕</button>
     </div>
     <div class="patch-divider"></div>
     <div class="patch-body">
+
+      <div class="patch-section">
+        <div class="patch-sec-title t-new">🧹 Quality of Life & Cleanup (v7.1)</div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>😄 <strong>Match Mood บันทึกจริงแล้ว</strong> — อีโมจิบรรยากาศที่เลือกหลังจบแมตช์ จะแสดงในหน้า 📋 ประวัติ และการ์ด "วันนี้"<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">Admin ต้องรัน SQL v7.1 ใน Admin → Supabase ก่อน mood ถึงจะถูกบันทึก</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🪙 <strong>กาชาออกซ้ำคืนเหรียญ</strong> — ได้ของที่มีอยู่แล้วไม่เสียเปล่าอีกต่อไป: Emoji +1 · Frame +3 · Ultra Rare +6 · Secret +20</div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>💾 <strong>Backup เต็มระบบ</strong> — ปุ่มส่งออกได้ครบทุกแมตช์ (เดิมตัดที่ 50) + ปุ่มนำเข้า "กู้คืนข้อมูล" ใช้งานได้จริงแล้ว</div></div>
+        <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🐛 <strong>แก้บัค</strong> — Master เห็นความคืบหน้าไป King แล้ว · iOS Safari ไม่พังหลัง login · เหรียญจากกล่องของขวัญไม่มีทางหาย</div></div>
+        <div class="patch-item i-change"><div class="patch-dot d-change"></div><div>⚡ <strong>เร็วขึ้นทั้งเว็บ</strong> — หน้าเว็บเบาลง 21% · ติดตั้งแอปเบาลง 230KB · ตัดโค้ดตาย ~370 บรรทัด · ลด network calls ซ้ำซ้อน</div></div>
+      </div>
+
+      <div style="border-top:1px solid var(--glass-border);margin:18px 0 6px"></div>
 
       <div class="patch-section">
         <div class="patch-sec-title t-new">🤖 AOF Assistance 2.0 — AI Upgrade (v7.0)</div>
@@ -984,7 +999,7 @@ END $$;</pre>
 
     </div>
     <div class="patch-footer">
-      🏸 Badminton Club — v7.0
+      🏸 Badminton Club — v7.1
       <button class="patch-read-btn" onclick="markPatchRead()">✅ รับทราบแล้ว</button>
     </div>
   </div>
@@ -994,18 +1009,18 @@ END $$;</pre>
 <div id="ppOverlay" style="display:none"></div>
 
 <script src="js/i18n.js?v=20260529l"></script>
-<script src="js/db.js?v=20260610a"></script>
+<script src="js/db.js?v=20260610b"></script>
 <script src="js/elo.js?v=20260610a"></script>
-<script src="js/auth.js?v=20260529l"></script>
-<script src="js/leaderboard.js?v=20260610a"></script>
+<script src="js/auth.js?v=20260610b"></script>
+<script src="js/leaderboard.js?v=20260610b"></script>
 <script src="js/profile.js?v=20260610a"></script>
 <script src="js/stats.js?v=20260610a"></script>
 <script src="js/season.js?v=20260610a"></script>
 <script src="js/achievements.js?v=20260610a"></script>
 <script src="js/rankup.js?v=20260529l"></script>
-<script src="js/daily.js?v=20260610a"></script>
+<script src="js/daily.js?v=20260610b"></script>
 <script src="js/avatar.js?v=20260603f"></script>
-<script src="js/gacha.js?v=20260610a"></script>
+<script src="js/gacha.js?v=20260610b"></script>
 <script src="js/mailbox.js?v=20260610a"></script>
 <script src="js/tournament.js?v=20260610a"></script>
 <script src="js/utils.js?v=20260603f"></script>
@@ -1348,6 +1363,7 @@ loadAll = async function() {
       <div style="display:flex;justify-content:space-between;padding:4px 10px;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">🌈 Rare Frame</span><span style="color:var(--muted)">7%</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 10px;background:rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.04)"><span style="color:var(--muted)">😎 Emoji Avatar</span><span style="color:var(--muted)">20%</span></div>
       <div style="display:flex;justify-content:space-between;padding:4px 10px"><span style="color:rgba(255,255,255,0.25)">💨 ไม่ได้ของ</span><span style="color:rgba(255,255,255,0.25)">~70%</span></div>
+      <div style="padding:4px 10px;border-top:1px solid rgba(255,215,0,0.15);color:var(--gold);font-size:0.66rem;text-align:center">🪙 ออกซ้ำคืนเหรียญอัตโนมัติ — Emoji +1 · Frame +3 · Ultra +6 · Secret +20</div>
     </div>
     <div id="gachaPullBalance" style="font-size:0.82rem;margin-bottom:12px;color:var(--neon)"></div>
     <div id="gachaPullResult" style="min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center">
