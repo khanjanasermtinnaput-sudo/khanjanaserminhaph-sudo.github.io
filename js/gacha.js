@@ -1,34 +1,15 @@
-// ── 1. DIVISIONS I/II/III ─────────────────────────────────
-function getRankLabel(pts, playerId) {
-  const base = getRank(pts, playerId);
-  if (base.id === 'king') return '👑 King';
-  const divs = {
-    bronze:   [[0,33,'III'],[34,66,'II'],[67,100,'I']],
-    silver:   [[101,166,'III'],[167,233,'II'],[234,300,'I']],
-    gold:     [[301,367,'III'],[368,433,'II'],[434,500,'I']],
-    platinum: [[501,600,'III'],[601,700,'II'],[701,800,'I']],
-    diamond:  [[801,1033,'III'],[1034,1266,'II'],[1267,1499,'I']],
-    master:   [[1500,1999,'III'],[2000,2499,'II'],[2500,2999,'I']],
-  };
-  const icon = { bronze:'🥉', silver:'🥈', gold:'🥇', platinum:'💎', diamond:'💠', master:'🔥' };
-  const name = { bronze:'Bronze', silver:'Silver', gold:'Gold', platinum:'Platinum', diamond:'Diamond', master:'Master' };
-  const ranges = divs[base.id];
-  if (!ranges) return base.label;
-  for (const [lo, hi, div] of ranges) {
-    if (pts >= lo && pts <= hi) return `${icon[base.id]} ${name[base.id]} ${div}`;
-  }
-  return base.label;
-}
-
-// ── 2. COIN SYSTEM ────────────────────────────────────────
+// ── COIN SYSTEM ────────────────────────────────────────
+// Never throws. Returns true when the DB write succeeded — callers use the
+// return value to fall back to the localStorage coin shadow when it didn't.
 async function dbAddCoins(playerId, amount) {
   try {
     const pl = db.players.find(x => x.id === playerId);
-    if (!pl) return;
+    if (!pl) return false;
     const newCoins = Math.max(0, (pl.coins || 0) + amount);
     await dbUpdatePlayer(playerId, { coins: newCoins });
     pl.coins = newCoins;
-  } catch(e) { console.warn('dbAddCoins failed:', e.message); }
+    return true;
+  } catch(e) { console.warn('dbAddCoins failed:', e.message); return false; }
 }
 
 async function awardMatchCoins(allPlayerIds) {
@@ -274,8 +255,8 @@ async function doGachaPull10() {
   if (btn10) btn10.disabled = true;
   if (btn1)  btn1.disabled  = true;
 
-  try { await dbAddCoins(currentUser.id, -20); }
-  catch(e) { _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 20); }
+  const _paid10 = await dbAddCoins(currentUser.id, -20);
+  if (!_paid10) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 20);
   await loadPlayers();
 
   const results = [];
@@ -331,11 +312,8 @@ async function doGachaPull() {
   if (btn) btn.disabled = true;
 
   // หัก 2 coins (DB + localStorage fallback)
-  try {
-    await dbAddCoins(currentUser.id, -2);
-  } catch(e) {
-    _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 2);
-  }
+  const _paid1 = await dbAddCoins(currentUser.id, -2);
+  if (!_paid1) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 2);
   await loadPlayers();
   const plUpdated = db.players.find(x => x.id === currentUser.id);
 

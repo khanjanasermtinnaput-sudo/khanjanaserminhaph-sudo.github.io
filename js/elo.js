@@ -15,14 +15,14 @@ function getRank(pts, playerId) {
 }
 function getRankByPts(pts) { for (let i = 1; i < RANKS.length; i++) { if (pts >= RANKS[i].min) return RANKS[i]; } return RANKS[RANKS.length - 1]; }
 function rankProgress(pts) {
-  const ranksAsc = [...RANKS].slice(1).reverse();
-  for (let i = 0; i < ranksAsc.length; i++) {
+  const ranksAsc = [...RANKS].slice(1).reverse(); // bronze → master
+  for (let i = 0; i < ranksAsc.length - 1; i++) {
     const cur = ranksAsc[i], next = ranksAsc[i+1];
-    if (!next) return { pct: 100, next: null };
     if (pts >= cur.min && pts < next.min) return { pct: Math.round(((pts - cur.min) / (next.min - cur.min)) * 100), next };
   }
-  if (pts >= 1500) return { pct: Math.min(100, Math.round(((pts - 1500) / (3000 - 1500)) * 100)), next: pts >= 3000 ? null : RANKS[0] };
-  return { pct: 0, next: RANKS[RANKS.length-2] };
+  // Master (1500+): progress toward King (3000); at 3000+ pts the bar is maxed
+  if (pts >= 3000) return { pct: 100, next: null };
+  return { pct: Math.max(0, Math.round(((pts - 1500) / (3000 - 1500)) * 100)), next: RANKS[0] };
 }
 
 function getKFactor(totalMatches) {

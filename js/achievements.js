@@ -394,16 +394,6 @@ renderProfile = async function() {
   }
 };
 
-// ============================================================
-// Patch leaderboard render to show nemesis + streak + win rate sparkline
-// ============================================================
-const _origRenderLB = renderLeaderboard;
-renderLeaderboard = function(data, animate = true) {
-  _origRenderLB(data, animate);
-  // Season banner
-  renderSeasonBanner();
-};
-
 // Patch openPlayerProfile to show nemesis + streak + win rate
 const _origOpenProfile = openPlayerProfile;
 openPlayerProfile = function(playerId) {
@@ -473,10 +463,6 @@ openPlayerProfile = function(playerId) {
   }, 100);
 };
 
-// Patch leaderboard row to show streak fire on avatars
-// Override the lb-br row innerHTML to add streak fire on avatar
-const _origRenderLBRows = typeof renderLBRows !== 'undefined' ? renderLBRows : null;
-
 // Post-process leaderboard: add streak fire to avatars
 function patchLBStreaks() {
   if (!db.players || !db.matches) return;
@@ -504,7 +490,7 @@ function patchLBStreaks() {
   });
 }
 
-// Patch renderLeaderboard to call patchLBStreaks after render
+// Patch renderLeaderboard: season banner + streak fire (single wrapper)
 const _rlb2 = renderLeaderboard;
 renderLeaderboard = function(data, animate = true) {
   _rlb2(data, animate);

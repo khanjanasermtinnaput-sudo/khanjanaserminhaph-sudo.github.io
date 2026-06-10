@@ -96,7 +96,10 @@ async function claimMailItem(mailId, itemType, itemValue, extBtn) {
     };
 
     if (itemType === 'coins') {
-      await dbAddCoins(currentUser.id, parseInt(itemValue) || 0);
+      const amt = parseInt(itemValue) || 0;
+      const ok = await dbAddCoins(currentUser.id, amt);
+      // DB write failed (e.g. coins column missing) → keep the reward in the localStorage shadow
+      if (!ok) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + amt);
       toast(`🪙 รับ +${itemValue} เหรียญแล้ว!`, 'success');
     } else if (itemType === 'elo') {
       if (pl) { await _tryDb({ pts: (pl.pts || 0) + (parseInt(itemValue) || 0) }); }

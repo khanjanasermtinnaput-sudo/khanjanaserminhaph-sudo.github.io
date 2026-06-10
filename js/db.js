@@ -54,11 +54,16 @@ async function dbAddPending(match) {
     throw e;
   }
 }
+let _pendingCleanupAt = 0;
 async function dbGetPending() {
   const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
   // ดึงเฉพาะรายการที่ created_at ไม่เกิน 12 ชม. ที่ผ่านมา
-  // พร้อมลบรายการเก่าที่หมดอายุออกด้วย (fire-and-forget)
-  supaFetch('pending_matches?created_at=lt.' + cutoff, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+  // ลบรายการเก่าที่หมดอายุออกด้วย (fire-and-forget) — ทำอย่างมากทุก 10 นาที
+  // เพราะ GET ด้านล่างกรอง cutoff อยู่แล้ว รายการหมดอายุไม่มีทางแสดงผล
+  if (Date.now() - _pendingCleanupAt > 10 * 60 * 1000) {
+    _pendingCleanupAt = Date.now();
+    supaFetch('pending_matches?created_at=lt.' + cutoff, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+  }
   return await supaFetch('pending_matches?created_at=gte.' + cutoff + '&order=created_at.desc');
 }
 async function dbDeletePending(id) { await supaFetch("pending_matches?id=eq." + id, { method: "DELETE", prefer: "return=minimal" }); }
