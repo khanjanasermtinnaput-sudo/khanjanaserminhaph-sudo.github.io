@@ -338,22 +338,6 @@ async function toggleCachAward(achId, playerId, give) {
   renderCachAdmin();
 }
 
-function renderCustomAchievements(player) {
-  const list = player?.customAch;
-  if (!list?.length) return '';
-  const badges = list.map(a=>`
-    <div class="cach-wrap">
-      <div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}">
-        <span class="cach-icon">${a.icon||'🏆'}</span>
-        <span class="cach-text">${a.title}</span>
-      </div>
-    </div>`).join('');
-  return `<div class="cach-section">
-    <div class="prime-ss-label">🎖️ Achievements</div>
-    <div class="cach-list">${badges}</div>
-  </div>`;
-}
-
 function renderSeasonBanner() {
   const days = getDaysUntilReset();
   const banner = document.getElementById('seasonBanner');

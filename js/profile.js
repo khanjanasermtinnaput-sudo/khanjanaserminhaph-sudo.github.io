@@ -319,76 +319,7 @@ function buildEloHistory(playerId) {
   return history.length > 1 ? history : [p.pts];
 }
 
-function buildEloChart(data) {
-  if (data.length < 2) return '<div style="text-align:center;color:var(--muted);font-size:0.78rem;padding:10px 0">ยังไม่มีข้อมูลเพียงพอ</div>';
-  const W = 500, H = 80, pad = 10;
-  const min = Math.min(...data) - 5, max = Math.max(...data) + 5;
-  const range = max - min || 1;
-  const pts = data.map((v, i) => {
-    const x = pad + (i / (data.length - 1)) * (W - pad * 2);
-    const y = H - pad - ((v - min) / range) * (H - pad * 2);
-    return `${x},${y}`;
-  });
-  const pathD = 'M' + pts.join(' L');
-  const areaD = pathD + ` L${W - pad},${H} L${pad},${H} Z`;
-  const last = data[data.length - 1], first = data[0];
-  const trending = last >= first;
-  const color = trending ? '#00f5a0' : '#ff4757';
-  return `<svg class="pp2-chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="eg" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${color}" stop-opacity="0.3"/>
-        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <path d="${areaD}" fill="url(#eg)"/>
-    <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="${pts[pts.length-1].split(',')[0]}" cy="${pts[pts.length-1].split(',')[1]}" r="4" fill="${color}" opacity="0.9"/>
-  </svg>`;
-}
-
 // ===== PENDING RANK-UP NOTIFICATIONS (สำหรับผู้เล่นที่ Admin อนุมัติตอนออฟไลน์) =====
-// Helper: detect if a player crossed INTO King rank (for broadcasting king anim to everyone watching)
-function didCrossIntoKing(oldPts, newPts, playerId) {
-  let wasKing = false;
-  if (oldPts >= 2000) {
-    const sortedOld = [...db.players].sort((a, b) => b.pts - a.pts);
-    wasKing = !!(sortedOld[0] && sortedOld[0].id === playerId);
-  }
-  let willBeKing = false;
-  if (newPts >= 2000) {
-    // Project the new state for this player
-    const projected = db.players.map(p => p.id === playerId ? {...p, pts: newPts} : p);
-    const sortedNew = [...projected].sort((a, b) => b.pts - a.pts);
-    willBeKing = !!(sortedNew[0] && sortedNew[0].id === playerId);
-  }
-  return !wasKing && willBeKing;
-}
-
-function queueRankUpForPlayer(playerId, oldPts, newPts, playerName, gainPts) {
-  const key = 'badminton_rankup_queue';
-  let queue = [];
-  try { queue = JSON.parse(localStorage.getItem(key) || '[]'); } catch(e) {}
-  const oldRank = getRankByPts(oldPts);
-  const newRank = getRankByPts(newPts);
-  const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
-  let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && oldPts >= 2000) {
-    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
-    if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
-  }
-  let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && newPts >= 2000) {
-    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
-    if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
-  }
-  const oldIdx = rankOrder.indexOf(effectiveOldRankId);
-  const newIdx = rankOrder.indexOf(effectiveNewRankId);
-  if (newIdx > oldIdx) {
-    queue.push({ playerId, rankId: effectiveNewRankId, playerName, gainPts });
-    localStorage.setItem(key, JSON.stringify(queue));
-  }
-}
 
 function checkPendingRankUps() {
   if (!currentUser) return;

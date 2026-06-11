@@ -15,10 +15,9 @@ function getRank(pts, playerId) {
 }
 function getRankByPts(pts) { for (let i = 1; i < RANKS.length; i++) { if (pts >= RANKS[i].min) return RANKS[i]; } return RANKS[RANKS.length - 1]; }
 function rankProgress(pts) {
-  const ranksAsc = [...RANKS].slice(1).reverse();
-  for (let i = 0; i < ranksAsc.length; i++) {
+  const ranksAsc = [...RANKS].slice(1).reverse(); // bronze → master
+  for (let i = 0; i < ranksAsc.length - 1; i++) {
     const cur = ranksAsc[i], next = ranksAsc[i+1];
-    if (!next) return { pct: 100, next: null };
     if (pts >= cur.min && pts < next.min) return { pct: Math.round(((pts - cur.min) / (next.min - cur.min)) * 100), next };
   }
   if (pts >= 1201) return { pct: Math.min(100, Math.round(((pts - 1201) / (2000 - 1201)) * 100)), next: pts >= 2000 ? null : RANKS[0] };

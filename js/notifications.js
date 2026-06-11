@@ -40,7 +40,8 @@ function initNotifications() {
   if (typeof isAdminUser === 'function' && isAdminUser()) _pollPending();
 
   // Permission prompt after 4s if not yet decided
-  if (Notification.permission === 'default' &&
+  // (iOS Safari outside a PWA has no Notification API — guard so login flow never breaks)
+  if (typeof Notification !== 'undefined' && Notification.permission === 'default' &&
       !localStorage.getItem('nf_prompt_skip')) {
     setTimeout(_showPrompt, 4000);
   }
@@ -152,23 +153,17 @@ function _pushNotif(n) {
   toast(`${n.icon} ${n.title} ${n.body}`, n.win === true ? 'success' : n.win === false ? 'error' : 'info');
 
   // Browser notification (if granted)
-  if (Notification.permission === 'granted') {
+  if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try {
       new Notification(`${n.icon} ${n.title}`, {
         body: n.body,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
+        icon: 'icon-192.png',
+        badge: 'icon-192.png',
         tag: 'bk-' + n.id,
         renotify: true
       });
     } catch(e) {}
   }
-}
-
-// Public: push arbitrary notification (mailbox, rank-up, etc.)
-function pushNotification(icon, title, body, type) {
-  _pushNotif({ id: Date.now(), type: type || 'info', icon, title, body,
-    time: new Date().toISOString(), read: false, win: null });
 }
 
 // ── Bell & panel ─────────────────────────────────────────────
@@ -254,7 +249,7 @@ function _rel(d) {
 // ── Permission prompt ─────────────────────────────────────────
 
 function _showPrompt() {
-  if (Notification.permission !== 'default') return;
+  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
   if (localStorage.getItem('nf_prompt_skip')) return;
   const p = document.getElementById('notifPrompt');
   if (p) p.classList.add('show');
@@ -263,13 +258,14 @@ function _showPrompt() {
 function requestNotifPermission() {
   const p = document.getElementById('notifPrompt');
   if (p) p.classList.remove('show');
+  if (typeof Notification === 'undefined') { toast('อุปกรณ์นี้ไม่รองรับการแจ้งเตือน', 'info'); return; }
   Notification.requestPermission().then(perm => {
     if (perm === 'granted') {
       toast('✅ เปิดการแจ้งเตือนแล้ว', 'success');
       try {
         new Notification('🏸 Badminton Club', {
           body: 'จะแจ้งเมื่อมีแมตช์ใหม่ของคุณ!',
-          icon: '/icon-192.png'
+          icon: 'icon-192.png'
         });
       } catch(e) {}
     } else {
