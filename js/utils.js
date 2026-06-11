@@ -586,7 +586,7 @@ function closeHoF() { const bg = document.getElementById('hofModalBg'); if (bg) 
 function checkKingChange() {
   if (!db.players || !db.players.length) return;
   const sorted = [...db.players].sort((a,b) => b.pts - a.pts);
-  const king = sorted[0] && sorted[0].pts >= 3000 ? sorted[0] : null;
+  const king = sorted[0] && sorted[0].pts >= 2000 ? sorted[0] : null;
   const stored = (() => { try { return JSON.parse(localStorage.getItem('badminton_king_tracker')||'null'); } catch(e) { return null; } })();
   if (king) {
     if (stored && stored.id !== king.id) {
@@ -795,7 +795,7 @@ function getRankBadgeSVG(pts, playerId, size) {
     silver:   [[101,166,'III'],[167,233,'II'],[234,300,'I']],
     gold:     [[301,367,'III'],[368,433,'II'],[434,500,'I']],
     platinum: [[501,600,'III'],[601,700,'II'],[701,800,'I']],
-    diamond:  [[801,1033,'III'],[1034,1266,'II'],[1267,1499,'I']],
+    diamond:  [[801,933,'III'],[934,1066,'II'],[1067,1200,'I']],
   };
   if (_dm[tier]) { for (const [lo,hi,d] of _dm[tier]) { if (pts>=lo && pts<=hi) { level=d; break; } } }
   const opacity = level==='III' ? 0.7 : level==='II' ? 0.85 : 1.0;

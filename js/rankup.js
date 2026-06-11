@@ -14,13 +14,13 @@ function checkAndShowRankUp(playerOldPts, playerNewPts, playerName, gainPts) {
   const rankOrder = ['bronze','silver','gold','platinum','diamond','master','king'];
   // Resolve effective old rank (getRankByPts skips king, so check manually)
   let effectiveOldRankId = oldRank.id;
-  if (oldRank.id === 'master' && playerOldPts >= 3000) {
+  if (oldRank.id === 'master' && playerOldPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveOldRankId = 'king';
   }
   // Resolve effective new rank
   let effectiveNewRankId = newRank.id;
-  if (newRank.id === 'master' && playerNewPts >= 3000) {
+  if (newRank.id === 'master' && playerNewPts >= 2000) {
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
     if (sorted[0] && sorted[0].name === playerName) effectiveNewRankId = 'king';
   }

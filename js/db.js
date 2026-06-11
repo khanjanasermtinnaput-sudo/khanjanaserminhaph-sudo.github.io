@@ -55,11 +55,25 @@ async function dbAddPending(match) {
   }
 }
 async function dbGetPending() {
-  const cutoff = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-  // ดึงเฉพาะรายการที่ created_at ไม่เกิน 12 ชม. ที่ผ่านมา
-  // พร้อมลบรายการเก่าที่หมดอายุออกด้วย (fire-and-forget)
-  supaFetch('pending_matches?created_at=lt.' + cutoff, { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
-  return await supaFetch('pending_matches?created_at=gte.' + cutoff + '&order=created_at.desc');
+  // ดึง "ทุก" รายการที่รออยู่ — ไม่ filter created_at ใน query
+  // เพราะถ้า created_at เป็น NULL หรือ timezone เพี้ยน รายการจะถูกซ่อนหายไปจากหน้า Admin
+  // ทำให้ผู้เล่นบันทึกผลแล้วคะแนนหายไปเลย (bug ที่กำลังแก้)
+  const rows = await supaFetch('pending_matches?order=created_at.desc');
+  const cutoffMs = Date.now() - 12 * 60 * 60 * 1000;
+  const expiredIds = [];
+  const active = [];
+  for (const r of rows) {
+    const ts = r.created_at ? new Date(r.created_at).getTime() : NaN;
+    // นับว่าหมดอายุ "เฉพาะ" รายการที่มี created_at ชัดเจนและเกิน 12 ชม. จริง
+    // ถ้า created_at หาย/อ่านไม่ได้ ให้ถือว่ายัง active ไว้ก่อน เพื่อไม่ให้คะแนนหาย
+    if (!isNaN(ts) && ts < cutoffMs) expiredIds.push(r.id);
+    else active.push(r);
+  }
+  // ลบเฉพาะรายการที่มั่นใจว่าเก่ากว่า 12 ชม. (fire-and-forget)
+  if (expiredIds.length) {
+    supaFetch('pending_matches?id=in.(' + expiredIds.join(',') + ')', { method: 'DELETE', prefer: 'return=minimal' }).catch(() => {});
+  }
+  return active;
 }
 async function dbDeletePending(id) { await supaFetch("pending_matches?id=eq." + id, { method: "DELETE", prefer: "return=minimal" }); }
 async function dbDeleteMatchesByPlayer(playerId) {

@@ -10,6 +10,7 @@ let _notifTimer     = null;
 let _notifHistory   = [];
 let _notifLastTs    = null;
 let _notifPanelOpen = false;
+let _pendingSeen    = null;   // Set ของ pending id ที่ admin รับรู้แล้ว (กันแจ้งซ้ำ)
 
 // ── Init / Stop ──────────────────────────────────────────────
 
@@ -27,9 +28,16 @@ function initNotifications() {
 
   _updateBell();
 
+  // โหลด pending-seen set ที่บันทึกไว้ (ค้างข้ามรอบ login เพื่อจำว่าเคยแจ้งอะไรไปแล้ว)
+  try { _pendingSeen = new Set(JSON.parse(localStorage.getItem('pending_seen_' + currentUser.id) || '[]')); }
+  catch(e) { _pendingSeen = new Set(); }
+
   // Start poll
   clearInterval(_notifTimer);
-  _notifTimer = setInterval(_pollMatches, NOTIF_POLL_MS);
+  _notifTimer = setInterval(() => { _pollMatches(); _pollPending(); }, NOTIF_POLL_MS);
+
+  // ตรวจ pending ทันทีตอน login (สำหรับ Admin) — จับผลที่ผู้เล่นส่งมาตอน Admin ออฟไลน์
+  if (typeof isAdminUser === 'function' && isAdminUser()) _pollPending();
 
   // Permission prompt after 4s if not yet decided
   if (Notification.permission === 'default' &&
@@ -83,6 +91,50 @@ async function _pollMatches() {
         read: false
       });
     });
+  } catch(e) {}
+}
+
+// ── Pending poll (Admin only) ────────────────────────────────
+// แจ้งเตือน Admin เมื่อมีผลรอยืนยันใหม่ + อัปเดต badge แบบ live
+// ถึงแม้จะไม่ได้เปิดหน้า Admin อยู่ก็ตาม — แก้บั๊กที่ผลที่ส่งมา "ไม่แจ้งเตือน" แล้วหายไป
+async function _pollPending() {
+  if (!currentUser || typeof isAdminUser !== 'function' || !isAdminUser()) return;
+  if (typeof dbGetPending !== 'function') return;
+  try {
+    const rows = await dbGetPending();
+
+    // อัปเดต badge ทันที แม้ไม่ได้เปิดหน้า Admin
+    const badge = document.getElementById('pendingBadge');
+    if (badge) {
+      if (rows.length) { badge.textContent = rows.length; badge.classList.remove('hidden'); }
+      else badge.classList.add('hidden');
+    }
+
+    if (_pendingSeen === null) _pendingSeen = new Set();
+    const fresh = rows.filter(r => !_pendingSeen.has(r.id));
+
+    // จำ id ปัจจุบันทั้งหมด (และตัดทิ้งอันที่หายไปแล้ว เพื่อไม่ให้ set โตไม่หยุด)
+    _pendingSeen = new Set(rows.map(r => r.id));
+    try { localStorage.setItem('pending_seen_' + currentUser.id, JSON.stringify([..._pendingSeen])); } catch(e) {}
+
+    if (!fresh.length) return;
+
+    // รีเฟรชรายการในหน้า Admin ถ้ากำลังเปิดอยู่
+    try { if (typeof renderPendingList === 'function') renderPendingList(); } catch(e) {}
+
+    if (fresh.length > 3) {
+      _pushNotif({ id: 'pending-batch-' + Date.now(), type: 'pending', win: null, icon: '⏳',
+        title: 'มีผลรอยืนยัน', body: `${fresh.length} แมตช์รอยืนยันใน Admin Panel`,
+        time: new Date().toISOString(), read: false });
+    } else {
+      fresh.forEach(r => {
+        const submitter = (db.players.find(p => p.id === r.submitted_by) || {}).name || 'ผู้เล่น';
+        _pushNotif({ id: 'pending-' + r.id, type: 'pending', win: null, icon: '⏳',
+          title: 'มีผลรอยืนยัน',
+          body: `${submitter} ส่งผล ${r.score_a}-${r.score_b} · กดยืนยันใน Admin Panel`,
+          time: new Date().toISOString(), read: false });
+      });
+    }
   } catch(e) {}
 }
 

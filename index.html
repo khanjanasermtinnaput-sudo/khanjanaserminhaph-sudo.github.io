@@ -710,9 +710,9 @@ END $$;</pre>
     <div class="rank-tier-row"><div class="rank-tier-icon">🥈</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-silver)">Silver</div><div class="rank-tier-pts">101 – 300 คะแนน</div><div class="rank-condition">K ลดลงตามแมตช์สะสม · <strong style="color:var(--neon)">ELO ×1.75</strong></div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">🥇</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-gold)">Gold</div><div class="rank-tier-pts">301 – 500 คะแนน</div><div class="rank-condition">ELO เริ่ม stable มากขึ้น · <strong style="color:var(--neon)">ELO ×1.60</strong></div></div></div>
     <div class="rank-tier-row"><div class="rank-tier-icon">💎</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-platinum)">Platinum</div><div class="rank-tier-pts">501 – 800 คะแนน</div><div class="rank-condition">ชนะคนต่ำกว่า → ได้น้อย, แพ้ → เสียเยอะ · <strong style="color:var(--neon)">ELO ×1.50</strong></div></div></div>
-    <div class="rank-tier-row"><div class="rank-tier-icon">💠</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-diamond)">Diamond</div><div class="rank-tier-pts">801 – 1,500 คะแนน</div><div class="rank-condition">K=24 · คะแนน stable มาก · <strong style="color:var(--neon)">ELO ×1.25</strong></div></div></div>
-    <div class="rank-tier-row"><div class="rank-tier-icon">🔥</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-master)">Master Player</div><div class="rank-tier-pts">1,500+ คะแนน</div><div class="rank-condition">Elite · ชนะ Bronze ได้น้อยมาก · <strong style="color:var(--neon)">ELO ×1.15</strong></div></div></div>
-    <div class="rank-tier-row" style="border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.05)"><div class="rank-tier-icon" style="width:64px;height:64px;overflow:visible;flex-shrink:0;padding:0;display:flex;align-items:center;justify-content:center"><div class="crown-sparkle-wrap" style="width:56px;height:56px"><img class="crown-sparkle-img" id="kcRankModalIcon" style="width:48px;height:48px" alt="crown"><canvas class="crown-sparkle-canvas" id="rankModalCrownCanvas" style="inset:-28px;width:112px;height:112px"></canvas></div></div><div style="flex:1"><div class="rank-tier-name" style="color:var(--gold)">King of Badminton</div><div class="rank-tier-pts">3,000+ คะแนน</div><div class="rank-condition">✅ ต้องมี 3,000+ คะแนน<br>✅ ต้องเป็นอันดับ #1 บน Leaderboard<br>✅ มีได้แค่ 1 คนเท่านั้นในระบบ<br><strong style="color:var(--neon)">ELO ×1.05</strong></div></div></div>
+    <div class="rank-tier-row"><div class="rank-tier-icon">💠</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-diamond)">Diamond</div><div class="rank-tier-pts">801 – 1,200 คะแนน</div><div class="rank-condition">K=24 · คะแนน stable มาก · <strong style="color:var(--neon)">ELO ×1.25</strong></div></div></div>
+    <div class="rank-tier-row"><div class="rank-tier-icon">🔥</div><div style="flex:1"><div class="rank-tier-name" style="color:var(--rank-master)">Master Player</div><div class="rank-tier-pts">1,201 – 1,999 คะแนน</div><div class="rank-condition">Elite · ชนะ Bronze ได้น้อยมาก · <strong style="color:var(--neon)">ELO ×1.15</strong></div></div></div>
+    <div class="rank-tier-row" style="border-color:rgba(255,215,0,0.5);background:rgba(255,215,0,0.05)"><div class="rank-tier-icon" style="width:64px;height:64px;overflow:visible;flex-shrink:0;padding:0;display:flex;align-items:center;justify-content:center"><div class="crown-sparkle-wrap" style="width:56px;height:56px"><img class="crown-sparkle-img" id="kcRankModalIcon" style="width:48px;height:48px" alt="crown"><canvas class="crown-sparkle-canvas" id="rankModalCrownCanvas" style="inset:-28px;width:112px;height:112px"></canvas></div></div><div style="flex:1"><div class="rank-tier-name" style="color:var(--gold)">King of Badminton</div><div class="rank-tier-pts">2,000+ คะแนน</div><div class="rank-condition">✅ ต้องมี 2,000+ คะแนน<br>✅ ต้องเป็นอันดับ #1 บน Leaderboard<br>✅ มีได้แค่ 1 คนเท่านั้นในระบบ<br><strong style="color:var(--neon)">ELO ×1.05</strong></div></div></div>
 <script>
 (function(){
   var img = document.getElementById('kcRankModalIcon');
@@ -722,7 +722,7 @@ END $$;</pre>
 }());
 </script>
     <div class="divider"></div>
-    <div style="font-size:0.76rem;color:var(--muted);line-height:1.7"><strong style="color:var(--text)">📌 สูตร True ELO</strong><br>• E = 1 / (1 + 10^((คู่แข่ง - ผู้เล่น) / 400))<br>• Gain = K × (1 - E) × ScoreMult × RankMult<br>• Loss = K × E × ScoreMult<br>• King: ต้องมี ≥ 3,000 คะแนน AND เป็นอันดับ #1<br>• คะแนนขั้นต่ำ 0 · ได้/เสียขั้นต่ำ 4 ต่อแมตช์</div>
+    <div style="font-size:0.76rem;color:var(--muted);line-height:1.7"><strong style="color:var(--text)">📌 สูตร True ELO</strong><br>• E = 1 / (1 + 10^((คู่แข่ง - ผู้เล่น) / 400))<br>• Gain = K × (1 - E) × ScoreMult × RankMult<br>• Loss = K × E × ScoreMult<br>• King: ต้องมี ≥ 2,000 คะแนน AND เป็นอันดับ #1<br>• คะแนนขั้นต่ำ 0 · ได้/เสียขั้นต่ำ 4 ต่อแมตช์</div>
     <div class="divider"></div>
     <div style="font-size:0.76rem;color:var(--muted);line-height:1.7"><strong style="color:var(--gold)">🏆 Season Reset (ทุกวันที่ 1 ของเดือน)</strong><br>• 👑 King → 1,000 คะแนน<br>• 🔥 Master → 800 คะแนน<br>• 💠 Diamond → 500 คะแนน<br>• 💎 Platinum → 300 คะแนน<br>• 🥇 Gold → 200 คะแนน<br>• 🥈 Silver / 🥉 Bronze → ไม่โดนรี ไม่โดนลบคะแนนเมื่อแพ้</div>
     <div class="modal-footer"><button class="btn btn-ghost btn-sm" onclick="closeModal('rankModal')">ปิด</button></div>
@@ -994,22 +994,22 @@ END $$;</pre>
 <div id="ppOverlay" style="display:none"></div>
 
 <script src="js/i18n.js?v=20260529l"></script>
-<script src="js/db.js?v=20260603e"></script>
-<script src="js/elo.js?v=20260529l"></script>
+<script src="js/db.js?v=20260610a"></script>
+<script src="js/elo.js?v=20260610a"></script>
 <script src="js/auth.js?v=20260529l"></script>
-<script src="js/leaderboard.js?v=20260603f"></script>
-<script src="js/profile.js?v=20260601c"></script>
+<script src="js/leaderboard.js?v=20260610a"></script>
+<script src="js/profile.js?v=20260610a"></script>
 <script src="js/stats.js?v=20260530d"></script>
-<script src="js/season.js?v=20260529l"></script>
+<script src="js/season.js?v=20260610a"></script>
 <script src="js/achievements.js?v=20260529l"></script>
-<script src="js/rankup.js?v=20260529l"></script>
+<script src="js/rankup.js?v=20260610a"></script>
 <script src="js/daily.js?v=20260529l"></script>
 <script src="js/avatar.js?v=20260603f"></script>
-<script src="js/gacha.js?v=20260603f"></script>
+<script src="js/gacha.js?v=20260610b"></script>
 <script src="js/mailbox.js?v=20260603f"></script>
 <script src="js/tournament.js?v=20260603c"></script>
-<script src="js/utils.js?v=20260603f"></script>
-<script src="js/notifications.js?v=20260602a"></script>
+<script src="js/utils.js?v=20260610a"></script>
+<script src="js/notifications.js?v=20260610a"></script>
 <script src="js/perf.js?v=20260602p"></script>
 <script>
 // ── COIN AWARDS IN SAVE MATCH ─────────────────────────────

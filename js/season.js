@@ -381,7 +381,7 @@ async function performSeasonReset(monthKey) {
     // 1. Award Prime SS title to King before reset
     const ssLabel = getAwardedSSLabel();
     const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
-    const king = sorted[0] && sorted[0].pts >= 3000 ? sorted[0] : null;
+    const king = sorted[0] && sorted[0].pts >= 2000 ? sorted[0] : null;
     let kingTitle = '';
     if (king) {
       const titles = [...(king.primeTitles || [])];
