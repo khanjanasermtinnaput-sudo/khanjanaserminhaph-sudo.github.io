@@ -1065,3 +1065,103 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .ai-quota-head{display:flex;justify-content:space-between;align-items:center;font-size:0.72rem;color:var(--muted);margin-bottom:5px;font-weight:600}
 .ai-quota-track{height:7px;border-radius:20px;background:rgba(255,255,255,0.08);overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.2)}
 .ai-quota-fill{height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,var(--neon),var(--neon2));transition:width 0.5s cubic-bezier(.25,.46,.45,.94)}
+
+/* ============================================================
+   AOF Assistance — Expansion Pack (theme-aware, #13)
+   ใช้ตัวแปร theme เดิม → ปรับตาม day/night + Liquid UI 2.0/Lite อัตโนมัติ
+   ============================================================ */
+/* ── ฟองข้อความ AOF (proactive) ── */
+.aof-bubble{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(24px);z-index:9000;width:calc(100% - 32px);max-width:380px;display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:var(--card);border:1px solid var(--glass-border);box-shadow:0 12px 40px rgba(0,0,0,0.35);opacity:0;transition:opacity .28s ease,transform .28s cubic-bezier(.2,.8,.3,1)}
+.aof-bubble.show{opacity:1;transform:translateX(-50%) translateY(0)}
+[data-style="glass"] .aof-bubble{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.aof-bubble-av{flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:linear-gradient(145deg,var(--neon),var(--neon2));box-shadow:0 0 14px rgba(0,245,160,0.35)}
+.aof-bubble-body{flex:1;min-width:0}
+.aof-bubble-name{font-size:0.7rem;font-weight:700;color:var(--neon);letter-spacing:0.03em;margin-bottom:2px}
+.aof-bubble-text{font-size:0.84rem;line-height:1.5;color:var(--text)}
+.aof-bubble-act{margin-top:8px;padding:6px 14px;border-radius:50px;border:1px solid var(--neon);background:rgba(0,245,160,0.1);color:var(--neon);font-family:inherit;font-size:0.76rem;font-weight:700;cursor:pointer;transition:background .18s}
+.aof-bubble-act:hover{background:rgba(0,245,160,0.2)}
+.aof-bubble-close{flex-shrink:0;width:24px;height:24px;border:none;background:transparent;color:var(--muted);font-size:0.9rem;cursor:pointer;border-radius:50%;line-height:1}
+.aof-bubble-close:hover{background:rgba(255,255,255,0.08);color:var(--text)}
+
+/* ── popup กลางจอ ── */
+.aof-pop-bg{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,0.55);opacity:0;transition:opacity .2s ease}
+.aof-pop-bg.show{opacity:1}
+.aof-pop{width:100%;max-width:440px;max-height:86vh;overflow-y:auto;border-radius:var(--radius);background:var(--bg2,var(--card));border:1px solid var(--glass-border);box-shadow:0 24px 70px rgba(0,0,0,0.5);transform:translateY(14px) scale(.98);transition:transform .22s cubic-bezier(.2,.8,.3,1)}
+.aof-pop-bg.show .aof-pop{transform:translateY(0) scale(1)}
+[data-style="glass"] .aof-pop{backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.aof-pop-head{position:sticky;top:0;display:flex;align-items:center;gap:9px;padding:14px 16px;border-bottom:1px solid var(--glass-border);background:inherit;z-index:1}
+.aof-pop-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;background:linear-gradient(145deg,var(--neon),var(--neon2));flex-shrink:0}
+.aof-pop-title{flex:1;font-weight:700;font-size:0.95rem;color:var(--text)}
+.aof-pop-close{width:28px;height:28px;border:none;background:var(--btn-glass);color:var(--muted);border-radius:50%;font-size:0.9rem;cursor:pointer}
+.aof-pop-close:hover{color:var(--text)}
+.aof-pop-body{padding:16px}
+
+/* ── การ์ดวิเคราะห์ผู้เล่น (#10) ── */
+.aof-an-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.aof-an-av{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;flex-shrink:0;border:2px solid var(--glass-border)}
+.aof-an-name{font-weight:800;font-size:1.05rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aof-an-sub{font-size:0.76rem;color:var(--muted)}
+.aof-an-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.aof-an-stat{text-align:center;padding:9px 4px;border-radius:12px;background:rgba(255,255,255,0.04);border:1px solid var(--glass-border)}
+.aof-an-stat b{display:block;font-size:1.05rem;color:var(--neon);font-family:'Rajdhani',sans-serif}
+.aof-an-stat span{font-size:0.64rem;color:var(--muted)}
+.aof-an-block{margin-bottom:12px}
+.aof-an-label{font-size:0.78rem;font-weight:700;margin-bottom:6px}
+.aof-an-ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.aof-an-ul li{font-size:0.83rem;line-height:1.45;color:var(--text)}
+.aof-an-next{font-size:0.82rem;color:var(--gold);background:rgba(255,215,0,0.07);border:1px solid rgba(255,215,0,0.25);border-radius:10px;padding:9px 12px;margin-bottom:10px}
+.aof-an-tip{font-size:0.82rem;line-height:1.5;color:var(--text);background:rgba(0,217,245,0.06);border:1px solid rgba(0,217,245,0.22);border-radius:10px;padding:10px 12px}
+.aof-an-ask{margin-top:14px;width:100%;padding:11px;border-radius:12px;border:1.5px solid var(--neon);background:rgba(0,245,160,0.08);color:var(--neon);font-family:inherit;font-size:0.85rem;font-weight:700;cursor:pointer;transition:background .18s}
+.aof-an-ask:hover{background:rgba(0,245,160,0.18)}
+
+/* ── HoF story ── */
+.aof-story-p{font-size:0.88rem;line-height:1.65;color:var(--text);margin:0 0 10px}
+.aof-story-p:last-child{margin-bottom:0}
+.aof-hof-click{cursor:pointer;transition:transform .15s,box-shadow .15s}
+.aof-hof-click:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(255,215,0,0.18)}
+
+/* ── ปุ่ม 🤖 ข้างชื่อใน Leaderboard (#10) ── */
+.lb-aof-btn{margin-left:6px;padding:1px 5px;border:1px solid var(--glass-border);background:rgba(0,245,160,0.08);border-radius:7px;font-size:0.7rem;line-height:1.3;cursor:pointer;vertical-align:middle;transition:background .15s,transform .12s}
+.lb-aof-btn:hover{background:rgba(0,245,160,0.22);transform:scale(1.12)}
+.lb-aof-btn:active{transform:scale(0.94)}
+
+/* ── chips ในแชท (trash talk / วิเคราะห์ / faq) ── */
+.aof-chips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+.aof-chip{padding:6px 13px;border-radius:50px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--text);font-family:inherit;font-size:0.76rem;font-weight:600;cursor:pointer;transition:all .16s}
+.aof-chip:hover{border-color:var(--neon);color:var(--neon);background:rgba(0,245,160,0.08)}
+.aof-copy-btn{margin-top:6px;padding:4px 11px;border-radius:8px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-family:inherit;font-size:0.72rem;cursor:pointer}
+.aof-copy-btn:hover{color:var(--text);border-color:var(--neon)}
+
+/* ── ปุ่มไมค์ (#11) ── */
+.aof-mic{flex-shrink:0;width:42px;border:1px solid var(--glass-border);border-radius:var(--radius-sm);background:var(--inp-bg);color:var(--text);font-size:1rem;cursor:pointer;transition:all .18s}
+.aof-mic:hover{border-color:var(--neon)}
+.aof-mic.listening{background:rgba(255,71,87,0.18);border-color:var(--red);animation:aofMicPulse 1s ease-in-out infinite}
+@keyframes aofMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(255,71,87,0.4)}50%{box-shadow:0 0 0 6px rgba(255,71,87,0)}}
+
+/* ── ปุ่มย่อ + pill (#12) ── */
+.aof-min-btn{margin-left:auto;flex-shrink:0;padding:6px 13px;border-radius:50px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-family:inherit;font-size:0.74rem;font-weight:700;cursor:pointer;transition:all .16s}
+.aof-min-btn:hover{color:var(--text);border-color:var(--neon)}
+.aof-pill{position:fixed;right:16px;bottom:18px;z-index:8900;display:flex;align-items:center;gap:8px;padding:9px 14px 9px 10px;border-radius:50px;border:1px solid var(--glass-border);background:var(--card);color:var(--text);font-family:inherit;cursor:pointer;box-shadow:0 8px 28px rgba(0,0,0,0.35);opacity:0;transform:translateY(20px) scale(.9);transition:opacity .26s,transform .26s cubic-bezier(.2,.8,.3,1);pointer-events:none}
+.aof-pill.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+[data-style="glass"] .aof-pill{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.aof-pill-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.05rem;background:linear-gradient(145deg,var(--neon),var(--neon2));box-shadow:0 0 12px rgba(0,245,160,0.4)}
+.aof-pill-tx{font-weight:800;font-size:0.82rem;letter-spacing:0.04em}
+.aof-pill-x{width:20px;height:20px;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:0.72rem;color:var(--muted);background:rgba(255,255,255,0.06)}
+.aof-pill-x:hover{color:var(--text)}
+
+/* ── FAQ accordion (#15) ── */
+.aof-faq-item{border:1px solid var(--glass-border);border-radius:12px;margin-bottom:8px;overflow:hidden;background:rgba(255,255,255,0.02)}
+.aof-faq-q{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:none;background:transparent;color:var(--text);font-family:inherit;font-size:0.85rem;font-weight:600;text-align:left;cursor:pointer}
+.aof-faq-q:hover{color:var(--neon)}
+.aof-faq-caret{flex-shrink:0;color:var(--muted);transition:transform .2s}
+.aof-faq-item.open .aof-faq-caret{transform:rotate(180deg)}
+.aof-faq-a{padding:0 14px 14px}
+.aof-faq-a p{margin:0 0 10px;font-size:0.82rem;line-height:1.6;color:var(--muted)}
+.aof-faq-ask{padding:6px 14px;border-radius:50px;border:1px solid var(--neon);background:rgba(0,245,160,0.08);color:var(--neon);font-family:inherit;font-size:0.74rem;font-weight:700;cursor:pointer}
+.aof-faq-ask:hover{background:rgba(0,245,160,0.18)}
+
+/* ── Lite mode: ลด effect หนักๆ ให้เบาลง ── */
+[data-style="lite"] .aof-bubble,[data-style="lite"] .aof-pop,[data-style="lite"] .aof-pill{box-shadow:none!important}
+[data-style="lite"] .aof-bubble,[data-style="lite"] .aof-pill{background:var(--card)!important;border:1px solid var(--border,var(--glass-border))!important}
+[data-style="lite"] .aof-bubble-av,[data-style="lite"] .aof-pill-av,[data-style="lite"] .aof-pop-av{box-shadow:none!important}
+[data-style="lite"] .aof-mic.listening{animation:none!important}
