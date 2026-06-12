@@ -786,13 +786,55 @@
     bubble({ text: msg, timeout: 15000 });
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  ❌ NEMESIS SHAME — "ไม่คู่ควร" (ไม่เกี่ยวกับ AI)
+  // ════════════════════════════════════════════════════════════
+  var SHAME_THRESHOLD = 5; // แพ้คนเดียวกี่ครั้งขึ้นไปถึงโชว์
+
+  function nemesisShame() {
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    if (typeof getNemesis !== 'function') return;
+
+    var nemesis = getNemesis(currentUser.id);
+    if (!nemesis || nemesis.losses < SHAME_THRESHOLD) return;
+
+    var today = new Date().toISOString().slice(0, 10);
+    var key = 'aof_shame_' + currentUser.id + '_' + nemesis.id;
+    if (localStorage.getItem(key) === today) return;
+    localStorage.setItem(key, today);
+
+    var el = document.createElement('div');
+    el.className = 'aof-shame';
+    var sub = 'แพ้ ' + nemesis.name + ' ไปแล้ว ' + nemesis.losses + ' ครั้ง — ถึงเวลาล้างแค้น! 🔥';
+    el.innerHTML =
+      '<div class="aof-shame-inner">' +
+        '<div class="aof-shame-vs">vs ' + esc(nemesis.name) + '</div>' +
+        '<div class="aof-shame-text">ไม่คู่ควร</div>' +
+        '<div class="aof-shame-sub">' + esc(sub) + '</div>' +
+        '<button class="aof-shame-tap" type="button">แตะเพื่อปิด</button>' +
+      '</div>';
+
+    function dismissShame() {
+      el.classList.remove('show');
+      setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 500);
+    }
+    el.addEventListener('click', dismissShame);
+    document.body.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('show'); });
+    // ปิดอัตโนมัติหลัง 4.5 วินาที
+    setTimeout(dismissShame, 4500);
+  }
+
   // เรียก proactive หลังเข้า Leaderboard (มี guard กันเด้งซ้ำ)
   function maybeProactive() {
     if (typeof currentUser === 'undefined' || !currentUser) return;
     if (typeof db === 'undefined' || !db.players || !db.players.length) return;
     if (_overlayBusy()) return;
-    seasonCountdown();
-    weeklyDigest(false);
+    nemesisShame();
+    setTimeout(function () {
+      seasonCountdown();
+      weeklyDigest(false);
+    }, 800);
   }
 
   // ════════════════════════════════════════════════════════════
@@ -853,6 +895,7 @@
     trashTalk: trashTalk,
     weeklyDigest: function () { weeklyDigest(true); },
     seasonCountdown: seasonCountdown,
+    nemesisShame: nemesisShame,
     minimize: minimizeChat
   };
 })();
