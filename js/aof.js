@@ -608,7 +608,8 @@
       var defs = [
         { t: '🔥 ยั่วคู่แข่ง', fn: doTrashTalk },
         { t: '📊 วิเคราะห์ฉัน', fn: function () { if (currentUser) analyzePlayer(currentUser.id); } },
-        { t: '❓ FAQ', fn: function () { window.aiShowTab('faq'); } }
+        { t: '❓ FAQ', fn: function () { window.aiShowTab('faq'); } },
+        { t: '🆕 v7.5', fn: showPatchNotes }
       ];
       defs.forEach(function (d) {
         var c = document.createElement('button');
@@ -825,6 +826,67 @@
     setTimeout(dismissShame, 4500);
   }
 
+  // ════════════════════════════════════════════════════════════
+  //  📋 PATCH NOTES — แสดงอัปเดตเมื่อ version ใหม่
+  // ════════════════════════════════════════════════════════════
+  var PATCH_VER = '7.5';
+
+  function _patchItem(icon, title, desc) {
+    return '<li style="display:flex;gap:9px;align-items:flex-start;padding:4px 0">' +
+      '<span style="flex-shrink:0;font-size:.95rem;margin-top:1px">' + icon + '</span>' +
+      '<span><b style="color:var(--text);font-size:.85rem">' + esc(title) + '</b>' +
+      '<span style="color:var(--muted);font-size:.78rem;display:block;margin-top:1px">' + esc(desc) + '</span></span>' +
+      '</li>';
+  }
+
+  function buildPatchNotesEl() {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'line-height:1.5;max-width:420px';
+    wrap.innerHTML =
+      '<div style="text-align:center;margin-bottom:14px">' +
+        '<div style="font-size:.75rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase">🏸 Badminton Club</div>' +
+        '<div style="font-size:1.55rem;font-weight:900;color:var(--neon);margin:2px 0">v7.5 — AOF Assistance 2.0</div>' +
+        '<div style="font-size:.82rem;color:var(--muted)">AOF ไม่ได้มีแค่แชทอีกต่อไป — อยู่ทุกที่ในเว็บ</div>' +
+      '</div>' +
+
+      '<div style="font-weight:700;font-size:.78rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--glass-border)">🤖 AOF Expansion Pack</div>' +
+      '<ul style="margin:0 0 14px 0;padding:0;list-style:none">' +
+        _patchItem('🎉', 'Rank Up Message', 'AOF ส่งข้อความยินดีพร้อมเป้าหมายแรงค์ถัดไปหลัง rank up') +
+        _patchItem('🏅', 'Achievement Explainer', 'AOF อธิบายความหมายของ achievement ที่เพิ่งปลดล็อค') +
+        _patchItem('👑', 'Hall of Fame Stories', 'คลิกชื่อใน HoF → AOF เล่าสถิติและเรื่องราวพิเศษ') +
+        _patchItem('📅', 'Weekly Digest', 'สรุปผล 7 วัน: ชนะ / แพ้ / ELO เปลี่ยนไปเท่าไหร่') +
+        _patchItem('⏳', 'Season Countdown', 'แจ้งเตือนเมื่อ Season Reset ใกล้ถึง (≤7 วัน)') +
+        _patchItem('📊', 'Player Analysis', 'ปุ่ม 🤖 ใน Leaderboard → วิเคราะห์จุดแข็ง/อ่อนทันที') +
+        _patchItem('🎤', 'Voice Input', 'ปุ่มไมค์ในแชท — พูดแทนการพิมพ์ รองรับภาษาไทย') +
+        _patchItem('▽', 'Minimize Mode', 'ย่อแชทเป็น pill ลอยมุมขวาล่าง เปิดได้ทุกหน้า') +
+        _patchItem('🔥', 'Trash Talk', 'สร้างประโยคแซวคู่แข่งสนุกๆ ด้วยปุ่ม chip ในแชท') +
+        _patchItem('❓', 'Club FAQ', 'แท็บ FAQ ใน AI — 9 คำถามที่พบบ่อย ตอบทันที') +
+      '</ul>' +
+
+      '<div style="border-radius:10px;background:rgba(255,71,87,0.1);border:1px solid rgba(255,71,87,0.3);padding:11px 13px;margin-bottom:4px">' +
+        '<div style="font-weight:900;color:#ff4757;font-size:1rem;letter-spacing:.1em">❌ ไม่คู่ควร <span style="font-size:.72rem;font-weight:500;opacity:.7">NEW</span></div>' +
+        '<div style="color:var(--muted);font-size:.8rem;margin-top:3px">แพ้คนเดียวกัน ≥5 ครั้ง → overlay เต็มจอสีแดง ลุกโชน ปิดเองใน 4.5 วิ</div>' +
+      '</div>';
+    return wrap;
+  }
+
+  function showPatchNotes() {
+    popup('📋 อัปเดต v' + PATCH_VER, buildPatchNotesEl());
+  }
+
+  function patchNotesBubble() {
+    if (typeof currentUser === 'undefined' || !currentUser) return;
+    var key = 'aof_patch_seen_' + PATCH_VER;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, '1');
+    bubble({
+      text: '🆕 v' + PATCH_VER + ' — AOF Assistance 2.0 มาแล้ว! ฟีเจอร์ใหม่ 12 อย่าง รวมถึง "ไม่คู่ควร" 🔴',
+      actionLabel: '📋 ดูอัปเดต',
+      onAction: showPatchNotes,
+      timeout: 20000
+    });
+  }
+
   // เรียก proactive หลังเข้า Leaderboard (มี guard กันเด้งซ้ำ)
   function maybeProactive() {
     if (typeof currentUser === 'undefined' || !currentUser) return;
@@ -832,6 +894,7 @@
     if (_overlayBusy()) return;
     nemesisShame();
     setTimeout(function () {
+      patchNotesBubble();
       seasonCountdown();
       weeklyDigest(false);
     }, 800);
@@ -896,6 +959,7 @@
     weeklyDigest: function () { weeklyDigest(true); },
     seasonCountdown: seasonCountdown,
     nemesisShame: nemesisShame,
+    patchNotes: showPatchNotes,
     minimize: minimizeChat
   };
 })();
