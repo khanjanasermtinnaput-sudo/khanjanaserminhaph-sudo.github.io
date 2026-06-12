@@ -1519,7 +1519,7 @@ document.addEventListener('mousemove', e => {
   }
 });
 
-const CURRENT_VERSION = '7.1';
+const CURRENT_VERSION = '7.5';
 
 function showPatchNotes() {
   const bg = document.getElementById('patchModal');

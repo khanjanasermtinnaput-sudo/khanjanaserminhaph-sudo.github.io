@@ -871,7 +871,8 @@
   }
 
   function showPatchNotes() {
-    popup('📋 อัปเดต v' + PATCH_VER, buildPatchNotesEl());
+    // เปิด modal หลักของเว็บ (global showPatchNotes จาก leaderboard.js)
+    if (typeof window.showPatchNotes === 'function') window.showPatchNotes();
   }
 
   function patchNotesBubble() {
@@ -882,7 +883,7 @@
     bubble({
       text: '🆕 v' + PATCH_VER + ' — AOF Assistance 2.0 มาแล้ว! ฟีเจอร์ใหม่ 12 อย่าง รวมถึง "ไม่คู่ควร" 🔴',
       actionLabel: '📋 ดูอัปเดต',
-      onAction: showPatchNotes,
+      onAction: function () { if (typeof window.showPatchNotes === 'function') window.showPatchNotes(); },
       timeout: 20000
     });
   }
