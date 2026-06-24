@@ -62,10 +62,10 @@ async function renderMailboxList() {
       return `<div class="mailbox-item" id="mail_${item.id}">
         <div class="mailbox-item-icon">${icon}</div>
         <div class="mailbox-item-body">
-          <div class="mailbox-item-title">${label}</div>
-          <div class="mailbox-item-msg">${item.message || ''}</div>
+          <div class="mailbox-item-title">${esc(label)}</div>
+          <div class="mailbox-item-msg">${esc(item.message || '')}</div>
         </div>
-        <button class="mailbox-item-claim" onclick="claimMailItem(${item.id},'${item.item_type}','${String(item.item_value).replace(/'/g,'')}')">รับ</button>
+        <button class="mailbox-item-claim" onclick="claimMailItem(${item.id},'${esc(String(item.item_type)).replace(/'/g,'')}','${esc(String(item.item_value)).replace(/'/g,'')}')">รับ</button>
       </div>`;
     }).join('');
   } catch(e) {

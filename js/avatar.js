@@ -26,7 +26,7 @@ function _avbUpdatePreview() {
   if (!wrap) return;
   wrap.innerHTML = `
     <div id="avPreview" class="${frameClass}" style="width:76px;height:76px;border-radius:50%;background:${bg};display:flex;align-items:center;justify-content:center;font-size:${fs};font-weight:700;color:#fff;position:relative;isolation:isolate;flex-shrink:0">${frameInner}${content}</div>
-    ${nameClass ? `<span class="${nameClass}" style="font-family:'Rajdhani','Sarabun',sans-serif;font-size:1rem;font-weight:700;margin-top:6px;letter-spacing:1px">${currentUser.name}</span>` : `<span style="font-size:.85rem;color:var(--muted);margin-top:6px">${currentUser.name}</span>`}`;
+    ${nameClass ? `<span class="${nameClass}" style="font-family:'Rajdhani','Sarabun',sans-serif;font-size:1rem;font-weight:700;margin-top:6px;letter-spacing:1px">${esc(currentUser.name)}</span>` : `<span style="font-size:.85rem;color:var(--muted);margin-top:6px">${esc(currentUser.name)}</span>`}`;
 }
 
 function openAvatarBuilder(){
@@ -191,8 +191,8 @@ async function renderProfileMailbox() {
       <div class="mailbox-item">
         <div class="mailbox-item-icon">${typeLabel[item.item_type]?.split(' ')[0] || '🎁'}</div>
         <div class="mailbox-item-body">
-          <div class="mailbox-item-title">${typeLabel[item.item_type] || item.item_type}: <strong>${item.item_value}</strong></div>
-          ${item.message ? `<div class="mailbox-item-msg">${item.message}</div>` : ''}
+          <div class="mailbox-item-title">${esc(typeLabel[item.item_type] || item.item_type)}: <strong>${esc(item.item_value)}</strong></div>
+          ${item.message ? `<div class="mailbox-item-msg">${esc(item.message)}</div>` : ''}
         </div>
         <button class="mailbox-item-claim" onclick="claimMailItemProfile(${item.id},'${item.item_type}','${safeVal}',this)">รับ</button>
       </div>`;

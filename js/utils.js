@@ -1,6 +1,19 @@
 const AVATAR_COLORS = [['#00f5a0','#004d32'],['#00d9f5','#003d4d'],['#ffd700','#4d3e00'],['#ff6b35','#4d1f0f'],['#b044f0','#3a0d5c'],['#48d1cc','#0d3d3c'],['#ff4757','#4d0d15'],['#7bed9f','#1a4d2d']];
 function getAvatarColor(id) { return AVATAR_COLORS[(id-1) % AVATAR_COLORS.length] }
 function getInitial(name) { return name ? name.charAt(0).toUpperCase() : '?' }
+
+// ── XSS guard: escape user-controlled text before it touches innerHTML ──
+// ใช้กับชื่อผู้เล่น/ข้อความ/ชื่อ achievement/ชื่อทัวร์ ทุกจุดที่ render เข้า innerHTML
+function escapeHtml(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function esc(s) { return escapeHtml(s); }
 function mkKingCrownImg(p, size) {
   if (!p || getRank(p.pts, p.id).id !== 'king') return '';
   const src = typeof CROWN_SRC !== 'undefined' ? CROWN_SRC : 'assets/crown.png';
@@ -220,7 +233,8 @@ function formatTeamNames(team, sep) {
   return (team || []).map(pm => {
     const full = resolveGachaPlayer(pm);
     const cls = getGachaNameClass(full);
-    return cls ? `<span class="${cls}">${pm.name}</span>` : pm.name;
+    const safe = escapeHtml(pm.name);
+    return cls ? `<span class="${cls}">${safe}</span>` : safe;
   }).join(sep);
 }
 // Show 3% pull reveal overlay (called after admin assigns frame/name)
@@ -493,7 +507,7 @@ function normalizePlayer(p) {
   if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {
     _ownedEffects = [..._ownedEffects, 'rotating_arcs'];
   }
-  return { id: p.id, name: p.name, pin: p.pin, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null };
+  return { id: p.id, name: p.name, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null };
 }
 
 function getPresenceHTML(player, compact) {

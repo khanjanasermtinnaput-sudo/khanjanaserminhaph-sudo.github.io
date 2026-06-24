@@ -163,7 +163,7 @@ function getTeamByAnchor(groups, anchorId) {
 function getTeamDisplayName(team, players) {
   if (!team || !team.playerIds) return '—';
   const names = team.playerIds.map(id => players.find(p => p.id === id)?.name || '?').join(' + ');
-  return team.name ? `${team.name}: ${names}` : names;
+  return team.name ? `${esc(team.name)}: ${names}` : names;
 }
 
 // ── calculateGroupStandings: full standings with h2h, scoreDiff ──
@@ -570,7 +570,7 @@ async function _populateChampModal(tournamentId, modal) {
       for (const grp of realGroups) {
         for (const pid of (grp.playerIds || [])) {
           const pl = db.players.find(x => x.id === pid);
-          if (pl) winnerOpts += `<option value="${pl.id}">${pl.name} (Group ${grp.letter})</option>`;
+          if (pl) winnerOpts += `<option value="${pl.id}">${esc(pl.name)} (Group ${grp.letter})</option>`;
         }
       }
     }
@@ -1051,7 +1051,7 @@ function _add2v2Team() {
   const letter = 'ABCDEFGHIJKLMNOP'[idx];
   const list = document.getElementById('t2v2_teams_list');
   if (!list) return;
-  const pOpts = db.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const pOpts = db.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
   const div = document.createElement('div');
   div.className = 't2v2-team-row';
   div.style.cssText = 'border:1px solid var(--glass-border);border-radius:12px;padding:10px 12px;margin-bottom:8px;position:relative';
@@ -1147,7 +1147,7 @@ function _hofRenderList() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
         <div style="display:flex;align-items:center;gap:6px">
           <span>${tierIcon(r.tier)}</span>
-          <span style="font-weight:700;font-size:0.88rem">${r.name}</span>
+          <span style="font-weight:700;font-size:0.88rem">${esc(r.name)}</span>
           ${mTag}
         </div>
         <div style="display:flex;align-items:center;gap:8px">
@@ -1156,8 +1156,8 @@ function _hofRenderList() {
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-        <span style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 8px">🏆 ${hof.champion_name||'?'}</span>
-        ${hof.runner_up_name?`<span style="font-size:0.68rem;color:var(--muted)">🥈 ${hof.runner_up_name}</span>`:''}
+        <span style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);color:var(--gold);border-radius:20px;padding:1px 8px">🏆 ${esc(hof.champion_name||'?')}</span>
+        ${hof.runner_up_name?`<span style="font-size:0.68rem;color:var(--muted)">🥈 ${esc(hof.runner_up_name)}</span>`:''}
       </div>
       <div style="text-align:right;margin-top:5px;font-size:0.6rem;color:var(--muted)">ดูรายละเอียด →</div>
     </div>`;
@@ -1187,7 +1187,7 @@ async function _hofOpenDetail(tournamentId) {
     </div>
     <div style="border:1px solid rgba(255,215,0,0.22);border-radius:16px;background:rgba(255,215,0,0.04);padding:14px;margin-bottom:12px;text-align:center">
       <div style="font-size:1.6rem;margin-bottom:4px">${tierIcon}</div>
-      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">${r.name}</div>
+      <div style="font-weight:700;font-size:1rem;margin-bottom:6px">${esc(r.name)}</div>
       <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap">
         <span style="font-size:0.66rem;color:var(--gold)">${r.tier}</span>
         <span style="font-size:0.66rem;color:var(--muted)">${matchType==='2v2'?'⚔️ 2v2':'🏸 1v1'}</span>
@@ -1198,17 +1198,17 @@ async function _hofOpenDetail(tournamentId) {
       <div style="border:1px solid rgba(255,215,0,0.3);border-radius:12px;background:rgba(255,215,0,0.07);padding:10px;text-align:center">
         <div style="font-size:1.3rem">🏆</div>
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">แชมป์</div>
-        <div style="font-weight:700;font-size:0.82rem;color:var(--gold)">${hof.champion_name||'?'}</div>
+        <div style="font-weight:700;font-size:0.82rem;color:var(--gold)">${esc(hof.champion_name||'?')}</div>
       </div>
       <div style="border:1px solid rgba(192,192,192,0.2);border-radius:12px;background:rgba(192,192,192,0.05);padding:10px;text-align:center">
         <div style="font-size:1.3rem">🥈</div>
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">รองแชมป์</div>
-        <div style="font-weight:700;font-size:0.82rem;color:var(--silver)">${hof.runner_up_name||'?'}</div>
+        <div style="font-weight:700;font-size:0.82rem;color:var(--silver)">${esc(hof.runner_up_name||'?')}</div>
       </div>
       ${hof.third_place_name ? `<div style="border:1px solid rgba(205,127,50,0.2);border-radius:12px;background:rgba(205,127,50,0.05);padding:10px;text-align:center">
         <div style="font-size:1.3rem">🥉</div>
         <div style="font-size:0.65rem;color:var(--muted);margin-bottom:2px">อันดับ 3</div>
-        <div style="font-weight:700;font-size:0.82rem;color:#cd7f32">${hof.third_place_name}</div>
+        <div style="font-weight:700;font-size:0.82rem;color:#cd7f32">${esc(hof.third_place_name)}</div>
       </div>` : ''}
     </div>
     <div id="hofDetailBody" style="color:var(--muted);text-align:center;padding:14px;font-size:0.82rem">⏳ โหลดผลแมตช์...</div>`;
@@ -1390,7 +1390,7 @@ async function renderTournamentSection() {
   if (!container) return;
 
   // Player dropdown options shared across 2v2 selects
-  const pOpts = db.players.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+  const pOpts = db.players.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('');
 
   let html = `<div style="margin-bottom:12px;display:flex;justify-content:flex-end">
     <button onclick="openTournamentHoF()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:50px;border:1px solid rgba(255,215,0,0.35);background:rgba(255,215,0,0.07);color:var(--gold);font-size:0.78rem;font-weight:700;cursor:pointer">🏛️ ทำเนียบแชมป์</button>
@@ -1451,7 +1451,7 @@ async function renderTournamentSection() {
     <div id="tournamentPlayerSelect1v1" style="display:none">
       <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">เลือกผู้เล่น 4–16 คน (จัดกลุ่มอัตโนมัติ):</div>
       <div id="tournamentPlayerSelect" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        ${db.players.map(p => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer"><input type="checkbox" value="${p.id}" id="tp_${p.id}"> ${p.name}</label>`).join('')}
+        ${db.players.map(p => `<label style="display:flex;align-items:center;gap:4px;font-size:0.8rem;cursor:pointer"><input type="checkbox" value="${p.id}" id="tp_${p.id}"> ${esc(p.name)}</label>`).join('')}
       </div>
     </div>
 
@@ -1494,7 +1494,7 @@ async function renderTournamentSection() {
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
-              ${tierBadge} ${t.name} ${renderModeBadge(matchType)}
+              ${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}
               <span style="font-size:0.64rem;background:rgba(0,245,160,0.12);border:1px solid rgba(0,245,160,0.3);border-radius:20px;padding:1px 7px;color:var(--neon);margin-left:6px">📋 รับสมัคร</span>
             </div>
             <div style="margin:8px 0">
@@ -1524,7 +1524,7 @@ async function renderTournamentSection() {
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
-              ${tierBadge} ${t.name} ${renderModeBadge(matchType)}
+              ${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}
               <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span>
             </div>
             ${renderRewardCards(t.id, t.tier)}
@@ -1563,17 +1563,17 @@ function _bkCard(tournament, tMatches, stageId, left, right, matchType, readOnly
     const gold = isGF ? ' gold' : '';
     const mark = isGF ? '👑' : '✓';
     const row = (label, sc, win) =>
-      `<div class="t-bk-row ${win ? 'win' + gold : 'lose'}"><span class="t-bk-nm">${label}</span>${win ? `<span class="t-bk-tick">${mark}</span>` : ''}<span class="t-bk-sc">${sc}</span></div>`;
+      `<div class="t-bk-row ${win ? 'win' + gold : 'lose'}"><span class="t-bk-nm">${esc(label)}</span>${win ? `<span class="t-bk-tick">${mark}</span>` : ''}<span class="t-bk-sc">${sc}</span></div>`;
     return `<div class="${cls}">${row(lLabel, ls, lWin)}${row(rLabel, rs, rWin)}</div>`;
   }
 
   if (left && right) {
     if (readOnly)
-      return `<div class="${cls}"><div class="t-bk-row"><span class="t-bk-nm">${left.label}</span></div><div class="t-bk-vs">VS</div><div class="t-bk-row"><span class="t-bk-nm">${right.label}</span></div></div>`;
+      return `<div class="${cls}"><div class="t-bk-row"><span class="t-bk-nm">${esc(left.label)}</span></div><div class="t-bk-vs">VS</div><div class="t-bk-row"><span class="t-bk-nm">${esc(right.label)}</span></div></div>`;
     return `<div class="${cls} live">
-      <div class="t-bk-row"><span class="t-bk-nm">${left.label}</span><span class="t-bk-sc">–</span></div>
+      <div class="t-bk-row"><span class="t-bk-nm">${esc(left.label)}</span><span class="t-bk-sc">–</span></div>
       <div class="t-bk-vs">VS</div>
-      <div class="t-bk-row"><span class="t-bk-nm">${right.label}</span><span class="t-bk-sc">–</span></div>
+      <div class="t-bk-row"><span class="t-bk-nm">${esc(right.label)}</span><span class="t-bk-sc">–</span></div>
       <button class="t-bk-ref" onclick="openReferee(${tournament.id},'${stageId}',${left.id},${right.id},'${matchType}')">🎬 นับคะแนน (Referee)</button>
     </div>`;
   }
@@ -1583,13 +1583,13 @@ function _bkCard(tournament, tMatches, stageId, left, right, matchType, readOnly
 // Single-competitor chip (group-winner feeder / bye)
 function _bkChip(entry, sub) {
   const name = entry ? entry.label : '—';
-  return `<div class="t-bk-m t-bk-chip"><div class="t-bk-row"><span class="t-bk-nm">${name}</span>${sub ? `<span class="t-bk-byetag">${sub}</span>` : ''}</div></div>`;
+  return `<div class="t-bk-m t-bk-chip"><div class="t-bk-row"><span class="t-bk-nm">${esc(name)}</span>${sub ? `<span class="t-bk-byetag">${sub}</span>` : ''}</div></div>`;
 }
 
 // Champion node
 function _bkChampion(winner) {
   const name = winner ? winner.label : (_lang === 'en' ? 'TBD' : 'รอผล');
-  return `<div class="t-bk-champ"><div class="t-bk-champ-em">🏆</div><div class="t-bk-champ-cap">Champion</div><div class="t-bk-champ-nm">${name}</div></div>`;
+  return `<div class="t-bk-champ"><div class="t-bk-champ-em">🏆</div><div class="t-bk-champ-cap">Champion</div><div class="t-bk-champ-nm">${esc(name)}</div></div>`;
 }
 
 // A labelled cell = round label + slot holding the card (siblings, so the slot
@@ -1708,7 +1708,7 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
       recordSection += '</div>';
     } else {
       // Singles: recorded-match summaries + free-entry referee form
-      const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${p.name}</option>` : ''; }).join('');
+      const playerOpts = (grp.playerIds || []).map(id => { const p = db.players.find(x => x.id === id); return p ? `<option value="${p.id}">${esc(p.name)}</option>` : ''; }).join('');
       const grpRecs = tMatches.filter(m => m.group_letter === grpLetter);
       let recList = '';
       for (const rec of grpRecs) {
@@ -2274,7 +2274,7 @@ async function openBracketModal(tournamentId) {
     const tMatches = await dbGetTournamentMatches(t.id);
     const isAdmin = isAdminUser();
     const tierCls = t.tier === 'Super 1000' ? 's1000' : t.tier === 'Super 500' ? 's500' : t.tier === 'Regular' ? 'reg' : 'custom';
-    const sub = `<div class="brm-sub"><span class="brm-tname">${t.name}</span><span class="brm-tier ${tierCls}">${t.tier}</span></div>`;
+    const sub = `<div class="brm-sub"><span class="brm-tname">${esc(t.name)}</span><span class="brm-tier ${tierCls}">${t.tier}</span></div>`;
     const body = document.getElementById('tBracketModalBody');
     if (body) body.innerHTML = sub + _renderBracketModalBody(t, groups, tMatches, isAdmin);
   } catch(e) {
@@ -2314,7 +2314,7 @@ async function renderTournamentTab() {
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
         const tierColor = t.tier === 'Super 1000' ? 'rgba(255,215,0,0.35)' : t.tier === 'Super 500' ? 'rgba(192,192,192,0.25)' : 'rgba(205,127,50,0.25)';
         const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        const header = `<div class="tournament-group-title">${tierBadge} ${t.name} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
+        const header = `<div class="tournament-group-title">${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
 
         html += `<div class="tournament-group" style="margin-bottom:16px;position:relative;border-color:${tierColor}">`;
 
@@ -2367,7 +2367,7 @@ async function renderTournamentTab() {
             const champBtn = `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>`;
             const rewardBtn = `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 รางวัล</button>`;
             html += `<button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕</button>`;
-            html += `<div class="tournament-group-title" style="padding-right:60px">${tierBadge} ${t.name} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
+            html += `<div class="tournament-group-title" style="padding-right:60px">${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
             html += renderRewardCards(t.id, t.tier);
             html += await renderTournamentBracket(t, groups, false);
             html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">

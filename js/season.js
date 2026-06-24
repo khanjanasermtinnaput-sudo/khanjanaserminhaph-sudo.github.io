@@ -147,15 +147,15 @@ function buildTourAchItemHTML(achDef, players) {
     const has = awardedIds.has(p.id);
     return `<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.78rem;padding:5px 9px;border-radius:8px;border:1px solid ${has?col:'var(--glass-border)'};background:${has?`rgba(${achDef.frame==='gold'?'255,215,0':achDef.frame==='silver'?'192,192,192':'205,127,50'},0.08)`:'var(--btn-glass)'};transition:all .15s">
       <input type="checkbox" ${has?'checked':''} onchange="toggleTourAchAward('${achDef.id}',${p.id},this.checked)" style="accent-color:${col}">
-      <span>${getAvatar(p.id,p.name).content}</span> ${p.name}
+      <span>${getAvatar(p.id,p.name).content}</span> ${esc(p.name)}
     </label>`;
   }).join('');
   return `<div style="border:1px solid ${col}30;border-radius:12px;padding:12px;margin-bottom:10px;background:${col}06">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div class="cach-badge cach-frame-${achDef.frame}" style="pointer-events:none;flex-shrink:0">
-        <span class="cach-icon">${achDef.icon}</span><span class="cach-text">${achDef.title}</span>
+        <span class="cach-icon">${esc(achDef.icon)}</span><span class="cach-text">${esc(achDef.title)}</span>
       </div>
-      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${achDef.desc}</div>
+      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${esc(achDef.desc)}</div>
     </div>
     <div style="font-size:0.7rem;color:var(--muted);margin-bottom:7px">มอบให้ผู้เล่น (${awardedIds.size > 0 ? awardedIds.size + ' คนได้รับแล้ว' : 'ยังไม่ได้มอบ'}):</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${playerChecks}</div>
@@ -218,14 +218,14 @@ function buildCachItemHTML(ach, players) {
   const playerChecks = players.map(p => `
     <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:0.78rem;padding:5px 9px;border-radius:8px;border:1px solid ${awardedIds.has(p.id)?col:'var(--glass-border)'};background:${awardedIds.has(p.id)?`rgba(${ach.frame==='gold'?'255,215,0':ach.frame==='silver'?'192,192,192':'205,127,50'},0.08)`:'var(--btn-glass)'};transition:all .15s">
       <input type="checkbox" ${awardedIds.has(p.id)?'checked':''} onchange="toggleCachAward('${ach.id}',${p.id},this.checked)" style="accent-color:${col}">
-      <span>${getAvatar(p.id,p.name).content}</span> ${p.name}
+      <span>${getAvatar(p.id,p.name).content}</span> ${esc(p.name)}
     </label>`).join('');
   return `<div style="border:1px solid ${col}30;border-radius:12px;padding:12px;margin-bottom:10px;background:${col}06">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
       <div class="cach-badge cach-frame-${ach.frame}" style="pointer-events:none;flex-shrink:0">
-        <span class="cach-icon">${ach.icon}</span><span class="cach-text">${ach.title}</span>
+        <span class="cach-icon">${esc(ach.icon)}</span><span class="cach-text">${esc(ach.title)}</span>
       </div>
-      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${ach.desc||'ไม่มีคำอธิบาย'}</div>
+      <div style="flex:1;min-width:0;font-size:0.73rem;color:var(--muted)">${esc(ach.desc||'ไม่มีคำอธิบาย')}</div>
       <button class="btn btn-ghost btn-sm" style="color:var(--red);padding:4px 8px" onclick="deleteCachDef('${ach.id}')">🗑️</button>
     </div>
     <div style="font-size:0.7rem;color:var(--muted);margin-bottom:7px">มอบให้ผู้เล่น (${awardedIds.size > 0 ? awardedIds.size + ' คนได้รับแล้ว' : 'ยังไม่ได้มอบ'}):</div>

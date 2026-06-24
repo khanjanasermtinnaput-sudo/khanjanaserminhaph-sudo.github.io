@@ -34,17 +34,48 @@ let db = { players: [], matches: [] };
 let currentUser = null;
 let currentMatch = null;
 
-async function loadPlayers() { const rows = await supaFetch('players?order=pts.desc'); db.players = rows.map(normalizePlayer); }
+// คอลัมน์ที่ปลอดภัยต่อการเปิดเผย (ไม่รวม pin) — กัน PIN ของทุกคนรั่วมาที่ client
+const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen';
+async function loadPlayers() {
+  let rows;
+  try {
+    rows = await supaFetch('players?select=' + PLAYER_PUBLIC_COLS + '&order=pts.desc');
+  } catch(e) {
+    // คอลัมน์ optional บางตัวอาจยังไม่มี → ใช้คอลัมน์หลักที่มีแน่ ๆ (ยังคงไม่รวม pin)
+    rows = await supaFetch('players?select=id,name,pts,wins,losses,is_admin&order=pts.desc');
+  }
+  db.players = rows.map(normalizePlayer);
+}
 async function loadMatches() { const rows = await supaFetch('matches?order=played_at.desc&limit=50'); db.matches = rows.map(normalizeMatch); }
 async function loadAll() { await Promise.all([loadPlayers(), loadMatches()]); }
 
+// ── ยืนยัน PIN ฝั่งเซิร์ฟเวอร์แบบเจาะจง (ไม่ดึง PIN ทุกคนลงมา) ──
+// ใช้ RPC verify_player_pin (SECURITY DEFINER) ถ้าติดตั้งแล้ว — ทำให้ PIN อ่านจาก client ไม่ได้เลย
+// ถ้ายังไม่ได้รัน supabase_security.sql จะ fallback ไป query ตรง (ยังทำงานได้)
+async function authVerifyById(id, pin) {
+  try {
+    const res = await supaFetch('rpc/verify_player_pin', { method: 'POST', body: JSON.stringify({ p_id: id, p_pin: String(pin) }) });
+    if (typeof res === 'boolean') return res;
+    if (Array.isArray(res)) return res[0] === true;
+    if (res && typeof res === 'object') return res.verify_player_pin === true;
+    return false;
+  } catch(e) {
+    try {
+      const rows = await supaFetch(`players?id=eq.${id}&pin=eq.${encodeURIComponent(pin)}&select=id`);
+      return !!(rows && rows.length);
+    } catch(e2) { return false; }
+  }
+}
+
 async function dbAddPlayer(player) {
-  const rows = await supaFetch('players', { method: 'POST', body: JSON.stringify({ name: player.name, pin: player.pin, pts: player.pts, wins: player.wins, losses: player.losses, is_admin: player.isAdmin === 1 }) });
+  // ขอคืนเฉพาะคอลัมน์ปลอดภัย (ไม่รวม pin) — กัน error หลัง REVOKE SELECT(pin) และไม่ให้ pin หลุดกลับมา
+  const rows = await supaFetch('players?select=id,name,pts,wins,losses,is_admin', { method: 'POST', body: JSON.stringify({ name: player.name, pin: player.pin, pts: player.pts, wins: player.wins, losses: player.losses, is_admin: player.isAdmin === 1 }) });
   return rows[0];
 }
 async function dbUpdatePlayer(id, data) {
   try {
-    await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(data) });
+    // return=minimal: ไม่อ่านแถวกลับ — จำเป็นหลัง REVOKE SELECT(pin) ไม่งั้นการตั้งคะแนน/อัปเดตจะ error
+    await supaFetch('players?id=eq.' + id, { method: 'PATCH', body: JSON.stringify(data), prefer: 'return=minimal' });
   } catch(e) {
     if (e.message && e.message.includes('PGRST204')) {
       const colMatch = e.message.match(/'([^']+)' column/);
