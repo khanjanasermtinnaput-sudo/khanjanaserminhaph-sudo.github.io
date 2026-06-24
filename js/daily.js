@@ -94,7 +94,7 @@ function renderPotd() {
     const wins=td.filter(m=>(m.winTeam==='A'?m.teamA:m.teamB).some(p=>p.id===pl.id)).length;
     return `<div style="display:flex;align-items:center;gap:12px${isTie?';padding:8px 0;border-bottom:1px solid var(--glass-border)':''}">
       <div class="${getGachaFrameClass(pl)}" style="width:46px;height:46px;border-radius:50%;background:${av.bg};color:${av.fg};display:flex;align-items:center;justify-content:center;font-size:${av.fs||'1.1rem'};font-weight:700;border:2px solid rgba(255,215,0,.4);flex-shrink:0;position:relative;isolation:isolate">${getGachaFrameInner(pl)}${av.content}</div>
-      <div style="flex:1"><div style="font-weight:700" class="${getGachaNameClass(pl)}">${pl.name}</div><div style="font-size:.73rem;color:var(--muted)">${t('wins_bar')} ${wins} ${t('matches_unit')} · +${gains[pl.id]||0} ELO ${t('today_label')}</div></div>
+      <div style="flex:1"><div style="font-weight:700" class="${getGachaNameClass(pl)}">${esc(pl.name)}</div><div style="font-size:.73rem;color:var(--muted)">${t('wins_bar')} ${wins} ${t('matches_unit')} · +${gains[pl.id]||0} ELO ${t('today_label')}</div></div>
       <div style="font-family:'Rajdhani';font-size:1.6rem;font-weight:700;color:var(--gold)">+${gains[pl.id]||0}</div>
     </div>`;
   }).join('');

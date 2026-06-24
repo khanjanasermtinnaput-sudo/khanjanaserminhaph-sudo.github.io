@@ -297,8 +297,8 @@ function renderAchievements(playerId) {
       <div class="ach-list-item ${ach.unlocked ? 'unlocked' : ''}">
         <div class="ach-list-icon ${ach.unlocked ? '' : 'locked'}">${ach.icon}</div>
         <div class="ach-list-info" style="flex:1;min-width:0">
-          <div class="ach-list-name ${ach.unlocked ? '' : 'locked-name'}" style="${ach.unlocked ? `color:${ach.color}` : ''}">${ach.title}</div>
-          <div class="ach-list-desc">${ach.desc}</div>
+          <div class="ach-list-name ${ach.unlocked ? '' : 'locked-name'}" style="${ach.unlocked ? `color:${ach.color}` : ''}">${esc(ach.title)}</div>
+          <div class="ach-list-desc">${esc(ach.desc)}</div>
         </div>
         <div style="flex-shrink:0;display:flex;align-items:center;gap:6px">
           ${ach.unlocked
@@ -371,7 +371,7 @@ renderProfile = async function() {
         <div class="nemesis-card">
           <div style="font-size:1.8rem">⚔️</div>
           <div style="flex:1">
-            <div style="font-weight:700;font-size:0.92rem;color:var(--red)">${nemesis.name}</div>
+            <div style="font-weight:700;font-size:0.92rem;color:var(--red)">${esc(nemesis.name)}</div>
             <div style="font-size:0.73rem;color:var(--muted)">แพ้ ${nemesis.losses} ครั้ง · ชนะ ${nemesis.wins} ครั้ง</div>
           </div>
           <span class="nemesis-badge">😈 คู่ปรับ</span>
@@ -430,7 +430,7 @@ openPlayerProfile = function(playerId) {
         <div class="nemesis-card">
           <div style="font-size:1.6rem">⚔️</div>
           <div style="flex:1">
-            <div style="font-weight:700;font-size:0.88rem;color:var(--red)">${nemesis.name}</div>
+            <div style="font-weight:700;font-size:0.88rem;color:var(--red)">${esc(nemesis.name)}</div>
             <div style="font-size:0.72rem;color:var(--muted)">แพ้ ${nemesis.losses} ครั้ง · ชนะ ${nemesis.wins} ครั้ง</div>
           </div>
           <span class="nemesis-badge">😈 คู่ปรับ</span>
@@ -455,7 +455,7 @@ openPlayerProfile = function(playerId) {
         const achDiv = document.createElement('div');
         achDiv.innerHTML = `<div class="pp2-sec">🏅 Achievements</div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;">${allUnlocked.map(a =>
-            `<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:50px;background:rgba(255,255,255,0.06);border:1px solid ${a.color}33;font-size:0.75rem;color:${a.color}">${a.icon} ${a.title}</div>`
+            `<div style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:50px;background:rgba(255,255,255,0.06);border:1px solid ${a.color}33;font-size:0.75rem;color:${a.color}">${esc(a.icon)} ${esc(a.title)}</div>`
           ).join('')}</div>`;
         body.appendChild(achDiv);
       }

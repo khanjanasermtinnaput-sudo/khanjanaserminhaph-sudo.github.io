@@ -116,7 +116,7 @@ async function openPlayerProfile(playerId) {
     return `<div class="pp2-h2h">
       <div class="pp2-partner-av ${getGachaFrameClass(oppP)}" style="background:${oppColors[1]};color:${oppColors[0]};width:32px;height:32px;font-size:0.82rem;flex-shrink:0;position:relative;isolation:isolate">${getGachaFrameInner(oppP)}${getInitial(h.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="pp2-h2h-name ${getGachaNameClass(oppP)}">${h.name}</div>
+        <div class="pp2-h2h-name ${getGachaNameClass(oppP)}">${esc(h.name)}</div>
         <div class="pp2-h2h-bar-wrap"><div class="pp2-h2h-bar-fill" style="width:${pct}%"></div></div>
       </div>
       <div class="pp2-h2h-score" style="color:${pct>=50?'var(--neon)':'var(--red)'}">${h.w}W ${h.l}L</div>
@@ -142,7 +142,7 @@ async function openPlayerProfile(playerId) {
     const bpP = (db.players||[]).find(x=>x.id===bestPartner.id) || bestPartner;
     return `<div class="pp2-partner">
       <div class="pp2-partner-av ${getGachaFrameClass(bpP)}" style="background:${pc[1]};color:${pc[0]};position:relative;isolation:isolate">${getGachaFrameInner(bpP)}${getInitial(bestPartner.name)}</div>
-      <div style="flex:1"><div style="font-weight:600;font-size:0.88rem" class="${getGachaNameClass(bpP)}">${bestPartner.name}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${bestPartner.games} ${t('matches_with')} · ${t('won')} ${pwr}%</div></div>
+      <div style="flex:1"><div style="font-weight:600;font-size:0.88rem" class="${getGachaNameClass(bpP)}">${esc(bestPartner.name)}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:2px">${bestPartner.games} ${t('matches_with')} · ${t('won')} ${pwr}%</div></div>
       <div style="font-family:'Rajdhani';font-size:1rem;font-weight:700;color:var(--neon)">${bestPartner.wins}W</div>
     </div>`;
   })() : `<div class="text-muted" style="font-size:0.8rem;padding:8px 0">${t('no_doubles')}</div>`;
@@ -179,9 +179,9 @@ async function openPlayerProfile(playerId) {
         ${_hasTG ? '<div class="tcf-hero-glow"></div>' : ''}
         ${_hasTG ? thunderGodAvatarHTML(getAvatar(p.id, p.name).content, 80, colors[1], colors[0]) : `<div class="pp2-av ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}${!getGachaFrameClass(p)?`<div class="pp2-av-ring" style="background:${rankGradients[rank.id]||rankGradients.bronze}"></div>`:''}${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?_kingCrownHTML():''}</div>`}
         <div class="pp2-hero-text">
-          <div class="pp2-name ${getGachaNameClass(p)}">${p.name}</div>
+          <div class="pp2-name ${getGachaNameClass(p)}">${esc(p.name)}</div>
           ${getPresenceHTML(p) ? `<div style="margin-top:4px">${getPresenceHTML(p)}</div>` : ''}
-          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${a.icon||'🏆'} ${a.title}</span>`).join('')}</div>
+          <div style="margin-top:4px;display:flex;flex-wrap:wrap;align-items:center;gap:5px">${getRankBadgeSVG(p.pts,p.id,64)}${(p.customAch||[]).map(a=>`<span class="cach-badge cach-frame-${a.frame||'gold'}" title="${esc(a.desc||'')}" style="font-size:0.62rem;padding:2px 8px;line-height:1.4">${esc(a.icon||'🏆')} ${esc(a.title)}</span>`).join('')}</div>
           <div class="pp2-elo">${p.pts} <span style="font-size:0.72rem;color:var(--muted)">${t('pts')}</span></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
             <div style="text-align:center;padding:8px 6px;background:rgba(255,255,255,0.05);border-radius:12px;border:1px solid var(--glass-border)">

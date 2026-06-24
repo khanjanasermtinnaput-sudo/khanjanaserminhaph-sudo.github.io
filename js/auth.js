@@ -8,10 +8,12 @@ async function login() {
   toast('กำลังเข้าสู่ระบบ...', 'info');
   try {
     await loadPlayers();
-    const player = db.players.find(p => p.name.toLowerCase() === name.toLowerCase() && p.pin === pin);
-    if (!player) return toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error');
-    currentUser = player;
-    saveDeviceUser(player);
+    const cand = db.players.find(p => p.name.toLowerCase() === name.toLowerCase());
+    // ยืนยัน PIN ฝั่งเซิร์ฟเวอร์ — ไม่ดึง PIN ของทุกคนลงมาเทียบที่ client อีกต่อไป
+    const ok = cand ? await authVerifyById(cand.id, pin) : false;
+    if (!cand || !ok) return toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error');
+    currentUser = cand;
+    saveDeviceUser(cand, pin);
     await loadMatches();
     afterLogin();
   } catch(e) { toast('เชื่อมต่อไม่ได้: ' + e.message, 'error'); }
@@ -29,14 +31,15 @@ async function register() {
     const row = await dbAddPlayer({ name, pin, pts: 50, wins: 0, losses: 0, isAdmin: isFirst ? 1 : 0 });
     await loadPlayers(); await loadMatches();
     currentUser = db.players.find(p => p.id === row.id) || normalizePlayer(row);
-    saveDeviceUser(currentUser);
+    saveDeviceUser(currentUser, pin);
     toast('สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ 🏸', 'success');
     afterLogin();
   } catch(e) { toast('เกิดข้อผิดพลาด: ' + e.message, 'error'); }
 }
 // ── QUICK LOGIN (Trusted Device) ──
-function saveDeviceUser(player) {
-  localStorage.setItem('badminton_saved_user', JSON.stringify({ id: player.id, name: player.name, pin: player.pin }));
+function saveDeviceUser(player, pin) {
+  // เก็บ PIN เฉพาะในเครื่องที่ผู้ใช้เลือกจำ (trusted device) สำหรับ Quick Login เท่านั้น
+  localStorage.setItem('badminton_saved_user', JSON.stringify({ id: player.id, name: player.name, pin: pin }));
 }
 function initQuickLogin() {
   let saved;
@@ -66,15 +69,16 @@ async function quickLogin() {
   btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
   try {
     await loadPlayers();
-    const player = db.players.find(p => p.id === saved.id && p.pin === saved.pin);
-    if (!player) {
+    const player = db.players.find(p => p.id === saved.id);
+    const ok = player ? await authVerifyById(saved.id, saved.pin) : false;
+    if (!player || !ok) {
       toast('ไม่พบบัญชีนี้ในระบบ กรุณาเข้าสู่ระบบใหม่', 'error');
       localStorage.removeItem('badminton_saved_user');
       btn.disabled = false; btn.textContent = '✅ ใช่, เข้าเลย!';
       rejectQuickLogin(); return;
     }
     currentUser = player;
-    saveDeviceUser(player);
+    saveDeviceUser(player, saved.pin);
     await loadMatches();
     afterLogin();
   } catch(e) {

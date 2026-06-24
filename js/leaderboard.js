@@ -62,7 +62,7 @@ async function renderLeaderboard() {
         <div class="lb-pod-shim"></div>
         <div class="lb-pod-rank ${podRankClass[i]}">${podRankLabel[i]}</div>
         <div class="lb-pod-av ${(isFirst && !getGachaFrameClass(p)) ? 'liquid-frame' : ''} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${(isFirst && !getGachaFrameClass(p)) ? getLiquidFrameInner() : ''}${getGachaFrameInner(p)}${av.content}</div>
-        <div class="lb-pod-name ${getGachaNameClass(p)}">${p.name}</div>
+        <div class="lb-pod-name ${getGachaNameClass(p)}">${esc(p.name)}</div>
         <div class="lb-pod-score" id="lbpscore${p.id}">${p.pts.toLocaleString()}</div>
         <div class="lb-pod-wins">ชนะ ${p.wins} · แพ้ ${p.losses} · ${wr}%</div>
       </div>`;
@@ -123,7 +123,7 @@ function getPlayerLBBadges(p) {
     seenIds.add(a.id);
   });
   return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
-    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${a.icon||'🏆'} ${a.title}</span>`
+    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${esc(a.icon||'🏆')} ${esc(a.title)}</span>`
   ).join('');
 }
 
@@ -161,7 +161,7 @@ function lbRenderBoard(data, animate = true) {
           ${_presenceAvatarDot}
         </div>
         <div>
-          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${p.name}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>
+          <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${esc(p.name)}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>
           <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
@@ -291,7 +291,7 @@ function renderPlayerGrid() {
     }
     return `<div class="player-card${selected?' selected':''}${disabled?' disabled':''}" onclick="tapPlayerCard(${p.id})">
       <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,24)}<div class="pc-av" style="background:${colors[1]};color:${colors[0]}">${getInitial(p.name)}</div></div>
-      <div class="pc-info"><div class="pc-name">${p.name}</div><div class="pc-pts">${p.pts} pts</div></div>
+      <div class="pc-info"><div class="pc-name">${esc(p.name)}</div><div class="pc-pts">${p.pts} pts</div></div>
       ${badge}
     </div>`;
   }).join('') || `<div class="text-muted" style="grid-column:span 2;padding:12px;text-align:center">${t('no_players')}</div>`;
@@ -303,7 +303,7 @@ function _renderSlotChip(label, playerId) {
   return `<div class="slot-chip${p?' filled':''}" onclick="${p?`clearSlot('${label}')`:''}" style="cursor:${p?'pointer':'default'}">
     <div style="flex:1;min-width:0">
       <div class="slot-chip-label" style="color:${accentColor}">${label}</div>
-      ${p ? `<div class="slot-chip-name">${p.name}</div>` : '<div class="slot-chip-empty-txt">แตะเลือก</div>'}
+      ${p ? `<div class="slot-chip-name">${esc(p.name)}</div>` : '<div class="slot-chip-empty-txt">แตะเลือก</div>'}
     </div>
     ${p ? '<div class="slot-chip-clear">✕</div>' : ''}
   </div>`;
@@ -615,7 +615,7 @@ function confirmFinish() {
     const displayNewPts = isProtected ? r.player.pts : newPts;
     return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;background:${r.isWin?'rgba(0,245,160,0.06)':'rgba(255,71,87,0.06)'};border:1px solid ${r.isWin?'rgba(0,245,160,0.2)':'rgba(255,71,87,0.15)'};margin-bottom:6px">
       <div style="display:flex;align-items:center;gap:8px">
-        <span style="font-size:0.88rem;font-weight:600">${r.player.name}</span>
+        <span style="font-size:0.88rem;font-weight:600">${esc(r.player.name)}</span>
         ${r.isWin?'<span style="font-size:0.7rem;color:var(--neon)">🏆 ชนะ</span>':'<span style="font-size:0.7rem;color:var(--red)">❌ แพ้</span>'}
         ${isProtected ? '<span style="font-size:0.65rem;background:rgba(255,200,0,0.15);border:1px solid rgba(255,200,0,0.3);color:#ffcc00;border-radius:20px;padding:1px 6px">🛡️ Protected</span>' : ''}
         ${r.isWin && r.baseGain && r.delta > r.baseGain ? `<span style="font-size:0.65rem;background:rgba(255,100,0,0.15);border:1px solid rgba(255,100,0,0.3);color:#ff8c42;border-radius:20px;padding:1px 6px">${achBoostLabel(r.player)}</span>` : ''}
@@ -760,7 +760,7 @@ async function renderHistory() {
     const filterEl = document.getElementById('histFilterPlayer');
     if (filterEl) {
       const currentVal = filterEl.value;
-      const options = db.players.map(p => `<option value="${p.id}" ${currentVal == p.id ? 'selected' : ''}>${p.name}</option>`).join('');
+      const options = db.players.map(p => `<option value="${p.id}" ${currentVal == p.id ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
       filterEl.innerHTML = `<option value="">${t('all_players')}</option>` + options;
     }
 
@@ -853,12 +853,12 @@ async function renderProfile() {
     const _profAch = (_profPins && Array.isArray(_profPins) && _profPins.length > 0)
       ? (p.customAch||[]).filter(a => _profPins.includes(a.id))
       : [];
-    const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${a.desc||''}" style="padding:4px 10px;font-size:0.72rem">${a.icon||'🏆'} ${a.title}</div>`).join('')}</div>` : '';
+    const achHtml = _profAch.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${_profAch.map(a=>`<div class="cach-badge cach-frame-${a.frame||'gold'}" title="${esc(a.desc||'')}" style="padding:4px 10px;font-size:0.72rem">${esc(a.icon||'🏆')} ${esc(a.title)}</div>`).join('')}</div>` : '';
     const _profHasTG = p.ownedEffects && p.ownedEffects.includes('rotating_arcs');
     document.getElementById('profileCard').innerHTML = `
       <div class="profile-header" id="profHeaderEl">
         <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,32)}${_profHasTG ? thunderGodAvatarHTML(av.content, 72, av.bg, av.fg) : `<div class="profile-avatar ${getGachaFrameClass(p) || 'liquid-frame'} ${getGachaFrameClass(p)}" style="background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameClass(p) ? '' : getLiquidFrameInner()}${getGachaFrameInner(p)}${av.content}</div>`}</div>
-        <div><div class="profile-name ${getGachaNameClass(p)}">${p.name}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${getRankBadgeSVG(p.pts,p.id,36)}<span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
+        <div><div class="profile-name ${getGachaNameClass(p)}">${esc(p.name)}</div><div class="mt-8" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${getRankBadgeSVG(p.pts,p.id,36)}<span style="font-size:0.78rem;font-weight:700;color:var(--muted)">${t('rank_pos')}${rankPos}</span></div>${p.isAdmin ? '<div class="mt-8"><span class="rank-badge" style="background:rgba(0,217,245,0.15);color:var(--neon2);border:1px solid rgba(0,217,245,0.3)">⚙️ Admin</span></div>' : ''}${achHtml}</div>
       </div>
       <div><div class="flex-between" style="margin-bottom:4px"><span class="text-muted" style="font-size:0.78rem">${t('rank_progress')} ${prog.next ? '→ '+prog.next.label : t('rank_max')}</span><span style="font-size:0.78rem;color:var(--neon)">${prog.pct}%</span></div><div class="progress-wrap" style="height:8px"><div class="progress-bar" style="width:${prog.pct}%;background:linear-gradient(90deg,var(--neon),var(--neon2))"></div></div></div>
       <div class="profile-stats">
@@ -910,7 +910,7 @@ async function renderAdmin() {
     const sorted = [...db.players].sort((a,b)=>b.pts-a.pts);
     document.getElementById('adminPlayerList').innerHTML = sorted.map(p => {
       const rank = getRank(p.pts, p.id), colors = getAvatarColor(p.id);
-      return `<div class="lb-item" style="margin-bottom:6px"><div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,22)}<div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div></div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${p.name} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px">${getRankBadgeSVG(p.pts,p.id,36)}</div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
+      return `<div class="lb-item" style="margin-bottom:6px"><div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,22)}<div class="lb-avatar ${getGachaFrameClass(p)}" style="background:${colors[1]};color:${colors[0]};position:relative;isolation:isolate">${getGachaFrameInner(p)}${getInitial(p.name)}</div></div><div class="lb-info"><div class="lb-name ${getGachaNameClass(p)}">${esc(p.name)} ${p.isAdmin?'<span style="color:var(--neon2);font-size:0.68rem">Admin</span>':''}</div><div style="margin-top:3px">${getRankBadgeSVG(p.pts,p.id,36)}</div><div class="lb-stats">${p.wins}W ${p.losses}L · ${p.pts} pts</div></div><button class="btn btn-ghost btn-sm" onclick="openEditPlayer(${p.id})">${t('edit_btn')}</button></div>`;
     }).join('') || `<div class="text-muted">${t('no_players_list')}</div>`;
     await renderPendingList();
     renderCachAdmin(); // [FIXED] render immediately with cached data
@@ -937,7 +937,7 @@ async function renderPendingList() {
       const nameB = formatTeamNames(teamB);
       const winLabel = r.win_team === 'A' ? nameA : nameB;
       const submitter = db.players.find(p=>p.id===r.submitted_by);
-      const submitterName = submitter ? submitter.name : t('unknown');
+      const submitterName = submitter ? esc(submitter.name) : t('unknown');
       const scoreA = r.score_a, scoreB = r.score_b;
       // preview ELO
       const winners = r.win_team === 'A' ? teamA : teamB;
@@ -945,8 +945,8 @@ async function renderPendingList() {
       const winPts  = winners.map(p => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.pts : 0; });
       const losePts = losers.map(p  => { const pl = db.players.find(x=>x.id===p.id); return pl ? pl.pts : 0; });
       const eloRows = [
-        ...winners.map((p,i) => { const pl = db.players.find(x=>x.id===p.id); const bg = pl ? applyAchBoost(r.pts_gain, pl) : r.pts_gain; const lbl = pl ? achBoostLabel(pl) : ''; return `<span style="color:var(--neon)">+${bg}${lbl}</span> ${p.name} (${winPts[i]} → ${winPts[i]+bg})`; }),
-        ...losers.map((p,i)  => `<span style="color:var(--red)">-${r.pts_loss}</span> ${p.name} (${losePts[i]} → ${Math.max(0,losePts[i]-r.pts_loss)})`)
+        ...winners.map((p,i) => { const pl = db.players.find(x=>x.id===p.id); const bg = pl ? applyAchBoost(r.pts_gain, pl) : r.pts_gain; const lbl = pl ? achBoostLabel(pl) : ''; return `<span style="color:var(--neon)">+${bg}${lbl}</span> ${esc(p.name)} (${winPts[i]} → ${winPts[i]+bg})`; }),
+        ...losers.map((p,i)  => `<span style="color:var(--red)">-${r.pts_loss}</span> ${esc(p.name)} (${losePts[i]} → ${Math.max(0,losePts[i]-r.pts_loss)})`)
       ].join(' · ');
       return `<div class="pending-item">
         <div class="pending-item-top">
@@ -1056,21 +1056,26 @@ async function undoMatch(matchId) {
     toast('กำลังย้อนกลับแมตช์...', 'info');
     await loadPlayers();
 
-    // Reverse winners: subtract gain, wins--
+    // Reverse winners: หักแต้มที่ "เคยบวกจริง" = base gain + ach-boost (มิเรอร์ตอน approve)
+    // เดิมหักแค่ base gain ทำให้คนมี ach-boost ได้แต้มเกินค้างไว้
     for (const p of winners) {
       const pl = db.players.find(x=>x.id===p.id);
       if (!pl) continue;
+      const appliedGain = applyAchBoost(match.pts.gain, pl);
       await dbUpdatePlayer(pl.id, {
-        pts:  Math.max(0, pl.pts - match.pts.gain),
+        pts:  Math.max(0, pl.pts - appliedGain),
         wins: Math.max(0, pl.wins - 1)
       });
     }
-    // Reverse losers: add back loss pts, losses--
+    // Reverse losers: คืนแต้มเฉพาะคนที่ "เคยโดนหักจริง" — Bronze/Silver ถูก Protected ตอนแพ้
+    // (ไม่เคยเสียแต้ม) จึงต้องไม่คืนแต้มให้ ไม่งั้นจะแจกแต้มฟรีทุกครั้งที่ undo
     for (const p of losers) {
       const pl = db.players.find(x=>x.id===p.id);
       if (!pl) continue;
+      const loserRank = getRankByPts(pl.pts);
+      const wasProtected = (loserRank.id === 'bronze' || loserRank.id === 'silver');
       await dbUpdatePlayer(pl.id, {
-        pts:    pl.pts + match.pts.loss,
+        pts:    wasProtected ? pl.pts : pl.pts + match.pts.loss,
         losses: Math.max(0, pl.losses - 1)
       });
     }

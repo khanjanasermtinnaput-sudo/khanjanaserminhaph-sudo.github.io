@@ -68,8 +68,8 @@ function buildPersonalRankCard(p) {
   const gap = above ? Math.max(0, above.pts - p.pts) : 0;
   const gapLine = above
     ? `<div class="sr-gap">${isEn
-        ? `<b>${gap}</b> pts to overtake <b>${above.name}</b> (#${pos - 1})`
-        : `อีก <b>${gap}</b> pts จะแซง <b>${above.name}</b> ขึ้นอันดับ #${pos - 1}`}</div>`
+        ? `<b>${gap}</b> pts to overtake <b>${esc(above.name)}</b> (#${pos - 1})`
+        : `อีก <b>${gap}</b> pts จะแซง <b>${esc(above.name)}</b> ขึ้นอันดับ #${pos - 1}`}</div>`
     : `<div class="sr-gap sr-gap-top">${isEn ? '👑 You are #1 — defend your throne!' : '👑 คุณคืออันดับ 1 — ป้องกันบัลลังก์ไว้!'}</div>`;
 
   return `
@@ -78,7 +78,7 @@ function buildPersonalRankCard(p) {
       <div style="position:relative;flex-shrink:0">${mkKingCrownImg(p,28)}<div class="sr-me-av" style="background:${av.bg};color:${av.fg};${av.fs ? 'font-size:' + av.fs : ''}">${av.content}</div></div>
       <div class="sr-me-info">
         <div class="sr-me-label">${isEn ? 'YOUR RANK' : 'อันดับของคุณ'}</div>
-        <div class="sr-me-name">${p.name}</div>
+        <div class="sr-me-name">${esc(p.name)}</div>
         <div>${getRankBadgeSVG(p.pts,p.id,36)}</div>
       </div>
       <div class="sr-me-pos">
@@ -207,7 +207,7 @@ function _buildScoreRaceInner(rangeDays, topN) {
     const bw = (r.score / maxScore) * BAR_W;
     const dStr = r.delta > 0 ? `▲${r.delta}` : r.delta < 0 ? `▼${Math.abs(r.delta)}` : '—';
     const dCol = r.delta > 0 ? '#00f5a0' : r.delta < 0 ? '#ff5d8f' : 'rgba(255,255,255,0.3)';
-    const short = r.player.name.length > 11 ? r.player.name.slice(0, 10) + '…' : r.player.name;
+    const short = esc(r.player.name.length > 11 ? r.player.name.slice(0, 10) + '…' : r.player.name);
 
     // row bg
     svgRows += `<rect x="${PL}" y="${y}" width="${W - PL - PR}" height="${RH}" rx="7" fill="${r.isMe ? 'rgba(0,245,160,0.08)' : 'rgba(255,255,255,0.03)'}"/>`;
