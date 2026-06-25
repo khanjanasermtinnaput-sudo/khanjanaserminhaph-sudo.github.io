@@ -206,7 +206,6 @@ function calculateGroupStandings(grp, tMatches, matchType) {
   // Sort: wins DESC → points DESC → h2h → scoreDiff
   entries.sort((a, b) => {
     if (b.wins !== a.wins) return b.wins - a.wins;
-    if (b.points !== a.points) return b.points - a.points;
     // head-to-head
     const h2h = grpMatches.find(m =>
       (m.player_a === a.id && m.player_b === b.id) ||
@@ -485,7 +484,7 @@ async function incrementS1000Titles(playerId) {
   if (!pl) return;
   pl.super1000Titles = (pl.super1000Titles || 0) + 1;
   try {
-    const ptStr = buildPlayerPrimeTitles(pl, { s1000: pl.super1000Titles });
+    const ptStr = buildPlayerPrimeTitles(pl, { awards: pl.customAch, s1000: pl.super1000Titles });
     await dbUpdatePlayer(playerId, { prime_titles: ptStr });
   } catch(e) { console.warn('[S1000] save failed:', e.message); }
 }
@@ -2284,9 +2283,7 @@ async function renderTournamentTab() {
           // ── REGISTRATION PHASE ──────────────────────────────────────────────
           const slots = cfg.slots || {};
           const is2v2Reg = cfg.matchType === '2v2';
-          const totalSlots = is2v2Reg
-            ? Object.values(slots).reduce((s,g)=>s+g.length,0)
-            : Object.values(slots).reduce((s,g)=>s+g.length,0);
+          const totalSlots = Object.values(slots).reduce((s,g)=>s+g.length,0);
           const filled = is2v2Reg
             ? Object.values(slots).flatMap(g=>g).filter(tm=>tm[0]&&tm[1]).length
             : Object.values(slots).flat().filter(Boolean).length;
