@@ -1142,7 +1142,7 @@ function _hofRenderList() {
     const mTag = hof.match_type==='2v2'
       ? '<span style="font-size:0.58rem;background:rgba(0,217,245,0.12);border:1px solid rgba(0,217,245,0.3);color:var(--neon2);border-radius:20px;padding:1px 5px">2v2</span>'
       : '<span style="font-size:0.58rem;background:rgba(0,245,160,0.09);border:1px solid rgba(0,245,160,0.22);color:var(--neon);border-radius:20px;padding:1px 5px">1v1</span>';
-    const safeName = (r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    const safeName = (r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
     return `<div onclick="_hofOpenDetail(${r.id})" style="border:1px solid ${tierBd(r.tier)};border-radius:14px;background:${tierBg(r.tier)};padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:opacity 0.15s" onmouseover="this.style.opacity='.75'" onmouseout="this.style.opacity='1'">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
         <div style="display:flex;align-items:center;gap:6px">
@@ -1176,14 +1176,14 @@ async function _hofOpenDetail(tournamentId) {
   const matchType = hof.match_type||'1v1';
   const tierIcon = r.tier==='Super 1000'?'👑':r.tier==='Super 500'?'🥈':'🏸';
   const date = (hof.ended_at||r.created_at) ? new Date(hof.ended_at||r.created_at).toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'}) : '';
-  const pName = id => db.players.find(x=>x.id===id)?.name||`#${id}`;
+  const pName = id => esc(db.players.find(x=>x.id===id)?.name||`#${id}`);
 
   const listEl = document.getElementById('tourHofList');
   if (!listEl) return;
   listEl.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
       <button onclick="_hofRenderList()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:0.74rem;cursor:pointer">← กลับ</button>
-      ${isAdminUser() ? `<button onclick="confirmDeleteHofTournament(${r.id},'${(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.74rem;font-weight:600;cursor:pointer">🗑️ ลบ</button>` : ''}
+      ${isAdminUser() ? `<button onclick="confirmDeleteHofTournament(${r.id},'${(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.74rem;font-weight:600;cursor:pointer">🗑️ ลบ</button>` : ''}
     </div>
     <div style="border:1px solid rgba(255,215,0,0.22);border-radius:16px;background:rgba(255,215,0,0.04);padding:14px;margin-bottom:12px;text-align:center">
       <div style="font-size:1.6rem;margin-bottom:4px">${tierIcon}</div>
@@ -1477,7 +1477,7 @@ async function renderTournamentSection() {
         const cfg = getTournamentConfig(groups);
         _tourStore[t.id] = { groups, matchType, tier: t.tier, name: t.name };
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
-        const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
 
         if (cfg?.registrationOpen) {
           // ── Open registration (admin view): slot table + start button ──
@@ -1658,7 +1658,7 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
     const rows = standings.map((s, idx) => {
       const rankEmoji = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx+1}.`;
       const topStyle = idx === 0 && s.wins > 0 ? ' style="background:rgba(255,215,0,0.05)"' : '';
-      return `<tr${topStyle}><td style="font-weight:600">${rankEmoji} ${s.label}</td><td style="color:var(--neon)">${s.wins}</td><td style="color:var(--red)">${s.losses}</td><td style="color:var(--gold)">${s.points}</td><td style="font-size:0.72rem;color:var(--muted)">${s.scoreFor}-${s.scoreAgainst}</td></tr>`;
+      return `<tr${topStyle}><td style="font-weight:600">${rankEmoji} ${esc(s.label)}</td><td style="color:var(--neon)">${s.wins}</td><td style="color:var(--red)">${s.losses}</td><td style="color:var(--gold)">${s.points}</td><td style="font-size:0.72rem;color:var(--muted)">${s.scoreFor}-${s.scoreAgainst}</td></tr>`;
     }).join('');
 
     // Build record section: fixture grid (doubles) or free-entry form (singles) — hidden in read-only mode
@@ -1941,7 +1941,7 @@ async function claimTournamentSlot(tournamentId, group, slotIdx, subIdx) {
 function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
   const slots = cfg.slots || {};
   const is2v2 = cfg.matchType === '2v2';
-  const pName = id => db.players.find(p => p.id === id)?.name || `#${id}`;
+  const pName = id => esc(db.players.find(p => p.id === id)?.name || `#${id}`);
   const groups = Object.keys(slots).sort();
 
   // Find current user's slot
@@ -2101,7 +2101,7 @@ function _renderDrawPreview(cfg) {
   const preview = cfg.drawPreview;
   if (!preview) return '';
   const is2v2 = cfg.matchType === '2v2';
-  const pName = id => db.players.find(p => p.id === id)?.name || `#${id}`;
+  const pName = id => esc(db.players.find(p => p.id === id)?.name || `#${id}`);
   const letters = Object.keys(preview).sort();
   const cols = Math.min(letters.length, 4);
   let body = `<div class="t-draw-grid" style="grid-template-columns:repeat(${cols},1fr)">`;
@@ -2313,7 +2313,7 @@ async function renderTournamentTab() {
         _tourStore[t.id] = { groups, matchType, tier: t.tier, name: t.name };
         const tierBadge = t.tier === 'Super 1000' ? '🥇' : t.tier === 'Super 500' ? '🥈' : '🏸';
         const tierColor = t.tier === 'Super 1000' ? 'rgba(255,215,0,0.35)' : t.tier === 'Super 500' ? 'rgba(192,192,192,0.25)' : 'rgba(205,127,50,0.25)';
-        const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+        const safeName = t.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const header = `<div class="tournament-group-title">${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
 
         html += `<div class="tournament-group" style="margin-bottom:16px;position:relative;border-color:${tierColor}">`;
