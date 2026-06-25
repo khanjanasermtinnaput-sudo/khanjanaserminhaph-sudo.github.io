@@ -228,19 +228,6 @@ function renderModeBadge(matchType) {
     : `<span class="t-mode-badge t-mode-singles">🏸 Singles</span>`;
 }
 
-// ── Best-of-3 helpers ──────────────────────────────────────────────────────────
-function _readBo3(prefix) {
-  let wA = 0, wB = 0;
-  for (let g = 1; g <= 3; g++) {
-    const a = parseInt(document.getElementById(`${prefix}_g${g}a`)?.value);
-    const b = parseInt(document.getElementById(`${prefix}_g${g}b`)?.value);
-    if (!isNaN(a) && !isNaN(b) && (a + b > 0)) {
-      if (a > b) wA++; else if (b > a) wB++;
-    }
-  }
-  return { wA, wB };
-}
-
 // ── Per-game score detail (localStorage; DB stores only games-won) ──────────────
 function _gameDetailKey(tid, group, idA, idB) {
   const lo = Math.min(idA, idB), hi = Math.max(idA, idB);
@@ -359,20 +346,23 @@ async function _refFinish() {
   } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
 }
 
-function _refRenderSide(side) {
+function _refRenderSide(side, btnDisabled) {
   const r = _ref;
   const cur = side === 'a' ? r.curA : r.curB;
   const label = side === 'a' ? r.labelA : r.labelB;
   const won = _refGamesWon();
   const gamesWon = side === 'a' ? won.wA : won.wB;
   const color = side === 'a' ? 'var(--neon)' : 'var(--neon2)';
+  const dis = btnDisabled ? 'disabled' : '';
+  const cur2 = btnDisabled ? 'not-allowed' : 'pointer';
+  const op = btnDisabled ? '0.38' : '1';
   return `<div style="flex:1;text-align:center;padding:8px">
     <div style="font-size:0.78rem;font-weight:700;color:${color};margin-bottom:4px;min-height:2.2em;display:flex;align-items:center;justify-content:center">${label}</div>
     <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">ชนะ ${gamesWon} เกม</div>
     <div style="font-family:'Rajdhani',sans-serif;font-size:4rem;font-weight:700;line-height:1;color:${color}">${cur}</div>
     <div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
-      <button onclick="_refPoint('${side}',-1)" style="width:42px;height:42px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:1.2rem;cursor:pointer">−</button>
-      <button onclick="_refPoint('${side}',1)" style="width:56px;height:56px;border-radius:50%;border:1px solid ${color};background:${color}22;color:${color};font-size:1.6rem;font-weight:700;cursor:pointer">+</button>
+      <button onclick="_refPoint('${side}',-1)" ${dis} style="width:42px;height:42px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:1.2rem;cursor:${cur2};opacity:${op}">−</button>
+      <button onclick="_refPoint('${side}',1)" ${dis} style="width:56px;height:56px;border-radius:50%;border:1px solid ${color};background:${color}22;color:${color};font-size:1.6rem;font-weight:700;cursor:${cur2};opacity:${op}">+</button>
     </div>
   </div>`;
 }
@@ -418,9 +408,9 @@ function _renderRefModal() {
       </div>
       ${gamesLog ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gamesLog}</div>` : ''}
       <div style="display:flex;align-items:stretch;border:1px solid var(--glass-border);border-radius:14px;background:rgba(255,255,255,0.02);margin-bottom:12px">
-        ${_refRenderSide('a')}
+        ${_refRenderSide('a', over || matchDone)}
         <div style="width:1px;background:var(--glass-border)"></div>
-        ${_refRenderSide('b')}
+        ${_refRenderSide('b', over || matchDone)}
       </div>
       ${actionBtn}
     </div>`;
@@ -1494,7 +1484,7 @@ async function renderTournamentSection() {
           const pct = totalSlots ? Math.round(filled/totalSlots*100) : 0;
           const unitLabel = is2v2Reg ? 'ทีม' : 'คน';
           const perLabel = is2v2Reg ? `${cfg.teamsPerGroup} ทีม/กลุ่ม` : `${cfg.playersPerGroup} คน/กลุ่ม`;
-          const canStart = filled === totalSlots && totalSlots >= 2;
+          const canStart = filled >= 2;
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
@@ -1841,42 +1831,6 @@ async function createTournament() {
     toast('สร้าง Tournament แล้ว! 🏆', 'success');
     renderTournamentSection();
   } catch(e) { toast('สร้างไม่ได้: ' + e.message, 'error'); }
-}
-
-// ── recordTournamentMatch (updated: supports both modes + coin award for 2v2) ──
-async function recordTournamentMatch(tournamentId, groupLetter, matchType) {
-  const pa = parseInt(document.getElementById(`tm_pa_${tournamentId}_${groupLetter}`)?.value);
-  const pb = parseInt(document.getElementById(`tm_pb_${tournamentId}_${groupLetter}`)?.value);
-  const mType = matchType || '1v1';
-  if (!pa || !pb || pa === pb) return toast('เลือก' + (mType === '2v2' ? 'ทีม' : 'ผู้เล่น') + ' 2 ฝ่ายที่ต่างกัน', 'error');
-  const { wA, wB } = _readBo3(`tm_${tournamentId}_${groupLetter}`);
-  if (wA + wB === 0) return toast('กรอกคะแนนอย่างน้อย 1 เกม', 'error');
-  if (wA === wB) return toast('ผลเสมอไม่ได้ (ต้องมีผู้ชนะ)', 'error');
-  const sa = wA, sb = wB;
-  const winnerId = wA > wB ? pa : pb;
-  try {
-    await dbAddTournamentMatch(tournamentId, groupLetter, pa, pb, sa, sb, winnerId);
-
-    // [NEW] Award coins to ALL players in the winning 2v2 team
-    if (mType === '2v2' && isAdminUser()) {
-      try {
-        const allTs = await dbGetTournaments();
-        const t = allTs.find(x => x.id === tournamentId);
-        if (t) {
-          let grps = [];
-          try { grps = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
-          const winTeam = getTeamByAnchor(grps, winnerId);
-          if (winTeam?.playerIds) {
-            await awardMatchCoins(winTeam.playerIds);
-          }
-        }
-      } catch(e) { /* coin award is best-effort, don't block */ }
-    }
-
-    toast('บันทึก Tournament Match แล้ว!', 'success');
-    renderTournamentSection();
-    if (document.getElementById('tournamentTabContent')) renderTournamentTab();
-  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
 }
 
 // ── Player self-registration ──────────────────────────────────────────────────
@@ -2358,7 +2312,7 @@ async function renderTournamentTab() {
           }
           html += cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, isAdmin);
           if (isAdmin) {
-            const canStart = filled === totalSlots && totalSlots >= 2;
+            const canStart = filled >= 2;
             html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
               ${cfg.drawPreview
                 ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
