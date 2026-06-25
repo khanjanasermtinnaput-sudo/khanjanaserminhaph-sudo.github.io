@@ -279,6 +279,7 @@ function _renderGameSummary(tid, group, pa, pb) {
 
 // ── Referee mode: live point counter (21-point rules, Best of 3) ────────────────
 let _ref = null;
+let _declaringChampion = false;
 
 function _refLabel(tid, id, matchType) {
   if (matchType === '2v2') {
@@ -623,6 +624,8 @@ async function executeDeclareChampion(tournamentId) {
     try { stored = await _resolveTourData(tournamentId); } catch(e) {}
   }
   if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
+  if (_declaringChampion) return toast('กำลังดำเนินการอยู่ รอสักครู่...', 'error');
+  _declaringChampion = true;
   const { groups, matchType, tier: tierName } = stored;
 
   let winnerPlayerIds = [];
@@ -825,6 +828,7 @@ async function executeDeclareChampion(tournamentId) {
   toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
   if (thirdPlaceName) setTimeout(() => toast(`🥉 อันดับ 3: ${thirdPlaceName}`, 'info'), 1500);
 
+  _declaringChampion = false;
   renderTournamentSection();
 }
 
@@ -1750,7 +1754,11 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
 
   // ── Knockout stage (2→GF, 3→SF+GF, 4→SF1+SF2+GF) or single-group champion ──
   if (realGroups.length >= 2) {
-    const groupWinners = realGroups.map(grp => calculateGroupStandings(grp, tMatches, matchType)[0] || null).filter(Boolean);
+    const groupWinners = realGroups.map(grp => {
+      const hasMatch = tMatches.some(m => m.group_letter === grp.letter);
+      if (!hasMatch) return null;
+      return calculateGroupStandings(grp, tMatches, matchType)[0] || null;
+    }).filter(Boolean);
     if (groupWinners.length >= 2) {
       html += _buildKnockoutSection(tournament, tMatches, groupWinners, matchType, readOnly);
     }
