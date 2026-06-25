@@ -79,7 +79,7 @@ async function _pollMatches() {
     myRows.forEach(m => {
       const inA  = m.teamA.some(x => x.id === currentUser.id);
       const win  = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
-      const opp  = (inA ? m.teamB : m.teamA).map(x => x.name).join(' & ');
+      const opp  = (inA ? m.teamB : m.teamA).map(x => esc(x.name)).join(' & ');
       const pts  = win ? `+${m.pts.gain}` : `-${m.pts.loss}`;
       _pushNotif({
         id:   m.id || Date.now(),
@@ -129,7 +129,7 @@ async function _pollPending() {
         time: new Date().toISOString(), read: false });
     } else {
       fresh.forEach(r => {
-        const submitter = (db.players.find(p => p.id === r.submitted_by) || {}).name || 'ผู้เล่น';
+        const submitter = esc((db.players.find(p => p.id === r.submitted_by) || {}).name || 'ผู้เล่น');
         _pushNotif({ id: 'pending-' + r.id, type: 'pending', win: null, icon: '⏳',
           title: 'มีผลรอยืนยัน',
           body: `${submitter} ส่งผล ${r.score_a}-${r.score_b} · กดยืนยันใน Admin Panel`,
@@ -220,7 +220,7 @@ function _renderList() {
       <div class="nf-item-icon">${n.icon}</div>
       <div class="nf-item-body">
         <div class="nf-item-title">${n.title}</div>
-        <div class="nf-item-sub">${n.body}</div>
+        <div class="nf-item-sub">${esc(n.body)}</div>
         <div class="nf-item-time">${_rel(new Date(n.time))}</div>
       </div>
     </div>`).join('');
