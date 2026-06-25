@@ -152,7 +152,8 @@ async function openPlayerProfile(playerId) {
     const inA = m.teamA.some(x => x.id === p.id);
     const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
     const opp = inA ? m.teamB : m.teamA;
-    const date = new Date(m.date).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+    const _md = m.date ? new Date(m.date) : null;
+    const date = (_md && !isNaN(_md)) ? _md.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }) : '';
     return `<div class="pp2-hist">
       <div class="pp2-hist-res ${win ? 'w' : 'l'}">${win ? t('win_label') : t('lose_label')}</div>
       <div style="flex:1;color:var(--muted)">vs ${formatTeamNames(opp)}</div>

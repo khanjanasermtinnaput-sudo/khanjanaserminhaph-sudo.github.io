@@ -49,7 +49,9 @@ async function renderMailboxList() {
     const typeIcon = { coins:'🪙', elo:'📈', gacha_frame:'🖼️', gacha_emoji:'🎭', gacha_element:'✦', gacha_name:'✨', gacha_effect:'⚡' };
     const elNames  = { earth:'TERRA ดิน', water:'AQUA น้ำ', wind:'ZEPHYR ลม', fire:'IGNIS ไฟ', lightning:'VOLT สายฟ้า', yinyang:'YIN YANG' };
     const efxNames = { rotating_arcs:'Thunder God' };
+    window._mailItemCache = {};
     list.innerHTML = items.map(item => {
+      window._mailItemCache[item.id] = item;
       const icon = typeIcon[item.item_type] || '🎁';
       const label = item.item_type === 'coins' ? `+${item.item_value} 🪙`
         : item.item_type === 'elo' ? `+${item.item_value} ELO`
@@ -65,7 +67,7 @@ async function renderMailboxList() {
           <div class="mailbox-item-title">${esc(label)}</div>
           <div class="mailbox-item-msg">${esc(item.message || '')}</div>
         </div>
-        <button class="mailbox-item-claim" onclick="claimMailItem(${item.id},'${esc(String(item.item_type)).replace(/'/g,'')}','${esc(String(item.item_value)).replace(/'/g,'')}')">รับ</button>
+        <button class="mailbox-item-claim" onclick="claimMailItem(${item.id},_mailItemCache[${item.id}].item_type,String(_mailItemCache[${item.id}].item_value))">รับ</button>
       </div>`;
     }).join('');
   } catch(e) {

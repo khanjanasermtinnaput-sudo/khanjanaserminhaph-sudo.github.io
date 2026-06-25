@@ -75,7 +75,7 @@ function renderPotd() {
   const wrap=document.getElementById('potdContent');
   if(!card||!wrap) return;
   const today=new Date().toISOString().slice(0,10);
-  const td=db.matches.filter(m=>new Date(m.date).toISOString().slice(0,10)===today);
+  const td=db.matches.filter(m=>{ if(!m.date) return false; const d=new Date(m.date); return !isNaN(d) && d.toISOString().slice(0,10)===today; });
   if(!td.length){card.style.display='none';return;}
   const gains={};
   td.forEach(m=>(m.winTeam==='A'?m.teamA:m.teamB).forEach(p=>{gains[p.id]=(gains[p.id]||0)+(m.pts?.gain||0);}));
@@ -106,7 +106,7 @@ function renderTodayHist() {
   const wrap=document.getElementById('todayHistContent');
   if(!card||!wrap) return;
   const today=new Date().toISOString().slice(0,10);
-  const ms=db.matches.filter(m=>new Date(m.date).toISOString().slice(0,10)===today);
+  const ms=db.matches.filter(m=>{ if(!m.date) return false; const d=new Date(m.date); return !isNaN(d) && d.toISOString().slice(0,10)===today; });
   if(!ms.length){card.style.display='none';return;}
   card.style.display='';
   wrap.innerHTML=ms.slice(0,6).map(m=>{
@@ -241,7 +241,7 @@ function renderPersonalRecords(pid) {
   const myW=myMs.filter(m=>{const ia=m.teamA.some(p=>p.id===pid);return(ia&&m.winTeam==='A')||(!ia&&m.winTeam==='B');});
   const bM=myW.reduce((b,m)=>Math.max(b,Math.abs(m.scoreA-m.scoreB)),0);
   const bG=myW.reduce((b,m)=>Math.max(b,m.pts?.gain||0),0);
-  const byD={};myW.forEach(m=>{const d=new Date(m.date).toISOString().slice(0,10);byD[d]=(byD[d]||0)+1;});
+  const byD={};myW.forEach(m=>{if(!m.date) return; const _d=new Date(m.date); if(isNaN(_d)) return; const d=_d.toISOString().slice(0,10);byD[d]=(byD[d]||0)+1;});
   const bD=Object.values(byD).length?Math.max(...Object.values(byD)):0;
   el.innerHTML=`<div class="records-row">${[['🔥 '+t('streak_label'),mx],['⚡ '+t('biggest_win'),bM],['📈 '+t('peak_elo_m'),'+'+bG],['🏆 '+t('wins_day'),bD]].map(([lbl,val])=>`
     <div class="rec-item"><div class="rec-val">${val}</div><div class="rec-lbl">${lbl}</div></div>`).join('')}</div>`;

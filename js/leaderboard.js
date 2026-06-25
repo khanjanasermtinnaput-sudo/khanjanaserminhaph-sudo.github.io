@@ -334,13 +334,19 @@ function startSingles() {
   const sel = window._matchSel || { A: [], B: [] };
   if (!sel.A[0] || !sel.B[0]) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
   if (sel.A[0] === sel.B[0]) return toast('เลือกผู้เล่นคนละคน', 'error');
-  currentMatch = { type: 'singles', teamA: [db.players.find(p=>p.id===sel.A[0])], teamB: [db.players.find(p=>p.id===sel.B[0])], scoreA: 0, scoreB: 0 };
+  const teamA = [db.players.find(p=>p.id===sel.A[0])].filter(Boolean);
+  const teamB = [db.players.find(p=>p.id===sel.B[0])].filter(Boolean);
+  if (!teamA.length || !teamB.length) return toast('ไม่พบข้อมูลผู้เล่น กรุณารีโหลด', 'error');
+  currentMatch = { type: 'singles', teamA, teamB, scoreA: 0, scoreB: 0 };
   showMatchPlaying();
 }
 function startDoubles() {
   const sel = window._matchSel || { A: [], B: [] };
   if (sel.A.length !== 2 || sel.B.length !== 2) return toast('ต้องเลือกทีมละ 2 คน', 'error');
-  currentMatch = { type: 'doubles', teamA: sel.A.map(id => db.players.find(p=>p.id===id)), teamB: sel.B.map(id => db.players.find(p=>p.id===id)), scoreA: 0, scoreB: 0 };
+  const teamA = sel.A.map(id => db.players.find(p=>p.id===id)).filter(Boolean);
+  const teamB = sel.B.map(id => db.players.find(p=>p.id===id)).filter(Boolean);
+  if (teamA.length !== 2 || teamB.length !== 2) return toast('ไม่พบข้อมูลผู้เล่น กรุณารีโหลด', 'error');
+  currentMatch = { type: 'doubles', teamA, teamB, scoreA: 0, scoreB: 0 };
   showMatchPlaying();
 }
 function showMatchPlaying() {
@@ -779,7 +785,8 @@ async function renderHistory() {
     const html = matches.map(m => {
       const nameA = formatTeamNames(m.teamA), nameB = formatTeamNames(m.teamB);
       const winner = m.winTeam === 'A' ? nameA : nameB, loser = m.winTeam === 'A' ? nameB : nameA;
-      const date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
+      const _md = m.date ? new Date(m.date) : null;
+      const date = (_md && !isNaN(_md)) ? _md.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}) : '';
       const typeLabel = m.type === 'doubles' ? '👥 Doubles' : '👤 Singles';
       const moodTag = m.mood ? ` <span style="font-size:0.95rem" title="บรรยากาศแมตช์">${m.mood}</span>` : '';
       // Highlight if filtered player won/lost
@@ -847,7 +854,7 @@ async function renderProfile() {
     let peakRankPos = parseInt(localStorage.getItem(peakPosKey) || rankPos);
     if (!localStorage.getItem(peakPosKey) || rankPos < peakRankPos) { peakRankPos = rankPos; localStorage.setItem(peakPosKey, rankPos); }
     // Total days played
-    const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
+    const totalDays = new Set(db.matches.filter(m=>[...m.teamA,...m.teamB].some(x=>x.id===p.id)&&m.date&&!isNaN(new Date(m.date))).map(m=>new Date(m.date).toISOString().slice(0,10))).size;
     // ระบบติก=โชว์: โชว์ใน profile card เฉพาะที่ติกแล้วเท่านั้น, null = ยังไม่ได้ตั้งค่า = ไม่โชว์
     const _profPins = p.pinnedAchs;
     const _profAch = (_profPins && Array.isArray(_profPins) && _profPins.length > 0)

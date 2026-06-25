@@ -11,7 +11,7 @@ function getBestDayOfWeek(playerId) {
   });
   if (!wins.length) return null;
   const counts = [0,0,0,0,0,0,0];
-  wins.forEach(m => { counts[new Date(m.date).getDay()]++; });
+  wins.forEach(m => { if (!m.date) return; const _d = new Date(m.date); if (!isNaN(_d)) counts[_d.getDay()]++; });
   const maxDay = counts.indexOf(Math.max(...counts));
   return thDays[maxDay];
 }
