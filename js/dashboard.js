@@ -12,9 +12,8 @@
   // ── ONE flat list of EVERY existing feature (no categories) ─────
   // badge: 'mailbox' | 'new' resolved dynamically. adminOnly hides for non-admins.
   const DASH_ITEMS = [
-    { icon: '⚔️',  name: 'แมตช์',        go: () => showSection('match') },
+    { icon: '⚔️',  name: 'นับคะแนน/บันทึกคะแนน', go: () => showSection('match') },
     { icon: '🏆',  name: 'Tournament',  go: () => showSection('tournament') },
-    { icon: '👆',  name: 'Referee',     go: () => showSection('match') },
     { icon: '🥇',  name: 'อันดับ',       go: () => showSection('leaderboard') },
     { icon: '📈',  name: 'สถิติ',        go: () => showSection('stats') },
     { icon: '👤',  name: 'โปรไฟล์',      go: () => showSection('profile') },
