@@ -66,7 +66,7 @@ function initCrownSparkle(canvas, W, H) {
 <title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260625a">
-<link rel="stylesheet" href="redesign.css?v=20260627a">
+<link rel="stylesheet" href="redesign.css?v=20260627b">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -112,10 +112,13 @@ function initCrownSparkle(canvas, W, H) {
   <div class="gr-tap">tap to close</div>
 </div>
 
-<!-- ═══ COMPACT STICKY PROFILE HEADER (Dashboard Redesign v8.0) ═══ -->
+<!-- ═══ COMPACT STICKY HEADER (Dashboard Redesign v8.1) ═══ -->
 <header id="mainNav" class="bk-header hidden">
   <div class="bk-header-inner">
-    <button class="bk-hdr-logo" onclick="showSection('home')" title="หน้าหลัก" aria-label="หน้าหลัก">🏸</button>
+    <!-- 🏆 #pos → Leaderboard -->
+    <button class="bk-hdr-pos" onclick="showSection('leaderboard')" title="อันดับของฉัน" aria-label="อันดับ">
+      <span class="bk-pos-trophy">🏆</span><span id="hdrPosNum">#–</span>
+    </button>
 
     <!-- 👤 Username → Profile -->
     <button class="bk-hdr-profile" onclick="showSection('profile')" title="โปรไฟล์ของฉัน" aria-label="โปรไฟล์">
@@ -127,23 +130,22 @@ function initCrownSparkle(canvas, W, H) {
     <button class="bk-hdr-rank" id="hdrRank" onclick="showRankInfo()" title="ดูระบบแรงค์" aria-label="แรงค์"></button>
 
     <!-- ⭐ ELO Score → Statistics -->
-    <button class="bk-hdr-elo" onclick="showSection('stats')" title="สถิติของฉัน" aria-label="ELO และสถิติ">
+    <button class="bk-hdr-elo" onclick="showSection('stats')" title="ELO และสถิติ" aria-label="ELO และสถิติ">
       <span class="bk-elo-star">⭐</span><span id="hdrElo">0</span>
     </button>
 
-    <!-- Actions -->
+    <!-- 🔔 Notifications · ⋮ Menu -->
     <div class="bk-hdr-actions">
       <div class="nf-bell-wrap" id="notifBellWrap" style="display:none" data-loggedin-show="1">
         <button class="bk-hdr-icon" id="notifBellBtn" onclick="toggleNotifPanel()" title="การแจ้งเตือน">🔔<span class="nf-badge" id="notifBadge" style="display:none">0</span></button>
       </div>
-      <button class="bk-hdr-icon" id="mailboxNavBtn" onclick="openMailbox()" title="กล่องของขวัญ" style="display:none" data-loggedin-show="1">📬<span class="mb-dot" id="mailboxDot"></span></button>
-      <button class="bk-hdr-icon" id="updateNavBtn" onclick="showPatchNotes()" title="อัปเดต">📲<span id="updateBadge" class="update-badge hidden">NEW</span></button>
-      <button class="bk-hdr-icon bk-hdr-logout" id="hdrLogout" onclick="logout()" title="ออกจากระบบ" aria-label="ออกจากระบบ">⏻</button>
+      <button class="bk-hdr-icon" id="bkMenuBtn" onclick="bkOpenSheet()" title="เมนู" aria-label="เมนู" aria-haspopup="dialog">⋮<span class="bk-menu-dot" id="bkMenuDot"></span></button>
     </div>
   </div>
 
-  <!-- Hidden compat shims: legacy nav IDs kept alive so existing JS
-       (showSection active-state, i18n labels, admin gating) keeps working. -->
+  <!-- Hidden compat shims: legacy IDs kept alive so existing JS
+       (showSection active-state, i18n labels, admin gating, mailbox &
+       update badges) keeps working unchanged. -->
   <div class="bk-nav-compat" aria-hidden="true">
     <button class="nav-btn active" id="navLb" onclick="showSection('leaderboard')">อันดับ</button>
     <button class="nav-btn" id="navAI" onclick="showSection('ai')">AOF</button>
@@ -156,8 +158,35 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn" id="adminNavBtn" onclick="showSection('admin')">Admin</button>
     <button class="nav-btn" id="navLogoutBtn" onclick="logout()">ออก</button>
     <span id="navHiLabel">สวัสดี</span>
+    <!-- mailbox + update kept here purely for badge logic; surfaced in the ⋮ sheet -->
+    <button id="mailboxNavBtn" onclick="openMailbox()" style="display:none" data-loggedin-show="1">📬<span class="mb-dot" id="mailboxDot"></span></button>
+    <button id="updateNavBtn" onclick="showPatchNotes()">📲<span id="updateBadge" class="update-badge hidden">NEW</span></button>
   </div>
 </header>
+
+<!-- ═══ OVERFLOW BOTTOM SHEET (⋮ menu / settings) ═══ -->
+<div id="bkSheet" class="bk-sheet" role="dialog" aria-modal="true" aria-label="เมนู" hidden>
+  <div class="bk-sheet-backdrop" onclick="bkCloseSheet()"></div>
+  <div class="bk-sheet-panel">
+    <div class="bk-sheet-handle"></div>
+    <div class="bk-sheet-grid">
+      <button type="button" class="bk-sheet-item" onclick="bkSheetGo('profile')">👤<span>โปรไฟล์</span></button>
+      <button type="button" class="bk-sheet-item" onclick="bkCloseSheet();openMailbox()">📬<span>กล่องของขวัญ</span><i class="bk-sheet-dot" id="bkSheetMailDot"></i></button>
+      <button type="button" class="bk-sheet-item" onclick="bkSheetGo('ai')">🤖<span>AOF AI</span></button>
+      <button type="button" class="bk-sheet-item" onclick="bkCloseSheet();showPatchNotes()">📲<span>อัปเดต</span></button>
+      <button type="button" class="bk-sheet-item" onclick="bkSheetGo('history')">📜<span>ประวัติ</span></button>
+      <button type="button" class="bk-sheet-item bk-sheet-admin" id="bkSheetAdmin" onclick="bkSheetGo('admin')">⚙️<span>Admin</span></button>
+    </div>
+    <div class="bk-sheet-sep"></div>
+    <div class="bk-sheet-prefs">
+      <button type="button" class="bk-pref" onclick="setStyle('glass')">🌊 Liquid</button>
+      <button type="button" class="bk-pref" onclick="setStyle('lite')">⚡ Lite</button>
+      <button type="button" class="bk-pref" onclick="toggleDayNight()">🌗 ธีม</button>
+      <button type="button" class="bk-pref" onclick="toggleLang()">🌐 ภาษา</button>
+    </div>
+    <button type="button" class="bk-sheet-logout" onclick="bkCloseSheet();logout()">⏻ ออกจากระบบ</button>
+  </div>
+</div>
 
 <!-- NOTIFICATION PANEL -->
 <div class="nf-panel" id="notifPanel">
@@ -1766,6 +1795,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/gacha-element.js?v=20260603e"></script>
 <script src="js/aof.js?v=20260612c"></script>
 <!-- Dashboard redesign controller — loads LAST so it wraps showSection/afterLogin/loadAll cleanly -->
-<script src="js/dashboard.js?v=20260627a"></script>
+<script src="js/dashboard.js?v=20260627b"></script>
 </body>
 </html>

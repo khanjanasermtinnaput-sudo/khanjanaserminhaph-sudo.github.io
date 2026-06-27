@@ -1,271 +1,218 @@
 /* ═══════════════════════════════════════════════════════════════
-   BK CLUB — DASHBOARD CONTROLLER (v8.0)
-   Loads LAST. Adds a dashboard-first Home experience on top of the
-   existing single-page app WITHOUT removing any feature:
-     • Compact sticky profile header (avatar / rank icon / ELO)
-     • Home = one dashboard with Top-3 podium + IA-grouped feature grid
-     • Every card routes to an existing section/modal/function
-   All legacy nav IDs are preserved (hidden) so existing JS keeps working.
+   BK CLUB — DASHBOARD CONTROLLER (v8.1)
+   Loads LAST. Dashboard-first Home WITHOUT removing any feature:
+     • Compact single-row header: 🏆#pos · 👤name · 🛡rank · ⭐ELO · 🔔 · ⋮
+     • ⋮ opens a bottom-sheet menu (mailbox / updates / prefs / logout)
+     • Home = staggered Top-3 podium + ONE continuous 3-col feature grid
+   Legacy nav IDs preserved (hidden) so existing JS keeps working.
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
 
-  // ── Information Architecture: features grouped by USER GOAL ──────
-  // Each item maps to a REAL existing feature (section, modal or fn).
-  // `badge`: 'pending' | 'mailbox' | 'new' resolved dynamically.
-  const DASH_GROUPS = [
-    {
-      label: '🏸 เล่น · Play',
-      items: [
-        { icon: '⚔️', title: 'แมตช์', desc: 'เล่น Singles / Doubles', go: () => showSection('match') },
-        { icon: '🏆', title: 'Tournament', desc: 'สายแข่ง · กลุ่ม · รอบชิง', go: () => showSection('tournament') },
-        { icon: '👆', title: 'Referee Mode', desc: 'นับคะแนนปุ่มใหญ่', go: () => showSection('match') },
-      ],
-    },
-    {
-      label: '📊 แข่งขัน · Competition',
-      items: [
-        { icon: '🥇', title: 'อันดับ', desc: 'Leaderboard · ELO', go: () => showSection('leaderboard') },
-        { icon: '🏛️', title: 'Hall of Fame', desc: 'Kings of Badminton', go: () => callIf('openHoF') },
-        { icon: '📈', title: 'สถิติ', desc: 'กราฟ · ฟอร์ม · เทรนด์', go: () => showSection('stats') },
-      ],
-    },
-    {
-      label: '🎮 ความก้าวหน้า · Progress',
-      items: [
-        { icon: '👤', title: 'โปรไฟล์', desc: 'ข้อมูล · ซีซั่น · แรงค์', go: () => showSection('profile') },
-        { icon: '🏅', title: 'Achievements', desc: 'รางวัลที่ปลดล็อค', go: () => showSection('profile') },
-        { icon: '📋', title: 'ประวัติ', desc: 'แมตช์ย้อนหลังทั้งหมด', go: () => showSection('history') },
-      ],
-    },
-    {
-      label: '🎁 รางวัล · Rewards',
-      items: [
-        { icon: '✦', title: 'Gacha', desc: 'สะสมธาตุ · กรอบ · เอฟเฟกต์', go: () => showSection('gacha') },
-        { icon: '🎰', title: 'Gacha Pull', desc: 'สุ่มด้วยเหรียญ', go: () => callIf('openGachaPull') },
-        { icon: '📬', title: 'กล่องของขวัญ', desc: 'รับไอเทมจาก Admin', badge: 'mailbox', go: () => callIf('openMailbox') },
-      ],
-    },
-    {
-      label: '🤖 ผู้ช่วย · Utilities',
-      items: [
-        { icon: '🤖', title: 'AOF Assistance', desc: 'AI ผู้ช่วยอัจฉริยะ', badge: 'new', go: () => showSection('ai') },
-        { icon: '🔔', title: 'การแจ้งเตือน', desc: 'แมตช์ · รางวัล · ระบบ', go: () => callIf('toggleNotifPanel') },
-        { icon: '📲', title: 'อัปเดต', desc: 'Patch Notes ล่าสุด', go: () => callIf('showPatchNotes') },
-      ],
-    },
-    {
-      label: '⚙️ จัดการ · Administration',
-      adminOnly: true,
-      items: [
-        { icon: '⚙️', title: 'Admin Panel', desc: 'ยืนยันแมตช์ · จัดการผู้เล่น', badge: 'pending', adminOnly: true, go: () => showSection('admin') },
-      ],
-    },
+  // ── ONE flat list of EVERY existing feature (no categories) ─────
+  // badge: 'mailbox' | 'new' resolved dynamically. adminOnly hides for non-admins.
+  const DASH_ITEMS = [
+    { icon: '⚔️',  name: 'แมตช์',        go: () => showSection('match') },
+    { icon: '🏆',  name: 'Tournament',  go: () => showSection('tournament') },
+    { icon: '👆',  name: 'Referee',     go: () => showSection('match') },
+    { icon: '🥇',  name: 'อันดับ',       go: () => showSection('leaderboard') },
+    { icon: '📈',  name: 'สถิติ',        go: () => showSection('stats') },
+    { icon: '👤',  name: 'โปรไฟล์',      go: () => showSection('profile') },
+    { icon: '🏅',  name: 'Achievement', go: () => showSection('profile') },
+    { icon: '📜',  name: 'ประวัติ',       go: () => showSection('history') },
+    { icon: '✦',   name: 'Gacha',       go: () => showSection('gacha') },
+    { icon: '🎰',  name: 'สุ่มกาชา',      go: () => callIf('openGachaPull') },
+    { icon: '🎁',  name: 'รางวัล',        badge: 'mailbox', go: () => callIf('openMailbox') },
+    { icon: '🤖',  name: 'AOF AI',       badge: 'new', go: () => showSection('ai') },
+    { icon: '🏛️',  name: 'Hall of Fame', go: () => callIf('openHoF') },
+    { icon: '🔔',  name: 'แจ้งเตือน',     go: () => callIf('toggleNotifPanel') },
+    { icon: '📲',  name: 'อัปเดต',        go: () => callIf('showPatchNotes') },
+    { icon: '⚙️',  name: 'Admin', adminOnly: true, go: () => showSection('admin') },
   ];
 
-  function callIf(fnName) { if (typeof window[fnName] === 'function') window[fnName](); }
+  function callIf(fn) { if (typeof window[fn] === 'function') window[fn](); }
 
-  // ── Build the Home section DOM once ─────────────────────────────
+  // ── Build Home section (podium + flat grid) ─────────────────────
   function buildHomeSection() {
     if (document.getElementById('homeSection')) return;
     const sec = document.createElement('div');
     sec.id = 'homeSection';
     sec.className = 'section';
     sec.innerHTML =
-      '<div class="bk-dash-stats" id="bkDashStats"></div>' +
-      '<div class="bk-dash-podium">' +
-        '<div class="bk-sec-label">🥇 Top 3 <button class="bk-sec-link" onclick="showSection(\'leaderboard\')">ดูทั้งหมด →</button></div>' +
-        '<div class="lb-podium" id="homePodium"></div>' +
-      '</div>' +
-      '<div class="bk-dashboard" id="bkDashboard"></div>';
-    // insert right after the (legacy) leaderboard section so section order is sane
+      '<div class="bk-podium" id="homePodium"></div>' +
+      '<div class="bk-grid" id="bkGrid"></div>';
     const lb = document.getElementById('leaderboardSection');
     if (lb && lb.parentNode) lb.parentNode.insertBefore(sec, lb);
     else document.body.appendChild(sec);
-    buildFeatureGrid();
+    buildGrid();
   }
 
-  function buildFeatureGrid() {
-    const wrap = document.getElementById('bkDashboard');
-    if (!wrap) return;
+  function buildGrid() {
+    const grid = document.getElementById('bkGrid');
+    if (!grid) return;
     const admin = (typeof isAdminUser === 'function') && isAdminUser();
-    wrap.innerHTML = DASH_GROUPS.map(g => {
-      if (g.adminOnly && !admin) return '';
-      const cards = g.items.map((it, i) => {
-        const adminCls = it.adminOnly ? ' bk-feat-admin' : '';
-        return '<button class="bk-feat-card' + adminCls + '" data-grp="' + esc(g.label) +
-          '" data-idx="' + i + '"' + (it.badge ? ' data-badge="' + it.badge + '"' : '') + '>' +
-          (it.badge ? '<span class="bk-feat-badge' + badgeClass(it.badge) + ' bk-feat-hidden" data-badge-el="' + it.badge + '">' + badgeText(it.badge) + '</span>' : '') +
-          '<span class="bk-feat-icon">' + it.icon + '</span>' +
-          '<span class="bk-feat-body"><span class="bk-feat-title">' + esc(it.title) + '</span>' +
-          '<span class="bk-feat-desc">' + esc(it.desc) + '</span></span>' +
-        '</button>';
-      }).join('');
-      return '<div class="bk-dash-group"><div class="bk-dash-group-label">' + esc(g.label) + '</div>' +
-        '<div class="bk-dash-grid">' + cards + '</div></div>';
+    grid.innerHTML = DASH_ITEMS.map((it, i) => {
+      if (it.adminOnly && !admin) return '';
+      const adminCls = it.adminOnly ? ' bk-feat-admin' : '';
+      const dot = it.badge
+        ? '<span class="bk-feat-dot' + (it.badge === 'new' ? ' bk-dot-new' : '') + ' bk-feat-hidden" data-dot="' + it.badge + '">' + (it.badge === 'new' ? 'NEW' : '') + '</span>'
+        : '';
+      return '<button type="button" class="bk-feat' + adminCls + '" data-idx="' + i + '" aria-label="' + esc(it.name) + '">' +
+        dot +
+        '<span class="bk-feat-icon">' + it.icon + '</span>' +
+        '<span class="bk-feat-name">' + esc(it.name) + '</span>' +
+      '</button>';
     }).join('');
-    // wire clicks (delegation) + ripple
-    wrap.querySelectorAll('.bk-feat-card').forEach(card => {
+    grid.querySelectorAll('.bk-feat').forEach(card => {
       card.addEventListener('click', function (e) {
         addRipple(card, e);
-        const grpLabel = card.getAttribute('data-grp');
-        const idx = +card.getAttribute('data-idx');
-        const grp = DASH_GROUPS.find(x => x.label === grpLabel);
-        if (grp && grp.items[idx] && typeof grp.items[idx].go === 'function') grp.items[idx].go();
+        const it = DASH_ITEMS[+card.getAttribute('data-idx')];
+        if (it && typeof it.go === 'function') it.go();
       });
     });
-    refreshDashBadges();
-  }
-
-  function badgeClass(type) {
-    if (type === 'new') return ' bk-badge-new';
-    if (type === 'pending' || type === 'mailbox') return ' bk-badge-warn';
-    return '';
-  }
-  function badgeText(type) {
-    if (type === 'new') return 'NEW';
-    if (type === 'mailbox') return 'มีของ';
-    if (type === 'pending') return '!';
-    return '';
+    refreshBadges();
   }
 
   function addRipple(card, e) {
     if (document.documentElement.getAttribute('data-style') === 'lite') return;
     const r = card.getBoundingClientRect();
     const d = Math.max(r.width, r.height);
-    const span = document.createElement('span');
-    span.className = 'bk-ripple';
-    span.style.width = span.style.height = d + 'px';
-    span.style.left = ((e.clientX - r.left) - d / 2) + 'px';
-    span.style.top = ((e.clientY - r.top) - d / 2) + 'px';
-    card.appendChild(span);
-    setTimeout(() => span.remove(), 520);
+    const s = document.createElement('span');
+    s.className = 'bk-ripple';
+    s.style.width = s.style.height = d + 'px';
+    s.style.left = ((e.clientX - r.left) - d / 2) + 'px';
+    s.style.top = ((e.clientY - r.top) - d / 2) + 'px';
+    card.appendChild(s);
+    setTimeout(() => s.remove(), 520);
   }
 
-  // ── Dynamic badges (mailbox / admin pending / NEW) ──────────────
-  function refreshDashBadges() {
-    // 'new' is always shown
-    document.querySelectorAll('[data-badge-el="new"]').forEach(el => el.classList.remove('bk-feat-hidden'));
-    // mailbox — mirror the legacy #mailboxDot ".show" state
-    const dot = document.getElementById('mailboxDot');
-    const hasMail = dot && dot.classList.contains('show');
-    document.querySelectorAll('[data-badge-el="mailbox"]').forEach(el => el.classList.toggle('bk-feat-hidden', !hasMail));
-    // admin pending — read legacy #pendingBadge (rendered by admin view)
-    const pb = document.getElementById('pendingBadge');
-    const cnt = pb && !pb.classList.contains('hidden') ? (pb.textContent || '').trim() : '';
-    document.querySelectorAll('[data-badge-el="pending"]').forEach(el => {
-      const show = cnt && cnt !== '0';
-      el.classList.toggle('bk-feat-hidden', !show);
-      if (show) el.textContent = cnt;
-    });
+  // ── Dynamic badges (mailbox dot + NEW) on grid, sheet & ⋮ ───────
+  function refreshBadges() {
+    const mailDot = document.getElementById('mailboxDot');
+    const hasMail = !!(mailDot && mailDot.classList.contains('show'));
+    const updateBadge = document.getElementById('updateBadge');
+    const hasUpdate = !!(updateBadge && !updateBadge.classList.contains('hidden'));
+
+    // grid: NEW always on, mailbox mirrors state
+    document.querySelectorAll('[data-dot="new"]').forEach(el => el.classList.remove('bk-feat-hidden'));
+    document.querySelectorAll('[data-dot="mailbox"]').forEach(el => el.classList.toggle('bk-feat-hidden', !hasMail));
+    // sheet mailbox dot
+    const smd = document.getElementById('bkSheetMailDot');
+    if (smd) smd.classList.toggle('show', hasMail);
+    // ⋮ aggregate dot — something in the menu wants attention
+    const menuDot = document.getElementById('bkMenuDot');
+    if (menuDot) menuDot.classList.toggle('show', hasMail || hasUpdate);
+    // sheet admin row visibility
+    const adminRow = document.getElementById('bkSheetAdmin');
+    if (adminRow) adminRow.style.display = ((typeof isAdminUser === 'function') && isAdminUser()) ? '' : 'none';
   }
-  window.bkRefreshDashBadges = refreshDashBadges;
+  window.bkRefreshDashBadges = refreshBadges;
 
   // ── Compact header updater ──────────────────────────────────────
   function updateHeader() {
     if (!currentUser) return;
-    const p = (db.players || []).find(x => x.id === currentUser.id) || currentUser;
-    // avatar
+    const players = (db && db.players) ? db.players : [];
+    const p = players.find(x => x.id === currentUser.id) || currentUser;
+    // leaderboard position
+    const sorted = [...players].sort((a, b) => b.pts - a.pts);
+    const pos = sorted.findIndex(x => x.id === p.id) + 1;
+    const posEl = document.getElementById('hdrPosNum');
+    if (posEl) posEl.textContent = pos > 0 ? '#' + pos : '#–';
+    // avatar (+ gacha frame)
     const avEl = document.getElementById('hdrAvatar');
     if (avEl && typeof getAvatar === 'function') {
       const a = getAvatar(p.id, p.name);
-      const frameCls = (typeof getGachaFrameClass === 'function') ? getGachaFrameClass(p) : '';
-      const frameInner = (typeof getGachaFrameInner === 'function') ? getGachaFrameInner(p) : '';
-      avEl.className = 'bk-hdr-av' + (frameCls ? ' ' + frameCls : '');
+      const fCls = (typeof getGachaFrameClass === 'function') ? getGachaFrameClass(p) : '';
+      const fIn = (typeof getGachaFrameInner === 'function') ? getGachaFrameInner(p) : '';
+      avEl.className = 'bk-hdr-av' + (fCls ? ' ' + fCls : '');
       avEl.style.cssText = 'background:' + a.bg + ';color:' + a.fg + ';' + (a.fs ? 'font-size:' + a.fs + ';' : '') +
-        'width:34px;height:34px;border-radius:50%;position:relative;isolation:isolate';
-      avEl.innerHTML = frameInner + a.content;
+        'width:32px;height:32px;border-radius:50%;position:relative;isolation:isolate';
+      avEl.innerHTML = fIn + a.content;
     }
     // name (+ gacha name effect)
-    const nmEl = document.getElementById('navName');
-    if (nmEl) {
-      nmEl.textContent = p.name;
-      const nameCls = (typeof getGachaNameClass === 'function') ? getGachaNameClass(p) : '';
-      nmEl.className = 'bk-hdr-name' + (nameCls ? ' ' + nameCls : '');
+    const nm = document.getElementById('navName');
+    if (nm) {
+      nm.textContent = p.name;
+      const nCls = (typeof getGachaNameClass === 'function') ? getGachaNameClass(p) : '';
+      nm.className = 'bk-hdr-name' + (nCls ? ' ' + nCls : '');
     }
-    // rank — ICON ONLY (never text like "Diamond II")
-    const rkEl = document.getElementById('hdrRank');
-    if (rkEl && typeof getRankBadgeSVG === 'function') {
-      rkEl.innerHTML = getRankBadgeSVG(p.pts, p.id, 30);
-    }
-    // ELO score
-    const eloEl = document.getElementById('hdrElo');
-    if (eloEl) eloEl.textContent = (p.pts != null ? p.pts : 0).toLocaleString();
+    // rank — ICON ONLY
+    const rk = document.getElementById('hdrRank');
+    if (rk && typeof getRankBadgeSVG === 'function') rk.innerHTML = getRankBadgeSVG(p.pts, p.id, 28);
+    // ELO
+    const elo = document.getElementById('hdrElo');
+    if (elo) elo.textContent = (p.pts != null ? p.pts : 0).toLocaleString();
   }
   window.bkUpdateHeader = updateHeader;
 
-  // ── Home renderer: quick stats + podium ─────────────────────────
+  // ── Home renderer: podium ───────────────────────────────────────
   async function renderHome() {
     buildHomeSection();
     try { if (typeof loadAll === 'function') await loadAll(); } catch (e) {}
     const players = (db && db.players) ? [...db.players] : [];
     const sorted = players.sort((a, b) => b.pts - a.pts);
     updateHeader();
-    buildFeatureGrid(); // re-eval adminOnly after data loads
-
-    // quick stats
-    const totalMatches = (db && db.matches) ? db.matches.length : 0;
-    let bestWR = 0, bestWRName = '—';
-    sorted.forEach(p => {
-      const t = p.wins + p.losses;
-      if (t >= 3) { const wr = Math.round(p.wins / t * 100); if (wr > bestWR) { bestWR = wr; bestWRName = p.name; } }
-    });
-    const statsEl = document.getElementById('bkDashStats');
-    if (statsEl) {
-      statsEl.innerHTML =
-        qstat('👥', sorted.length, 'ผู้เล่น') + sep() +
-        qstat('⚔️', totalMatches, 'แมตช์') + sep() +
-        qstat('🎯', bestWR + '%', 'Win สูงสุด') + sep() +
-        qstat('🪙', (currentUser && curP(sorted).coins) || 0, 'เหรียญ');
-    }
-
-    // podium (reuse legacy .lb-pc markup → premium look from styles.css)
+    buildGrid(); // re-eval adminOnly after data
     renderPodium(sorted.slice(0, 3));
-    refreshDashBadges();
+    refreshBadges();
   }
-  function curP(sorted) { return sorted.find(x => x.id === currentUser.id) || {}; }
-  function qstat(icon, val, lbl) {
-    return '<div class="bk-qstat"><div class="bk-qstat-val">' + val + '</div>' +
-      '<div class="bk-qstat-lbl">' + icon + ' ' + esc(lbl) + '</div></div>';
-  }
-  function sep() { return '<div class="bk-qstat-sep"></div>'; }
+  window.renderHome = renderHome;
 
   function renderPodium(top3) {
     const el = document.getElementById('homePodium');
     if (!el) return;
-    if (!top3.length) { el.innerHTML = '<div class="text-muted" style="text-align:center;padding:18px">ยังไม่มีผู้เล่น</div>'; return; }
-    const order = [top3[1], top3[0], top3[2]].filter(Boolean);
-    const classes = top3[1] ? ['lbr2', 'lbr1', 'lbr3'] : ['lbr1', 'lbr3'];
-    const rankLabel = ['อันดับ 2', 'อันดับ 1', 'อันดับ 3'];
-    const rankClass = ['lbsilv', 'lbgold', 'lbbrnz'];
-    el.innerHTML = order.map((p, i) => {
+    if (!top3.length) { el.innerHTML = '<div class="text-muted" style="margin:0 auto;padding:20px">ยังไม่มีผู้เล่น</div>'; return; }
+    const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    el.innerHTML = top3.map((p, i) => {
       if (!p) return '';
-      const cls = classes[i];
-      const isFirst = cls === 'lbr1';
-      const av = getAvatar(p.id, p.name);
+      const place = i + 1;
+      const a = getAvatar(p.id, p.name);
       const wr = (p.wins + p.losses) > 0 ? Math.round(p.wins / (p.wins + p.losses) * 100) : 0;
-      const frameCls = getGachaFrameClass(p);
-      const useLiquid = isFirst && !frameCls;
-      return '<div class="lb-pc lb-glass ' + cls + '" style="animation-delay:' + (i * .12 + .28) + 's" onclick="openPlayerProfile(' + p.id + ')">' +
-        '<div class="lb-pod-shim"></div>' +
-        '<div class="lb-pod-rank ' + rankClass[i] + '">' + rankLabel[i] + '</div>' +
-        '<div class="lb-pod-av ' + (useLiquid ? 'liquid-frame ' : '') + frameCls + '" style="background:' + av.bg + ';color:' + av.fg + ';' + (av.fs ? 'font-size:' + av.fs + ';' : '') + 'position:relative;isolation:isolate">' +
-          (useLiquid ? getLiquidFrameInner() : '') + getGachaFrameInner(p) + av.content + '</div>' +
-        '<div class="lb-pod-name ' + getGachaNameClass(p) + '">' + esc(p.name) + '</div>' +
-        '<div class="lb-pod-score">' + p.pts.toLocaleString() + '</div>' +
-        '<div class="lb-pod-wins">ชนะ ' + p.wins + ' · แพ้ ' + p.losses + ' · ' + wr + '%</div>' +
+      const fCls = (typeof getGachaFrameClass === 'function') ? getGachaFrameClass(p) : '';
+      const fIn = (typeof getGachaFrameInner === 'function') ? getGachaFrameInner(p) : '';
+      const nCls = (typeof getGachaNameClass === 'function') ? getGachaNameClass(p) : '';
+      const badge = (typeof getRankBadgeSVG === 'function') ? getRankBadgeSVG(p.pts, p.id, 20) : '';
+      return '<div class="bk-pod bk-pod-' + place + '" onclick="openPlayerProfile(' + p.id + ')" ' +
+        'role="button" tabindex="0" aria-label="อันดับ ' + place + ' ' + esc(p.name) + '">' +
+        '<div class="bk-pod-medal">' + medals[place] + '</div>' +
+        '<div class="bk-pod-av ' + fCls + '" style="background:' + a.bg + ';color:' + a.fg + ';' + (a.fs ? 'font-size:' + a.fs + ';' : '') + '">' +
+          fIn + a.content + '<span class="bk-pod-badge">' + badge + '</span></div>' +
+        '<div class="bk-pod-name ' + nCls + '">' + esc(p.name) + '</div>' +
+        '<div class="bk-pod-elo">' + p.pts.toLocaleString() + '</div>' +
+        '<div class="bk-pod-wr">ชนะ ' + p.wins + ' · ' + wr + '%</div>' +
       '</div>';
     }).join('');
-    // animate in
+    // staggered rise-in
     requestAnimationFrame(() => {
-      const isLite = document.documentElement.getAttribute('data-style') === 'lite';
-      el.querySelectorAll('.lb-pc').forEach((c, i) => {
-        if (isLite) { c.classList.add('lbvis'); c.style.opacity = '1'; c.style.transform = 'none'; }
-        else setTimeout(() => c.classList.add('lbvis'), i * 120 + 100);
+      const cards = el.querySelectorAll('.bk-pod');
+      const lite = document.documentElement.getAttribute('data-style') === 'lite';
+      // animate #1 first, then 2, then 3 for a podium reveal feel
+      const order = [el.querySelector('.bk-pod-1'), el.querySelector('.bk-pod-2'), el.querySelector('.bk-pod-3')].filter(Boolean);
+      order.forEach((c, i) => {
+        if (lite) c.classList.add('bkin');
+        else setTimeout(() => c.classList.add('bkin'), i * 130 + 80);
       });
     });
   }
-  window.renderHome = renderHome;
+
+  // ── Bottom sheet (⋮) ────────────────────────────────────────────
+  function openSheet() {
+    const s = document.getElementById('bkSheet');
+    if (!s) return;
+    refreshBadges();
+    s.hidden = false;
+    document.addEventListener('keydown', onSheetKey);
+  }
+  function closeSheet() {
+    const s = document.getElementById('bkSheet');
+    if (s) s.hidden = true;
+    document.removeEventListener('keydown', onSheetKey);
+  }
+  function onSheetKey(e) { if (e.key === 'Escape') closeSheet(); }
+  window.bkOpenSheet = openSheet;
+  window.bkCloseSheet = closeSheet;
+  window.bkSheetGo = function (name) { closeSheet(); try { showSection(name); } catch (e) {} };
+  window.bkSheetCall = function (fn) { closeSheet(); callIf(fn); };
 
   // ── Patch showSection so 'home' renders the dashboard ───────────
   function patchShowSection() {
@@ -274,49 +221,36 @@
     window.showSection = function (name) {
       base(name);
       if (name === 'home') {
-        // clear any legacy nav active state, activate logo conceptually
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         renderHome();
       }
     };
   }
 
-  // ── Land on Home after login; keep header fresh ─────────────────
+  // ── Land on Home after login; keep header & badges fresh ────────
   function patchLifecycle() {
     if (typeof window.afterLogin === 'function') {
-      const baseAfter = window.afterLogin;
-      window.afterLogin = function () {
-        baseAfter();
-        try { showSection('home'); } catch (e) {}
-        updateHeader();
-      };
+      const base = window.afterLogin;
+      window.afterLogin = function () { base(); try { showSection('home'); } catch (e) {} updateHeader(); };
     }
     if (typeof window.loadAll === 'function') {
-      const baseLoad = window.loadAll;
-      let last = 0;
+      const base = window.loadAll; let last = 0;
       window.loadAll = async function () {
-        await baseLoad();
-        // throttle header refresh; it's cheap but loadAll runs often
-        if (currentUser && Date.now() - last > 1500) { last = Date.now(); updateHeader(); refreshDashBadges(); }
+        await base();
+        if (currentUser && Date.now() - last > 1500) { last = Date.now(); updateHeader(); refreshBadges(); }
       };
     }
-    // keep mailbox badge mirrored on the dashboard card
     if (typeof window.checkMailboxBadge === 'function') {
-      const baseMail = window.checkMailboxBadge;
-      window.checkMailboxBadge = async function () {
-        await baseMail();
-        refreshDashBadges();
-      };
+      const base = window.checkMailboxBadge;
+      window.checkMailboxBadge = async function () { await base(); refreshBadges(); };
     }
   }
 
-  // ── Boot ────────────────────────────────────────────────────────
   function boot() {
     buildHomeSection();
     patchShowSection();
     patchLifecycle();
-    // if already logged in (e.g. hot reload), refresh
-    if (typeof currentUser !== 'undefined' && currentUser) { updateHeader(); }
+    if (typeof currentUser !== 'undefined' && currentUser) updateHeader();
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
