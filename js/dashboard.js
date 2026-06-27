@@ -214,16 +214,45 @@
   window.bkSheetGo = function (name) { closeSheet(); try { showSection(name); } catch (e) {} };
   window.bkSheetCall = function (fn) { closeSheet(); callIf(fn); };
 
-  // ── Patch showSection so 'home' renders the dashboard ───────────
+  // ── Navigation history (Back / Home buttons) ───────────────────
+  let navStack = [];
+  let navBack = false;
+  function curSection() {
+    const a = document.querySelector('.section.active');
+    return a ? a.id.replace('Section', '') : null;
+  }
+  function updateNavButtons(name) {
+    const hdr = document.getElementById('mainNav');
+    if (!hdr) return;
+    const isHome = name === 'home';
+    hdr.classList.toggle('bk-home', isHome);
+    hdr.classList.toggle('bk-sub', !isHome && name !== 'login');
+    const back = document.getElementById('bkBackBtn');
+    if (back) back.disabled = navStack.length === 0;
+  }
+  window.bkBack = function () {
+    if (navStack.length) { navBack = true; showSection(navStack.pop()); }
+    else showSection('home');
+  };
+  window.bkHome = function () { navStack = []; showSection('home'); };
+
+  // ── Patch showSection: 'home' renders dashboard + track history ──
   function patchShowSection() {
     if (typeof window.showSection !== 'function') return;
     const base = window.showSection;
     window.showSection = function (name) {
+      const from = curSection();
       base(name);
       if (name === 'home') {
+        navStack = [];
         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
         renderHome();
+      } else if (!navBack && from && from !== 'login' && from !== name) {
+        // going deeper → remember where we came from (avoid dup pushes)
+        if (navStack[navStack.length - 1] !== from) navStack.push(from);
       }
+      navBack = false;
+      updateNavButtons(name);
     };
   }
 
@@ -247,9 +276,12 @@
   }
 
   function boot() {
+    if (window.__bkBooted) return; // idempotent — never double-wrap showSection
+    window.__bkBooted = true;
     buildHomeSection();
     patchShowSection();
     patchLifecycle();
+    updateNavButtons('home'); // default: Home view (back/home hidden)
     if (typeof currentUser !== 'undefined' && currentUser) updateHeader();
   }
 

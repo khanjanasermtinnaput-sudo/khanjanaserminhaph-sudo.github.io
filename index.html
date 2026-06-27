@@ -66,7 +66,7 @@ function initCrownSparkle(canvas, W, H) {
 <title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260625a">
-<link rel="stylesheet" href="redesign.css?v=20260627b">
+<link rel="stylesheet" href="redesign.css?v=20260627c">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -115,6 +115,10 @@ function initCrownSparkle(canvas, W, H) {
 <!-- ═══ COMPACT STICKY HEADER (Dashboard Redesign v8.1) ═══ -->
 <header id="mainNav" class="bk-header hidden">
   <div class="bk-header-inner">
+    <!-- ← Back · 🏠 Home (shown only on sub-pages) -->
+    <button class="bk-hdr-icon bk-hdr-back" id="bkBackBtn" onclick="bkBack()" title="ย้อนกลับ" aria-label="ย้อนกลับ">←</button>
+    <button class="bk-hdr-icon bk-hdr-home" id="bkHomeBtn" onclick="bkHome()" title="หน้าหลัก" aria-label="หน้าหลัก">🏠</button>
+
     <!-- 🏆 #pos → Leaderboard -->
     <button class="bk-hdr-pos" onclick="showSection('leaderboard')" title="อันดับของฉัน" aria-label="อันดับ">
       <span class="bk-pos-trophy">🏆</span><span id="hdrPosNum">#–</span>
@@ -1795,6 +1799,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/gacha-element.js?v=20260603e"></script>
 <script src="js/aof.js?v=20260612c"></script>
 <!-- Dashboard redesign controller — loads LAST so it wraps showSection/afterLogin/loadAll cleanly -->
-<script src="js/dashboard.js?v=20260627b"></script>
+<script src="js/dashboard.js?v=20260627c"></script>
 </body>
 </html>

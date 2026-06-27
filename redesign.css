@@ -44,6 +44,12 @@
 .bk-hdr-elo:hover{background:rgba(255,215,0,.08);border-color:rgba(255,215,0,.42)}
 .bk-elo-star{font-size:.74rem;line-height:1}
 
+/* ← back · 🏠 home (contextual: hidden on Home, shown on sub-pages) */
+.bk-hdr-back,.bk-hdr-home{display:none;flex-shrink:0;font-size:1.2rem}
+.bk-sub .bk-hdr-back,.bk-sub .bk-hdr-home{display:flex}
+/* On sub-pages, free up room (no wrap) by hiding the Home-only flair */
+.bk-sub .bk-hdr-pos,.bk-sub .bk-hdr-elo{display:none}
+
 /* 🔔 / ⋮ actions */
 .bk-hdr-actions{margin-left:auto;display:flex;align-items:center;gap:0;flex-shrink:0}
 .bk-hdr-icon{position:relative;width:38px;height:38px;border-radius:50%;border:none;background:transparent;
@@ -125,8 +131,9 @@
 .bk-pod-1 .bk-pod-elo{font-size:1.25rem}
 .bk-pod-wr{font-size:.64rem;color:var(--muted)}
 
-/* ── ONE FLAT FEATURE GRID — exactly 3 columns, icon + name only ── */
+/* ── FLAT FEATURE GRID — 3 cols on mobile, 5 cols on large screens ── */
 .bk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:540px;margin:0 auto;padding:0 14px}
+@media(min-width:760px){.bk-grid{grid-template-columns:repeat(5,1fr);gap:12px;max-width:900px}}
 .bk-feat{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;
   aspect-ratio:1/1;border-radius:22px;border:1px solid var(--glass-border);background:var(--card);cursor:pointer;
   font-family:inherit;color:var(--text);overflow:hidden;width:100%;-webkit-tap-highlight-color:transparent;
