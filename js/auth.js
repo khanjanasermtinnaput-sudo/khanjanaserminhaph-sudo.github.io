@@ -118,6 +118,10 @@ function afterLogin() {
   showSection('leaderboard');
   startPresenceHeartbeat();
   if (typeof initNotifications === 'function') initNotifications();
+  // Load server-controlled feature flags so client cannot self-enable ELO x2 (CRIT-01)
+  if (typeof loadAppSettings === 'function') loadAppSettings().then(() => {
+    if (typeof syncEloX2FromServer === 'function') syncEloX2FromServer();
+  });
   // แสดง rank-up ของผู้เล่นตัวเอง (กรณี Admin อนุมัติแมตช์ตอนที่ผู้เล่นออฟไลน์)
   setTimeout(() => { checkPendingRankUps(); checkSelfRankUpFromDB(); }, 1800);
 }
@@ -129,6 +133,10 @@ function logout() {
   const panel = document.getElementById('notifPanel');
   if (panel) panel.classList.remove('open');
   currentUser = null; currentMatch = null; db = { players: [], matches: [] };
+  // Clear service worker cache so a new user on the same device doesn't see stale UI (HIGH-07)
+  if ('caches' in window) {
+    caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
+  }
   document.getElementById('mainNav').classList.add('hidden');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById('loginSection').classList.add('active');

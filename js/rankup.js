@@ -220,27 +220,39 @@ let _ruCurrentRankId = '';
    v4.0 FINAL — 14 FEATURES
 ══════════════════════════════════════════════════ */
 
-// ── 1. ELO x2 Mode ──────────────────────────────
-let eloX2Active = localStorage.getItem('badminton_elo_x2') === '1';
-(function(){
-  const b=document.getElementById('eloX2Banner');
-  if(b&&eloX2Active){ b.classList.add('active'); document.body.classList.add('x2-active'); }
-})();
+// ── 1. ELO x2 Mode — server-controlled, no localStorage (CRIT-01) ─
+// Value comes from app_settings table loaded via loadAppSettings() in auth.js
+let eloX2Active = false;  // Always false until server confirms; localStorage is ignored
 
-function toggleEloX2(on) {
+function syncEloX2FromServer() {
+  const val = typeof getAppSetting === 'function' ? getAppSetting('elo_x2', 'false') : 'false';
+  const on = val === 'true';
   eloX2Active = on;
-  localStorage.setItem('badminton_elo_x2', on ? '1' : '0');
   const b = document.getElementById('eloX2Banner');
   if (b) b.classList.toggle('active', on);
   document.body.classList.toggle('x2-active', on);
   const btn = document.getElementById('eloX2Toggle');
   if (btn) { btn.textContent = on ? '⚡ เปิดอยู่' : 'ปิดอยู่'; btn.className = 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-ghost'); }
-  toast(on ? '⚡ ELO x2 เปิดแล้ว! คะแนนคูณ 2 ทุกแมตช์' : 'ELO x2 ปิดแล้ว', 'info');
+}
+
+async function toggleEloX2(on) {
+  if (!isAdminUser()) { toast('ไม่มีสิทธิ์', 'error'); return; }
+  try {
+    await setAppSettingAdmin(currentUser.id, 'elo_x2', String(on));
+    eloX2Active = on;
+    const b = document.getElementById('eloX2Banner');
+    if (b) b.classList.toggle('active', on);
+    document.body.classList.toggle('x2-active', on);
+    const btn = document.getElementById('eloX2Toggle');
+    if (btn) { btn.textContent = on ? '⚡ เปิดอยู่' : 'ปิดอยู่'; btn.className = 'btn btn-sm ' + (on ? 'btn-primary' : 'btn-ghost'); }
+    toast(on ? '⚡ ELO x2 เปิดแล้ว! คะแนนคูณ 2 ทุกแมตช์' : 'ELO x2 ปิดแล้ว', 'info');
+  } catch(e) { toast('บันทึกไม่ได้: ' + e.message, 'error'); }
 }
 
 const _calcEloBase = calcElo;
 calcElo = function(a,b,c,d,e,f) {
   const r = _calcEloBase(a,b,c,d,e,f);
+  // eloX2Active is set from server; cannot be self-enabled via localStorage
   return eloX2Active ? { gain: r.gain * 2, loss: r.loss } : r;
 };
 
@@ -284,7 +296,7 @@ renderAdmin = async function() {
   div.style.cssText = 'border-color:rgba(255,150,0,.35);background:rgba(255,150,0,.05)';
   div.innerHTML = `<div class="card-title" style="color:#ff9f43">⚡ ELO x2 Mode</div>
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <div style="font-size:.83rem;color:var(--muted)">เปิดโหมดคูณ ELO ×2 สำหรับ Event พิเศษ</div>
+      <div style="font-size:.83rem;color:var(--muted)">เปิดโหมดคูณ ELO ×2 สำหรับ Event พิเศษ (บันทึกใน Server)</div>
       <button id="eloX2Toggle" class="btn btn-sm ${eloX2Active?'btn-primary':'btn-ghost'}" style="white-space:nowrap;width:auto" onclick="toggleEloX2(!eloX2Active)">${eloX2Active?'⚡ เปิดอยู่':'ปิดอยู่'}</button>
     </div>`;
   main.insertBefore(div, main.firstChild);
@@ -300,12 +312,15 @@ async function renderLiveTbl() {
     if (!pend || !pend.length) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     lst.innerHTML = pend.slice(0,5).map(m => {
-      const ta = formatTeamNames(m.team_a||[]);
-      const tb = formatTeamNames(m.team_b||[]);
+      // esc() wraps formatTeamNames output to prevent XSS (HIGH-09)
+      const ta = esc(formatTeamNames(m.team_a||[]));
+      const tb = esc(formatTeamNames(m.team_b||[]));
+      const sa = parseInt(m.score_a) || 0;
+      const sb = parseInt(m.score_b) || 0;
       return `<div class="live-match-item">
         <div class="live-dot"></div>
         <div style="flex:1;font-size:.82rem"><b>${ta}</b><span style="color:var(--muted)"> vs </span><b>${tb}</b></div>
-        <div style="font-family:'Rajdhani';color:var(--neon);font-weight:700">${m.score_a}-${m.score_b}</div>
+        <div style="font-family:'Rajdhani';color:var(--neon);font-weight:700">${sa}-${sb}</div>
         <span style="font-size:.68rem;color:var(--muted)">${m.type==='doubles'?'👥':'👤'}</span>
       </div>`;
     }).join('');

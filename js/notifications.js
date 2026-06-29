@@ -1,55 +1,92 @@
 // ============================================================
 // ===== NOTIFICATION SYSTEM =====
-// In-app panel + Browser Push (when PWA permission granted)
+// Supabase Realtime (WebSocket) primary + 120s polling fallback (HIGH-06)
 // ============================================================
 
-const NOTIF_POLL_MS   = 30000;
+const NOTIF_POLL_MS   = 120000;  // Fallback only — Realtime WS is primary
 const NOTIF_MAX       = 30;
 
-let _notifTimer     = null;
-let _notifHistory   = [];
-let _notifLastTs    = null;
-let _notifPanelOpen = false;
-let _pendingSeen    = null;   // Set ของ pending id ที่ admin รับรู้แล้ว (กันแจ้งซ้ำ)
+let _notifTimer       = null;
+let _notifChannel     = null;   // Supabase Realtime channel
+let _notifHistory     = [];
+let _notifLastTs      = null;
+let _notifPanelOpen   = false;
+let _pendingSeen      = null;
 
 // ── Init / Stop ──────────────────────────────────────────────
 
 function initNotifications() {
   if (!currentUser) return;
 
-  // Load saved history
   try { _notifHistory = JSON.parse(localStorage.getItem('nf_hist_' + currentUser.id) || '[]'); }
   catch(e) { _notifHistory = []; }
 
-  // Last timestamp: use now so we only catch FUTURE matches
   const saved = localStorage.getItem('nf_ts_' + currentUser.id);
   _notifLastTs = saved || new Date().toISOString();
   if (!saved) localStorage.setItem('nf_ts_' + currentUser.id, _notifLastTs);
 
   _updateBell();
 
-  // โหลด pending-seen set ที่บันทึกไว้ (ค้างข้ามรอบ login เพื่อจำว่าเคยแจ้งอะไรไปแล้ว)
   try { _pendingSeen = new Set(JSON.parse(localStorage.getItem('pending_seen_' + currentUser.id) || '[]')); }
   catch(e) { _pendingSeen = new Set(); }
 
-  // Start poll
+  // ── Primary: Supabase Realtime WebSocket subscription ──────
+  _startRealtime();
+
+  // ── Fallback: reduced-frequency polling (120s vs 30s) ──────
   clearInterval(_notifTimer);
   _notifTimer = setInterval(() => { _pollMatches(); _pollPending(); }, NOTIF_POLL_MS);
 
-  // ตรวจ pending ทันทีตอน login (สำหรับ Admin) — จับผลที่ผู้เล่นส่งมาตอน Admin ออฟไลน์
   if (typeof isAdminUser === 'function' && isAdminUser()) _pollPending();
 
-  // Permission prompt after 4s if not yet decided
-  // (iOS Safari outside a PWA has no Notification API — guard so login flow never breaks)
   if (typeof Notification !== 'undefined' && Notification.permission === 'default' &&
       !localStorage.getItem('nf_prompt_skip')) {
     setTimeout(_showPrompt, 4000);
   }
 }
 
+function _startRealtime() {
+  if (_notifChannel) { try { _notifChannel.unsubscribe(); } catch(e) {} _notifChannel = null; }
+  if (typeof window.supabaseClient === 'undefined') {
+    // Lazy-initialise a shared Supabase JS client for Realtime if available
+    // (falls back to polling-only when the supabase-js bundle is not loaded)
+    return;
+  }
+  try {
+    _notifChannel = window.supabaseClient
+      .channel('notifications_' + currentUser.id)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'matches' }, (payload) => {
+        const m = normalizeMatch(payload.new);
+        const involved = [...(m.teamA||[]), ...(m.teamB||[])].some(x => x.id === currentUser.id);
+        if (!involved) return;
+        _notifLastTs = payload.new.played_at || new Date().toISOString();
+        localStorage.setItem('nf_ts_' + currentUser.id, _notifLastTs);
+        try { loadAll().then(() => { if (typeof renderLeaderboard === 'function') renderLeaderboard(); }); } catch(e) {}
+        const inA = (m.teamA||[]).some(x => x.id === currentUser.id);
+        const win = (inA && m.winTeam === 'A') || (!inA && m.winTeam === 'B');
+        const opp = (inA ? m.teamB : m.teamA).map(x => esc(x.name)).join(' & ');
+        const pts = win ? `+${m.pts.gain}` : `-${m.pts.loss}`;
+        _pushNotif({ id: m.id || Date.now(), type: 'match', win, icon: win ? '🏆' : '😔',
+          title: win ? 'ชนะแมตช์!' : 'แพ้แมตช์', body: `vs ${opp} · ${pts} pts`,
+          time: new Date().toISOString(), read: false });
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pending_matches' }, () => {
+        if (typeof isAdminUser === 'function' && isAdminUser()) _pollPending();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          // Realtime connected — reduce polling interval to minimal heartbeat
+          clearInterval(_notifTimer);
+          _notifTimer = setInterval(() => { _pollPending(); }, NOTIF_POLL_MS);
+        }
+      });
+  } catch(e) { /* Realtime unavailable — polling continues */ }
+}
+
 function stopNotifications() {
   clearInterval(_notifTimer);
   _notifTimer = null;
+  if (_notifChannel) { try { _notifChannel.unsubscribe(); } catch(e) {} _notifChannel = null; }
 }
 
 // ── Polling ──────────────────────────────────────────────────

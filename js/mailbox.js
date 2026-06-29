@@ -3,7 +3,12 @@ async function dbGetMailbox(playerId) {
   try { return await supaFetch(`mailbox?player_id=eq.${playerId}&claimed=eq.false&order=created_at.desc`); } catch(e) { return []; }
 }
 async function dbSendMail(playerId, itemType, itemValue, message) {
-  await supaFetch('mailbox', { method: 'POST', body: JSON.stringify({ player_id: playerId, item_type: itemType, item_value: itemValue, message: message || '' }), prefer: 'return=minimal' });
+  // Client-side guard (server RLS also enforces this — CRIT-05)
+  if (!isAdminUser()) throw new Error('ไม่มีสิทธิ์: ต้องเป็น Admin เท่านั้น');
+  // Validate item type to prevent arbitrary value injection
+  const ALLOWED_TYPES = ['coins','elo','gacha_frame','gacha_name','gacha_emoji','gacha_element','gacha_effect'];
+  if (!ALLOWED_TYPES.includes(itemType)) throw new Error('item_type ไม่ถูกต้อง');
+  await supaFetch('mailbox', { method: 'POST', body: JSON.stringify({ player_id: playerId, item_type: itemType, item_value: String(itemValue).slice(0, 200), message: String(message || '').slice(0, 500) }), prefer: 'return=minimal' });
 }
 async function dbClaimMail(mailId) {
   await supaFetch(`mailbox?id=eq.${mailId}`, { method: 'PATCH', body: JSON.stringify({ claimed: true }) });

@@ -270,20 +270,25 @@ async function _gachaApplyRoll() {
 
 async function doGachaPull10() {
   if (!currentUser) return;
-  const pl = db.players.find(x => x.id === currentUser.id);
   const totalCoins = getEffectiveCoins(currentUser.id);
-  if (!pl || totalCoins < 20) { toast('เหรียญไม่พอ (ต้องการ 20🪙)', 'error'); return; }
+  if (totalCoins < 20) { toast('เหรียญไม่พอ (ต้องการ 20🪙)', 'error'); return; }
   const btn10 = document.getElementById('gachaPullBtn10');
   const btn1  = document.getElementById('gachaPullBtn');
   if (btn10) btn10.disabled = true;
   if (btn1)  btn1.disabled  = true;
 
-  const _paid10 = await dbAddCoins(currentUser.id, -20);
-  if (!_paid10) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 20);
-  await loadPlayers();
-
+  // ── Server-side 10-pull: each pull through Edge Function (CRIT-02) ──
   const results = [];
-  for (let i = 0; i < 10; i++) results.push(await _gachaApplyRoll());
+  for (let i = 0; i < 10; i++) {
+    try {
+      const serverResult = await dbGachaPull(currentUser.id);
+      results.push(_mapServerResult(serverResult));
+    } catch(e) {
+      if (e.message && e.message.includes('insufficient_coins')) break;
+      results.push({ type: 'empty', icon: '💨', color: 'var(--muted)', text: 'error' });
+    }
+  }
+  await loadPlayers();
 
   const resultEl = document.getElementById('gachaPullResult');
   if (resultEl) {
@@ -326,61 +331,50 @@ function getEffectiveCoins(pid) {
   return dbC > 0 ? dbC : _lsCoins(pid);
 }
 
+// ── Map server result to UI display object ───────────────────
+function _mapServerResult(serverResult) {
+  const { tier, item } = serverResult;
+  if (!item) return { type: 'empty', icon: '💨', color: 'var(--muted)', text: '💨 ไม่ได้ของ...' };
+  if (tier === 'secret') return { type: 'secret', icon: '⚡', color: '#00d4ff', text: `⚡ ${item.label}`, val: item.value, itemType: item.type };
+  if (tier === 'ultra')  return { type: 'ultra',  icon: '✨', color: '#c084fc', text: `✨ ULTRA RARE! ${item.label}`, val: item.value, col: item.type === 'gacha_frame' ? 'frame' : 'name', itemType: item.type };
+  if (tier === 'rare')   return { type: 'frame',  icon: '🖼️', color: '#a78bfa', text: item.label, val: item.value, itemType: item.type };
+  if (item.type === 'gacha_emoji') return { type: 'emoji', icon: item.value, color: 'var(--neon)', text: `${item.value} Emoji Avatar ได้แล้ว!`, emoji: item.value };
+  return { type: 'empty', icon: '💨', color: 'var(--muted)', text: '💨 ไม่ได้ของ...' };
+}
+
+// ── Single pull — all RNG and coin deduction on server (CRIT-02) ─
 async function doGachaPull() {
   if (!currentUser) return;
-  const pl = db.players.find(x => x.id === currentUser.id);
   const totalCoins = getEffectiveCoins(currentUser.id);
-  if (!pl || totalCoins < 2) { toast('เหรียญไม่พอ (ต้องการ 2🪙)', 'error'); return; }
+  if (totalCoins < 2) { toast('เหรียญไม่พอ (ต้องการ 2🪙)', 'error'); return; }
   const btn = document.getElementById('gachaPullBtn');
   if (btn) btn.disabled = true;
 
-  // หัก 2 coins (DB + localStorage fallback)
-  const _paid1 = await dbAddCoins(currentUser.id, -2);
-  if (!_paid1) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) - 2);
-  await loadPlayers();
+  let result;
+  try {
+    const serverResult = await dbGachaPull(currentUser.id);
+    result = _mapServerResult(serverResult);
+    await loadPlayers();
+  } catch(e) {
+    toast('Pull ไม่สำเร็จ: ' + e.message, 'error');
+    if (btn) btn.disabled = false;
+    return;
+  }
 
-  const roll = Math.random() * 100;
-  let result = null;
-
-  if (roll < 0.1) {
-    // ── ⚡ SECRET: THUNDER GOD 0.1% — avatar_effect: rotating_arcs ──
-    const effectId = 'rotating_arcs';
-    const invKey = 'bmt_gacha_inv_' + currentUser.id;
-    let inv = getGachaInventory(currentUser.id);
-    if ((inv.effects || []).includes(effectId)) {
-      // ออกซ้ำ → คืนเหรียญแทน (ของอยู่ในคลังแล้ว ไม่เล่น cinematic ซ้ำ)
-      await _gachaDupRefund(GACHA_DUP_REFUND.secret);
-      result = { type: 'dup', text: `⚡ Thunder God ซ้ำ → +${GACHA_DUP_REFUND.secret} 🪙` };
-    } else {
-    // 1. Save to inventory (effects array)
-    if (!inv.effects) inv.effects = [];
-    inv.effects.push(effectId);
-    localStorage.setItem(invKey, JSON.stringify(inv));
-    _saveGachaInventoryToDB(currentUser.id, inv);
-    // 2. Save owned_effects to DB
-    try {
-      await dbUpdatePlayer(currentUser.id, { owned_effects: JSON.stringify([effectId]) });
-      await loadPlayers();
-    } catch(e) {
-      // fallback: persist in localStorage inventory (already saved above)
-      console.warn('owned_effects save failed:', e.message);
-    }
-    result = { type: 'secret', val: effectId, text: '⚡ THUNDER GOD ⚡' };
-    // 3. Show rotating arcs preview in result card then launch cinematic
+  // ── Display result based on tier ──────────────────────────
+  if (result.type === 'secret') {
     const resultElS = document.getElementById('gachaPullResult');
     if (resultElS) resultElS.innerHTML = `
       <div style="transform:scale(0.65);transform-origin:center top;margin:-8px 0 -26px;pointer-events:none">
         <div class="lightning-avatar-wrap">
-          <div class="lightning-arc lightning-arc-1"></div>
-          <div class="lightning-arc lightning-arc-2"></div>
+          <div class="lightning-arc lightning-arc-1"></div><div class="lightning-arc lightning-arc-2"></div>
           <div class="lightning-arc lightning-arc-3"></div>
           <div class="lightning-dot"></div><div class="lightning-dot"></div>
           <div class="lightning-dot"></div><div class="lightning-dot"></div>
           <div class="lightning-avatar" style="font-size:1.9rem">${getInitial(currentUser.name)}</div>
         </div>
       </div>
-      <div class="gacha-pull-value" style="color:#00d4ff;font-size:1rem;letter-spacing:.1em;margin-top:4px">⚡ THUNDER GOD — 0.1%</div>
-      <div style="font-size:.72rem;color:rgba(0,200,255,.7);margin-top:3px;letter-spacing:.08em">ได้แล้ว!</div>`;
+      <div class="gacha-pull-value" style="color:#00d4ff;font-size:1rem;letter-spacing:.1em;margin-top:4px">⚡ THUNDER GOD — SECRET</div>`;
     setTimeout(() => {
       document.getElementById('gachaPullOverlay').classList.remove('show');
       window._tgCinematicOnClose = function() {
@@ -389,134 +383,31 @@ async function doGachaPull() {
       };
       showThunderGodCinematic(currentUser.name);
     }, 900);
-    }
 
-  } else if (roll < 3) {
-    // ── ULTRA RARE 3% ──
-    const ultraRolls = ['void_frame','halo_frame','blaze_name','ice_name'];
-    const pick = ultraRolls[Math.floor(Math.random() * 4)];
-    const [val, col] = pick.split('_');
-    const invKey = 'bmt_gacha_inv_' + currentUser.id;
-    let inv = getGachaInventory(currentUser.id);
-    const _ownedU = col === 'frame' ? (inv.frames || []) : (inv.names || []);
-    if (_ownedU.includes(val)) {
-      // ออกซ้ำ → คืนเหรียญแทน (ของอยู่ในคลังแล้ว สลับใส่เองได้จาก Avatar Builder)
-      await _gachaDupRefund(GACHA_DUP_REFUND.ultra);
-      result = { type: 'dup', text: `✨ ${val} ${col === 'frame' ? 'Frame' : 'Name'} ซ้ำ → +${GACHA_DUP_REFUND.ultra} 🪙` };
-    } else {
-
-    // ── 1. บันทึกลง inventory (localStorage + DB ถาวร) ──
-    if (!inv.frames) inv.frames = [];
-    if (!inv.names)  inv.names  = [];
-    if (col === 'frame') inv.frames.push(val);
-    if (col === 'name')  inv.names.push(val);
-    if (col === 'frame') inv.equippedFrame = val;
-    else inv.equippedName = val;
-    localStorage.setItem(invKey, JSON.stringify(inv));
-    _saveGachaInventoryToDB(currentUser.id, inv); // async, ไม่ต้อง await
-
-    // ── 2. บันทึกลง DB: equip ชิ้นนี้เสมอ (replace — user เปลี่ยนเองได้จากคลัง) ──
-    try {
-      const updateData = col === 'frame' ? { gacha_frame: val } : { gacha_name: val };
-      await dbUpdatePlayer(currentUser.id, updateData);
-      await loadPlayers();
-    } catch(e) {
-      toast('⚠️ บันทึก DB ไม่ได้ บันทึก local ชั่วคราวแทน (รัน ALTER TABLE ใน Admin → SQL)', 'info');
-    }
-
-    result = { type: 'ultra', val, col, text: `✨ ULTRA RARE! ${col==='frame'?val+' Frame':val+' Name Effect'}` };
-
-    // ── 3. บันทึกลง bmt_gacha_ (equip ทันที) ──
-    try {
-      const lsKey = 'bmt_gacha_' + currentUser.id;
-      const lsData = JSON.parse(localStorage.getItem(lsKey)||'{}');
-      if (col === 'frame') lsData.gacha_frame = val;
-      else lsData.gacha_name = val;
-      localStorage.setItem(lsKey, JSON.stringify(lsData));
-    } catch(e) {}
-
-    // ── 4. แสดงผล ──
+  } else if (result.type === 'ultra') {
     const resultEl = document.getElementById('gachaPullResult');
-    if (resultEl) resultEl.innerHTML = `<div style="font-size:2rem">⭐</div><div class="gacha-pull-value" style="color:#c084fc;font-size:1.1rem">✨ ULTRA RARE!</div><div style="font-size:0.8rem;color:var(--muted);margin-top:4px">${result.text.replace('✨ ULTRA RARE! ','')}</div>`;
+    if (resultEl) resultEl.innerHTML = `<div style="font-size:2rem">⭐</div><div class="gacha-pull-value" style="color:#c084fc;font-size:1.1rem">✨ ULTRA RARE!</div><div style="font-size:0.8rem;color:var(--muted);margin-top:4px">${esc(result.text.replace('✨ ULTRA RARE! ',''))}</div>`;
     setTimeout(() => {
       document.getElementById('gachaPullOverlay').classList.remove('show');
-      // ── เมื่อ tap/close reveal → เปิด Avatar Builder ให้เห็น animation ทันที ──
-      const origClose = window._gachaRevealOnClose;
-      window._gachaRevealOnClose = function() {
-        window._gachaRevealOnClose = origClose;
-        if (document.getElementById('profileSection') && !document.getElementById('profileSection').classList.contains('hidden')) {
-          openAvatarBuilder();
-        }
-      };
-      showGachaReveal(currentUser.name, col==='frame'?val:null, col==='name'?val:null);
+      showGachaReveal(currentUser.name, result.col === 'frame' ? result.val : null, result.col === 'name' ? result.val : null);
       if (typeof renderGachaInventory === 'function') renderGachaInventory();
     }, 1200);
-    }
-
-  } else if (roll < 10) {
-    // ── REGULAR FRAME 7% ──
-    const frame = Math.random() < 0.5 ? 'rainbow' : 'robot';
-    const invF = getGachaInventory(currentUser.id);
-    if ((invF.frames || []).includes(frame)) {
-      // ออกซ้ำ → คืนเหรียญแทน
-      await _gachaDupRefund(GACHA_DUP_REFUND.frame);
-      result = { type: 'dup', text: `${frame==='rainbow'?'🌈 Rainbow':'⚙️ Robot'} Frame ซ้ำ → +${GACHA_DUP_REFUND.frame} 🪙` };
-    } else {
-      // บันทึกลง inventory (สะสม)
-      if (!invF.frames) invF.frames = [];
-      invF.frames.push(frame);
-      invF.equippedFrame = frame;
-      localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(invF));
-      _saveGachaInventoryToDB(currentUser.id, invF);
-      // equip
-      try { await dbUpdatePlayer(currentUser.id, { gacha_frame: frame }); await loadPlayers(); }
-      catch(e) { const d=JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}'); d.gacha_frame=frame; localStorage.setItem('bmt_gacha_'+currentUser.id,JSON.stringify(d)); }
-      result = { type: 'frame', text: `${frame==='rainbow'?'🌈 Rainbow':'⚙️ Robot'} Frame ได้แล้ว!`, frame };
-    }
-
-  } else if (roll < 30) {
-    // ── EMOJI 20% ──
-    const emoji = GACHA_EMOJIS[Math.floor(Math.random() * GACHA_EMOJIS.length)];
-    const invE = getGachaInventory(currentUser.id);
-    if ((invE.emojis || []).includes(emoji)) {
-      // ออกซ้ำ → คืนเหรียญแทน
-      await _gachaDupRefund(GACHA_DUP_REFUND.emoji);
-      result = { type: 'dup', text: `${emoji} Emoji ซ้ำ → +${GACHA_DUP_REFUND.emoji} 🪙` };
-    } else {
-      // บันทึกลง inventory (สะสม)
-      if (!invE.emojis) invE.emojis = [];
-      invE.emojis.push(emoji);
-      localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(invE));
-      _saveGachaInventoryToDB(currentUser.id, invE);
-      // equip
-      try { await dbUpdatePlayer(currentUser.id, { gacha_emoji: emoji }); await loadPlayers(); }
-      catch(e) { const d=JSON.parse(localStorage.getItem('bmt_gacha_'+currentUser.id)||'{}'); d.gacha_emoji=emoji; localStorage.setItem('bmt_gacha_'+currentUser.id,JSON.stringify(d)); }
-      const sv = getCustomAvatar(currentUser.id);
-      sv.emoji = emoji;
-      localStorage.setItem('bmt_av_' + currentUser.id, JSON.stringify(sv));
-      result = { type: 'emoji', text: `${emoji} Emoji Avatar ได้แล้ว!`, emoji };
-    }
 
   } else {
-    // ── ไม่ได้ของ 70% ──
-    result = { type: 'empty', text: '💨 ไม่ได้ของ...' };
-  }
-
-  // แสดงผลลัพธ์ (ยกเว้น ultra/secret ที่แสดงแล้ว)
-  if (result && result.type !== 'ultra' && result.type !== 'secret') {
     const resultEl = document.getElementById('gachaPullResult');
     if (resultEl) {
-      const icons = { frame: result.frame==='rainbow'?'🌈':'⚙️', emoji: result.emoji||'😎', empty: '💨', dup: '🪙' };
-      resultEl.innerHTML = `<div class="gacha-pull-result">${icons[result.type]}</div>
-        <div class="gacha-pull-value" style="color:${result.type==='dup'?'var(--gold)':'var(--neon)'}">${result.text}</div>`;
+      const icon = result.icon || (result.type === 'empty' ? '💨' : '🎁');
+      resultEl.innerHTML = `<div class="gacha-pull-result">${icon}</div>
+        <div class="gacha-pull-value" style="color:${result.color||'var(--neon)'}">${esc(result.text)}</div>`;
     }
   }
+
   const newCoins = getEffectiveCoins(currentUser.id);
   const balEl = document.getElementById('gachaPullBalance');
   if (balEl) balEl.textContent = `💰 เหรียญของคุณ: ${newCoins} 🪙`;
-  if (btn && result && result.type !== 'ultra' && result.type !== 'secret') btn.disabled = newCoins < 2;
-  // อัพเดท profile coin balance
+  if (btn && result.type !== 'ultra' && result.type !== 'secret') btn.disabled = newCoins < 2;
   const pcEl = document.getElementById('profileCoinBalance');
   if (pcEl) pcEl.textContent = newCoins;
+  if (typeof renderGachaInventory === 'function') renderGachaInventory();
 }
 

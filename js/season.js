@@ -349,15 +349,21 @@ function renderSeasonBanner() {
   daysEl.style.background = days <= 3 ? 'linear-gradient(135deg,#ff4757,#ff0000)' : 'linear-gradient(135deg,#ffd700,#ff8c00)';
   nextEl.textContent = `King→1000 · Master→800 · Diamond→500 · Platinum→300 · Gold→200 · Silver/Bronze ${t('no_reset')}`;
 
-  // Check if today is 1st at 01:00+ (season reset day) — runs once per month via localStorage guard
-  const today = new Date();
-  if (today.getDate() === 1 && today.getHours() >= 1) {
-    const lastReset = localStorage.getItem('badminton_season_reset');
-    const thisMonth = `${today.getFullYear()}-${today.getMonth()}`;
-    if (lastReset !== thisMonth) {
-      performSeasonReset(thisMonth);
-    }
-  }
+  // Season reset is driven by pg_cron on the server (CRIT-04).
+  // Client polls the season_resets table to detect when a new reset has occurred.
+  _checkServerSeasonReset();
+}
+
+async function _checkServerSeasonReset() {
+  try {
+    const latestReset = typeof dbGetLatestSeasonReset === 'function' ? await dbGetLatestSeasonReset() : null;
+    if (!latestReset) return;
+    const lastSeen = localStorage.getItem('badminton_season_reset_seen');
+    if (lastSeen === latestReset) return;
+    localStorage.setItem('badminton_season_reset_seen', latestReset);
+    await loadAll();
+    toast(`🏆 Season ${latestReset} Reset เสร็จแล้ว!`, 'success');
+  } catch(e) { /* ignore */ }
 }
 
 async function performSeasonReset(monthKey) {

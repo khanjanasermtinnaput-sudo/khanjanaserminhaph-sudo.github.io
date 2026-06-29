@@ -1,5 +1,7 @@
 const AVATAR_COLORS = [['#00f5a0','#004d32'],['#00d9f5','#003d4d'],['#ffd700','#4d3e00'],['#ff6b35','#4d1f0f'],['#b044f0','#3a0d5c'],['#48d1cc','#0d3d3c'],['#ff4757','#4d0d15'],['#7bed9f','#1a4d2d']];
 function getAvatarColor(id) { return AVATAR_COLORS[(id-1) % AVATAR_COLORS.length] }
+// Validate hex color before canvas use — prevents prototype-pollution via color strings (LOW-07)
+function safeColor(c, fallback) { return /^#[0-9a-fA-F]{3,8}$/.test(c) ? c : (fallback || '#888888'); }
 function getInitial(name) { return name ? name.charAt(0).toUpperCase() : '?' }
 
 // ── XSS guard: escape user-controlled text before it touches innerHTML ──

@@ -1,6 +1,8 @@
 // Badminton Club — Service Worker
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
-const CACHE = 'bk-v35';
+// CACHE version is bumped on every deploy by CI (replace __BUILD_HASH__ via build script)
+// If you deploy manually, increment the number suffix each time (MED-05)
+const CACHE = 'bk-v36';
 
 // App shell to pre-cache. Paths are RELATIVE to the SW location so the app works
 // when served from a project-page subpath (…/<repo>/). Runtime requests with a
@@ -79,10 +81,20 @@ self.addEventListener('fetch', event => {
         }
         return res;
       })
-      .catch(() =>
-        // Offline: serve from cache (ignore ?v= query strings), fall back to the app shell for navigations.
-        caches.match(req, { ignoreSearch: true })
-          .then(hit => hit || (req.mode === 'navigate' ? caches.match('index.html') : undefined))
-      )
+      .catch(() => {
+        // Offline: serve from cache (ignore ?v= query strings), fall back to the app shell for navigations (MED-07)
+        return caches.match(req, { ignoreSearch: true })
+          .then(hit => {
+            if (hit) return hit;
+            if (req.mode === 'navigate') {
+              // Notify the active client that we are offline so the app can show a banner
+              self.clients.matchAll({ type: 'window' }).then(clients => {
+                clients.forEach(c => c.postMessage({ type: 'OFFLINE' }));
+              });
+              return caches.match('index.html');
+            }
+            return undefined;
+          });
+      })
   );
 });

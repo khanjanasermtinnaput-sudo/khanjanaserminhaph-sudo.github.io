@@ -639,7 +639,7 @@ function confirmFinish() {
   document.getElementById('finishModalContent').innerHTML = `
     <div style="text-align:center;margin-bottom:16px">
       <div style="font-size:2rem;margin-bottom:4px">🏆</div>
-      <div style="font-size:1.1rem;font-weight:700;color:var(--neon)">${formatTeamNames(winners)} ชนะ!</div>
+      <div style="font-size:1.1rem;font-weight:700;color:var(--neon)">${esc(formatTeamNames(winners))} ชนะ!</div>
       <div style="font-size:1.8rem;font-family:'Rajdhani';font-weight:700;color:var(--text);margin:8px 0">${scoreW} - ${scoreL}</div>
       <div style="font-size:0.72rem;color:var(--muted)">Score Multiplier: ${multLabel}x · ระบบ True ELO</div>
     </div>
@@ -783,12 +783,12 @@ async function renderHistory() {
     matches = matches.slice(0, 200);
 
     const html = matches.map(m => {
-      const nameA = formatTeamNames(m.teamA), nameB = formatTeamNames(m.teamB);
+      const nameA = esc(formatTeamNames(m.teamA)), nameB = esc(formatTeamNames(m.teamB));
       const winner = m.winTeam === 'A' ? nameA : nameB, loser = m.winTeam === 'A' ? nameB : nameA;
       const _md = m.date ? new Date(m.date) : null;
       const date = (_md && !isNaN(_md)) ? _md.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}) : '';
       const typeLabel = m.type === 'doubles' ? '👥 Doubles' : '👤 Singles';
-      const moodTag = m.mood ? ` <span style="font-size:0.95rem" title="บรรยากาศแมตช์">${m.mood}</span>` : '';
+      const moodTag = m.mood ? ` <span style="font-size:0.95rem" title="บรรยากาศแมตช์">${esc(m.mood)}</span>` : '';
       // Highlight if filtered player won/lost
       let resultHint = '';
       if (filterPlayerId) {
@@ -904,7 +904,7 @@ async function renderProfile() {
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
       const opp = inA ? m.teamB : m.teamA, date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
-      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${m.scoreA}-${m.scoreB} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts${m.mood ? ' · ' + m.mood : ''}</div></div>`;
+      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${esc(formatTeamNames(opp))} · ${parseInt(m.scoreA)||0}-${parseInt(m.scoreB)||0} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts${m.mood ? ' · ' + esc(m.mood) : ''}</div></div>`;
     }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_match')}</div>`;
   } catch(e) { console.error(e); }
 }
@@ -940,8 +940,8 @@ async function renderPendingList() {
     badge.classList.remove('hidden');
     list.innerHTML = rows.map(r => {
       const teamA = r.team_a, teamB = r.team_b;
-      const nameA = formatTeamNames(teamA);
-      const nameB = formatTeamNames(teamB);
+      const nameA = esc(formatTeamNames(teamA));
+      const nameB = esc(formatTeamNames(teamB));
       const winLabel = r.win_team === 'A' ? nameA : nameB;
       const submitter = db.players.find(p=>p.id===r.submitted_by);
       const submitterName = submitter ? esc(submitter.name) : t('unknown');
@@ -1294,8 +1294,8 @@ async function openAdminManageRewards(playerId) {
       html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
         <span style="font-size:1.15rem;flex-shrink:0">${ach.icon || '🏆'}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${ach.title}</div>
-          ${ach.desc ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${ach.desc}</div>` : ''}
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${esc(ach.title)}</div>
+          ${ach.desc ? `<div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${esc(ach.desc)}</div>` : ''}
         </div>
         <button onclick="adminDeleteSingleAchievement(${playerId},'${safeId}')" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
       </div>`;
@@ -1323,8 +1323,8 @@ async function openAdminManageRewards(playerId) {
       html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--glass-border)">
         <span style="font-size:1.15rem;flex-shrink:0">${tierIcon}</span>
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${row.name || '?'}</div>
-          <div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${row.tier}${date ? ' · ' + date : ''}</div>
+          <div style="font-size:0.8rem;font-weight:600;line-height:1.3">${esc(row.name || '?')}</div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-top:1px">${esc(row.tier || '')}${date ? ' · ' + date : ''}</div>
         </div>
         <button onclick="adminDeletePlayerTourWin(${row.id},'${safeName}',${playerId})" style="flex-shrink:0;padding:4px 11px;border-radius:8px;border:1px solid rgba(255,60,60,0.4);background:rgba(255,60,60,0.1);color:#ff6060;font-size:0.72rem;cursor:pointer;font-weight:600">ลบ</button>
       </div>`;

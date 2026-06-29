@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /badminton_v6-3.html
+Disallow: /badminton_v6-4.html
+
+User-agent: *
+Allow: /
+
+Sitemap: https://khanjanaserminhaph-sudo-github-io.vercel.app/sitemap.xml

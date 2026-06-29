@@ -41,8 +41,8 @@ function renderDailyChallenge() {
   }).join('');
 }
 
-// ให้รางวัล Daily Quest กับผู้เล่นคนหนึ่ง (ตาม progress ที่บันทึกไว้ของคนนั้น)
-// notify=true เฉพาะตอนเป็น currentUser เพื่อไม่ให้ toast เด้งรัวจากผู้เล่นคนอื่น
+// ให้รางวัล Daily Quest — ใช้ server-side RPC ที่ idempotent (CRIT-03)
+// grant_daily_reward() มี UNIQUE constraint ป้องกัน claim ซ้ำแม้ล้าง localStorage
 async function checkDCRewardsFor(pid, notify) {
   const pl = db.players.find(p=>p.id===pid);
   if (!pl) return;
@@ -51,15 +51,27 @@ async function checkDCRewardsFor(pid, notify) {
   for (const q of DC_QUESTS) {
     if (done[q.id]) continue;
     if (getDCProg(q, pid) >= q.goal) {
-      done[q.id] = true;
-      granted = true;
-      await dbAddCoins(pid, q.coins);
-      // localStorage shadow copy — getEffectiveCoins falls back to it when the DB coins column is missing
-      _setLsCoins(pid, _lsCoins(pid) + q.coins);
-      if (notify) {
-        toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
-        const pcEl = document.getElementById('profileCoinBalance');
-        if (pcEl) pcEl.textContent = getEffectiveCoins(pid);
+      // Server-side grant — returns true only if not yet claimed today
+      const wasGranted = typeof dbGrantDailyReward === 'function'
+        ? await dbGrantDailyReward(pid, q.id, q.coins)
+        : false;
+
+      if (wasGranted) {
+        done[q.id] = true;
+        granted = true;
+        // Keep localStorage in sync as display cache (not as source of truth)
+        _setLsCoins(pid, _lsCoins(pid) + q.coins);
+        const dbPl = db.players.find(x => x.id === pid);
+        if (dbPl) dbPl.coins = (dbPl.coins || 0) + q.coins;
+        if (notify) {
+          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
+          const pcEl = document.getElementById('profileCoinBalance');
+          if (pcEl) pcEl.textContent = getEffectiveCoins(pid);
+        }
+      } else if (wasGranted === false) {
+        // Already claimed on server — mark locally to stop re-checking
+        done[q.id] = true;
+        granted = true;
       }
     }
   }

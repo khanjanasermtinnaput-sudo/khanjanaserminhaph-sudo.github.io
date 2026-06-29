@@ -53,6 +53,7 @@ async function loadAll() { await Promise.all([loadPlayers(), loadMatches()]); }
 // ใช้ RPC verify_player_pin (SECURITY DEFINER) ถ้าติดตั้งแล้ว — ทำให้ PIN อ่านจาก client ไม่ได้เลย
 // ถ้ายังไม่ได้รัน supabase_security.sql จะ fallback ไป query ตรง (ยังทำงานได้)
 async function authVerifyById(id, pin) {
+  // Server-side bcrypt verification only — no plaintext fallback (CRIT-06)
   try {
     const res = await supaFetch('rpc/verify_player_pin', { method: 'POST', body: JSON.stringify({ p_id: id, p_pin: String(pin) }) });
     if (typeof res === 'boolean') return res;
@@ -60,11 +61,71 @@ async function authVerifyById(id, pin) {
     if (res && typeof res === 'object') return res.verify_player_pin === true;
     return false;
   } catch(e) {
-    try {
-      const rows = await supaFetch(`players?id=eq.${id}&pin=eq.${encodeURIComponent(pin)}&select=id`);
-      return !!(rows && rows.length);
-    } catch(e2) { return false; }
+    // Do NOT fall back to plaintext PIN query — fail closed
+    console.error('PIN verification failed (server unreachable):', e.message);
+    return false;
   }
+}
+
+// ── App settings (server-controlled feature flags) ──────────
+let _appSettings = {};
+async function loadAppSettings() {
+  try {
+    const rows = await supaFetch('app_settings?select=key,value');
+    _appSettings = {};
+    (rows || []).forEach(r => { _appSettings[r.key] = r.value; });
+  } catch(e) { /* leave defaults */ }
+}
+function getAppSetting(key, defaultVal = '') {
+  return _appSettings.hasOwnProperty(key) ? _appSettings[key] : defaultVal;
+}
+async function setAppSettingAdmin(adminId, key, value) {
+  if (!isAdminUser()) throw new Error('not_admin');
+  await supaFetch('rpc/set_elo_x2', {
+    method: 'POST',
+    body: JSON.stringify({ p_admin_id: adminId, p_state: value === 'true' || value === true })
+  });
+  _appSettings[key] = String(value);
+}
+
+// ── Server-side gacha pull (CRIT-02) ────────────────────────
+const SUPA_FUNCTIONS_URL = SUPA_URL.replace('/rest/v1', '') + '/functions/v1';
+async function dbGachaPull(playerId) {
+  const res = await fetch(SUPA_FUNCTIONS_URL + '/gacha-pull', {
+    method: 'POST',
+    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ player_id: playerId })
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'gacha_pull_failed');
+  return data; // { tier, item: { type, value, label }, coins_remaining }
+}
+
+// ── Server-side daily reward grant (CRIT-03) ─────────────────
+async function dbGrantDailyReward(playerId, questId, coins) {
+  try {
+    const res = await supaFetch('rpc/grant_daily_reward', {
+      method: 'POST',
+      body: JSON.stringify({ p_player_id: playerId, p_quest_id: questId, p_coins: coins })
+    });
+    // Returns true if newly granted, false if already claimed today
+    if (typeof res === 'boolean') return res;
+    if (Array.isArray(res)) return res[0] === true;
+    return false;
+  } catch(e) {
+    console.warn('grant_daily_reward failed:', e.message);
+    return false;
+  }
+}
+
+// ── Season reset check (CRIT-04) ────────────────────────────
+async function dbGetLatestSeasonReset() {
+  try {
+    const res = await supaFetch('rpc/get_latest_season_reset', { method: 'POST', body: '{}' });
+    if (typeof res === 'string') return res;
+    if (Array.isArray(res)) return res[0] || null;
+    return null;
+  } catch(e) { return null; }
 }
 
 async function dbAddPlayer(player) {
