@@ -249,49 +249,41 @@ $$;
 GRANT EXECUTE ON FUNCTION public.get_latest_season_reset() TO anon, authenticated;
 
 -- ─────────────────────────────────────────────────────────────
--- 8. players table RLS — protect admin escalation (CRIT-07)
+-- 8. players table RLS (CRIT-07)
 -- ─────────────────────────────────────────────────────────────
+-- IMPORTANT: this app does NOT use Supabase Auth. It authenticates
+-- through a custom PIN flow (verify_player_pin RPC) and every request
+-- is made with the anon publishable key. There is therefore no JWT and
+-- current_setting('request.jwt.claims', true)::json->>'sub' is ALWAYS
+-- NULL. JWT-based UPDATE/DELETE policies evaluated to FALSE for every
+-- caller — including admins — so EVERY write to players was silently
+-- rejected (0 rows, no error because we PATCH with return=minimal).
+-- Symptom: recording a match inserted the match row but player points,
+-- wins and losses never changed → "บันทึกคะแนนไม่ขึ้น".
+--
+-- Writes are gated in the client (admin checks) — the same trust model
+-- already used by the permissive matches / pending_matches policies.
+-- If real per-user enforcement is ever needed, adopt Supabase Auth (or
+-- route writes through SECURITY DEFINER RPCs) and restore scoped policies.
 ALTER TABLE public.players ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "players_read" ON public.players;
 CREATE POLICY "players_read" ON public.players
   FOR SELECT USING (true);
 
--- Only the player themselves can UPDATE their own non-admin fields
--- Admins can update any player
 DROP POLICY IF EXISTS "players_update_self" ON public.players;
-CREATE POLICY "players_update_self" ON public.players
-  FOR UPDATE USING (
-    id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-    OR EXISTS (
-      SELECT 1 FROM public.players p2
-      WHERE p2.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p2.is_admin = 1
-    )
-  )
-  WITH CHECK (
-    -- Non-admins cannot elevate is_admin
-    CASE WHEN NOT EXISTS (
-      SELECT 1 FROM public.players p3
-      WHERE p3.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p3.is_admin = 1
-    ) THEN is_admin = (SELECT is_admin FROM public.players WHERE id = players.id)
-    ELSE true END
-  );
+DROP POLICY IF EXISTS "players_update" ON public.players;
+CREATE POLICY "players_update" ON public.players
+  FOR UPDATE USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS "players_insert" ON public.players;
 CREATE POLICY "players_insert" ON public.players
-  FOR INSERT WITH CHECK (is_admin = 0 OR NOT EXISTS (SELECT 1 FROM public.players));
+  FOR INSERT WITH CHECK (true);
 
 DROP POLICY IF EXISTS "players_delete_admin" ON public.players;
-CREATE POLICY "players_delete_admin" ON public.players
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM public.players p2
-      WHERE p2.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p2.is_admin = 1
-    )
-  );
+DROP POLICY IF EXISTS "players_delete" ON public.players;
+CREATE POLICY "players_delete" ON public.players
+  FOR DELETE USING (true);
 
 -- ─────────────────────────────────────────────────────────────
 -- 9. Hall of Fame unique constraint — prevent duplicate season entries (MED-02)
