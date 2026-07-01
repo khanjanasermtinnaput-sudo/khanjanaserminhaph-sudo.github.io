@@ -510,7 +510,11 @@ async function awardTournamentAchievement(playerIds, achDef) {
 }
 
 // ── Show "ประกาศแชมป์" confirmation modal (sync show → async populate) ──
+// Admin-only: this awards coins/ELO to OTHER players, which the players RLS
+// lockdown now enforces server-side too — gate here so it fails fast/visibly
+// instead of silently no-op'ing on the DB writes.
 function confirmDeclareChampion(tournamentId) {
+  if (!isAdminUser()) return;
   document.getElementById('tChampModal')?.remove();
 
   // Show modal immediately (synchronous) so user gets instant feedback
@@ -603,6 +607,7 @@ async function _populateChampModal(tournamentId, modal) {
 
 // ── Execute champion declaration ──
 async function executeDeclareChampion(tournamentId) {
+  if (!isAdminUser()) return;
   const sel = document.getElementById('tChampWinnerSel');
   const winnerAnchorId = sel ? parseInt(sel.value) : NaN;
   document.getElementById('tChampModal')?.remove();
