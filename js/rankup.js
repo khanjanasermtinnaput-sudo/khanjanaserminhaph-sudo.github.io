@@ -312,9 +312,11 @@ async function renderLiveTbl() {
     if (!pend || !pend.length) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     lst.innerHTML = pend.slice(0,5).map(m => {
-      // esc() wraps formatTeamNames output to prevent XSS (HIGH-09)
-      const ta = esc(formatTeamNames(m.team_a||[]));
-      const tb = esc(formatTeamNames(m.team_b||[]));
+      // formatTeamNames() already escapes each player name internally (HIGH-09) and
+      // wraps it in a trusted gacha-name <span> — do NOT esc() its output, that would
+      // double-escape the span tags and print them as literal text.
+      const ta = formatTeamNames(m.team_a||[]);
+      const tb = formatTeamNames(m.team_b||[]);
       const sa = parseInt(m.score_a) || 0;
       const sb = parseInt(m.score_b) || 0;
       return `<div class="live-match-item">
