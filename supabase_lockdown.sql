@@ -287,7 +287,16 @@ WITH CHECK (
 DROP POLICY IF EXISTS "players_delete" ON public.players;
 CREATE POLICY "players_delete" ON public.players FOR DELETE USING (is_admin_caller());
 
+-- Column-level REVOKE alone is a no-op while a blanket table-level SELECT grant
+-- exists (Postgres: the broader grant wins) — confirmed live, anon could still
+-- read players.pin via select=pin or select=* despite the REVOKE below. Must also
+-- revoke the table-level grant and re-grant SELECT on just the safe columns.
 REVOKE SELECT (pin) ON public.players FROM anon, authenticated;
+REVOKE SELECT ON public.players FROM anon, authenticated;
+GRANT SELECT (id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,
+  gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,created_at)
+  ON public.players TO anon, authenticated;
+NOTIFY pgrst, 'reload schema';
 
 -- matches: public read; writes admin-only (all client match submissions go
 -- through pending_matches first — confirmed non-admin path never inserts here).
