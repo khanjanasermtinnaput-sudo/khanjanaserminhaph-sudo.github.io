@@ -229,7 +229,11 @@ function resolveGachaPlayer(p) {
   }
   return full;
 }
-// Render an array of team players as "Name1 & Name2" with per-name gacha class applied
+// Render an array of team players as "Name1 & Name2" with per-name gacha class applied.
+// Returns HTML ready for direct innerHTML insertion — each name is already escaped via
+// escapeHtml() before being wrapped in the gacha-name <span>. Do NOT pass this return
+// value through esc()/escapeHtml() again: that double-escapes the <span> tags and makes
+// them render as literal text instead of styled names.
 function formatTeamNames(team, sep) {
   sep = sep || ' & ';
   return (team || []).map(pm => {

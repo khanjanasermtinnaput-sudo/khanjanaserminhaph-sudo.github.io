@@ -34,14 +34,14 @@ const RANK_ELO_MULTIPLIERS = {
   bronze:   2.00,
   silver:   1.75,
   gold:     1.60,
-  platinum: 1.50,
-  diamond:  1.25,
-  master:   1.15,
-  king:     1.05,
+  platinum: 1.75,
+  diamond:  1.70,
+  master:   1.60,
+  king:     1.50,
 };
 
-function getRankEloMultiplier(pts) {
-  const rank = getRankByPts(pts);
+function getRankEloMultiplier(pts, playerId) {
+  const rank = playerId != null ? getRank(pts, playerId) : getRankByPts(pts);
   return RANK_ELO_MULTIPLIERS[rank.id] ?? 1.0;
 }
 
@@ -54,14 +54,14 @@ function getScoreMultiplier(scoreA, scoreB) {
   return 2.0;                   // ชนะขาดลอย
 }
 
-function calcElo(winnerPts, loserPts, winnerTotal, loserTotal, scoreA, scoreB) {
+function calcElo(winnerPts, loserPts, winnerTotal, loserTotal, scoreA, scoreB, winnerId) {
   const Ew = 1 / (1 + Math.pow(10, (loserPts - winnerPts) / 400)); // โอกาสชนะที่คาดไว้ของผู้ชนะ
   const El = 1 - Ew;                                                 // โอกาสชนะที่คาดไว้ของผู้แพ้
   const mult = getScoreMultiplier(scoreA, scoreB);
-  const rankMult = getRankEloMultiplier(winnerPts);                  // ตัวคูณตามอันดับของผู้ชนะ
+  const rankMult = getRankEloMultiplier(winnerPts, winnerId);        // ตัวคูณตามอันดับของผู้ชนะ
   const Kw = getKFactor(winnerTotal);
   const Kl = getKFactor(loserTotal);
-  const gain = Math.max(4, Math.round(Kw * (1 - Ew) * mult * rankMult));  // ผู้ชนะได้อย่างน้อย 4 คะแนน
+  const gain = Math.max(10, Math.round(Kw * (1 - Ew) * mult * rankMult)); // ผู้ชนะได้อย่างน้อย 10 คะแนน
   const loss = Math.max(4, Math.round(Kl * El       * mult));              // ผู้แพ้เสียไม่มีตัวคูณ rank
   return { gain, loss };
 }
