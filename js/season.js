@@ -361,6 +361,7 @@ async function _checkServerSeasonReset() {
     const lastSeen = localStorage.getItem('badminton_season_reset_seen');
     if (lastSeen === latestReset) return;
     localStorage.setItem('badminton_season_reset_seen', latestReset);
+    await performSeasonReset(latestReset);
     await loadAll();
     toast(`🏆 Season ${latestReset} Reset เสร็จแล้ว!`, 'success');
   } catch(e) { /* ignore */ }
