@@ -41,6 +41,35 @@ REVOKE SELECT (pin) ON public.players FROM anon;
 REVOKE SELECT (pin) ON public.players FROM authenticated;
 
 -- ─────────────────────────────────────────────────────────────
+-- 1b. Auto-hash PIN on INSERT/UPDATE (fixes "correct PIN rejected" bug)
+--     The bulk UPDATE above (step 1) only hashes PINs once at the time
+--     this file is run. Registration (dbAddPlayer) and admin PIN resets
+--     (saveEditPlayer) write plaintext PINs afterward, and
+--     verify_player_pin's crypt(p_pin, pin) comparison silently fails
+--     for any row whose pin isn't already a bcrypt hash — so new
+--     signups / PIN resets couldn't log in with the correct PIN until
+--     this file was manually re-run. This trigger closes that gap
+--     permanently.
+-- ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.hash_player_pin()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.pin IS NOT NULL AND NEW.pin NOT LIKE '$2%' THEN
+    NEW.pin := crypt(NEW.pin, gen_salt('bf', 10));
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_hash_player_pin ON public.players;
+CREATE TRIGGER trg_hash_player_pin
+BEFORE INSERT OR UPDATE OF pin ON public.players
+FOR EACH ROW
+EXECUTE FUNCTION public.hash_player_pin();
+
+-- ─────────────────────────────────────────────────────────────
 -- 3. app_settings table — server-controlled feature flags (CRIT-01)
 --    ELO x2, maintenance mode, etc.
 -- ─────────────────────────────────────────────────────────────
