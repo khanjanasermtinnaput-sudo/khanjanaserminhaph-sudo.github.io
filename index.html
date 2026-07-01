@@ -1205,7 +1205,7 @@ renderAdmin = async function() {
     div.innerHTML = `<div class="card-title">🪙 ให้เหรียญผู้เล่น</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <select class="inp" id="coinGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
-          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('')}
+          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.coins||0}🪙)</option>`).join('')}
         </select>
         <input class="inp" type="number" id="coinGiveAmount" placeholder="จำนวน" min="1" style="flex:1;min-width:80px;font-size:0.82rem">
         <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveCoins()">ให้เหรียญ</button>
@@ -1213,7 +1213,7 @@ renderAdmin = async function() {
       <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">หรือส่งผ่าน Mailbox:</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:4px">
         <select class="inp" id="mailGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
-          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
         </select>
         <select class="inp" id="mailGiveType" style="flex:1;min-width:100px;font-size:0.82rem">
           <option value="coins">🪙 Coins</option>
@@ -1229,15 +1229,15 @@ renderAdmin = async function() {
   } else {
     const sel = document.getElementById('coinGivePlayer');
     const msel = document.getElementById('mailGivePlayer');
-    if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name} (${p.coins||0}🪙)</option>`).join('');
-    if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.coins||0}🪙)</option>`).join('');
+    if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   }
   // Gacha Gift section
   if (!document.getElementById('adminElementSection')) {
     const ediv = document.createElement('div');
     ediv.id = 'adminElementSection';
     ediv.className = 'card';
-    const plOpts = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    const plOpts = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
     ediv.innerHTML = `<div class="card-title">🎁 เสกของ Gacha ให้ผู้เล่น</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
         <select class="inp" id="gachaGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">${plOpts}</select>
@@ -1256,7 +1256,7 @@ renderAdmin = async function() {
     adminUpdateGachaGiveItems();
   } else {
     const psel = document.getElementById('gachaGivePlayer');
-    if (psel) psel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+    if (psel) psel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
   }
   // Tournament section — always re-render when admin is opened
   if (!document.getElementById('tournamentAdminSection')) {

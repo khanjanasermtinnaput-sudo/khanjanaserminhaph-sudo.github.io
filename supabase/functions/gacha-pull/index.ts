@@ -1,15 +1,31 @@
 // Supabase Edge Function: gacha-pull
 // Server-side gacha roll using cryptographic RNG — replaces client-side Math.random() (CRIT-02)
+// Requires a valid player session token matching player_id (fixes IDOR — anyone
+// could previously drain/roll for any player_id with no auth check at all).
 // Deploy: supabase functions deploy gacha-pull
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://khanjanaserminhaph-sudo-github-io.vercel.app',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+function allowOrigin(origin: string): string {
+  try {
+    const host = new URL(origin).hostname;
+    if (host.endsWith('.github.io')) return origin;
+    if (host.endsWith('.vercel.app')) return origin;
+    if (host === 'localhost' || host === '127.0.0.1') return origin;
+  } catch (_) { /* no/invalid Origin header */ }
+  return '';
+}
+
+function corsHeaders(origin: string): HeadersInit {
+  const allowed = allowOrigin(origin);
+  return {
+    'Access-Control-Allow-Origin': allowed || 'null',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
 
 // Outcome pools (must sum to 100%)
 const GACHA_POOLS = {
@@ -77,7 +93,8 @@ function pickItem(tier: string) {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  const cors = corsHeaders(req.headers.get('Origin') ?? '');
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
 
   try {
     const supabase = createClient(
@@ -88,9 +105,28 @@ serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const playerId: number = parseInt(body.player_id);
+    const token: string = String(body.token || '');
     if (!playerId || isNaN(playerId)) {
       return new Response(JSON.stringify({ error: 'invalid_player_id' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status: 400, headers: { ...cors, 'Content-Type': 'application/json' }
+      });
+    }
+    if (!token) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Verify the session token belongs to the player_id being charged/rolled for.
+    // Uses the service-role client (bypasses RLS) since player_sessions has no anon policies.
+    const { data: session } = await supabase
+      .from('player_sessions')
+      .select('player_id, expires_at')
+      .eq('token', token)
+      .maybeSingle();
+    if (!session || session.player_id !== playerId || new Date(session.expires_at) <= new Date()) {
+      return new Response(JSON.stringify({ error: 'unauthorized' }), {
+        status: 401, headers: { ...cors, 'Content-Type': 'application/json' }
       });
     }
 
@@ -103,7 +139,7 @@ serve(async (req) => {
       const status = msg.includes('insufficient_coins') ? 402
                    : msg.includes('player_not_found') ? 404 : 500;
       return new Response(JSON.stringify({ error: msg }), {
-        status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        status, headers: { ...cors, 'Content-Type': 'application/json' }
       });
     }
 
@@ -154,12 +190,12 @@ serve(async (req) => {
       coins_remaining: rollResult.coins_remaining,
     }), {
       status: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { ...cors, 'Content-Type': 'application/json' }
     });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      status: 500, headers: { ...cors, 'Content-Type': 'application/json' }
     });
   }
 });

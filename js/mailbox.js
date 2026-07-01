@@ -102,15 +102,15 @@ async function claimMailItem(mailId, itemType, itemValue, extBtn) {
       catch(e) { console.warn('claim DB write skipped:', e && e.message); }
     };
 
-    if (itemType === 'coins') {
-      const amt = parseInt(itemValue) || 0;
-      const ok = await dbAddCoins(currentUser.id, amt);
-      // DB write failed (e.g. coins column missing) → keep the reward in the localStorage shadow
-      if (!ok) _setLsCoins(currentUser.id, _lsCoins(currentUser.id) + amt);
-      toast(`🪙 รับ +${itemValue} เหรียญแล้ว!`, 'success');
-    } else if (itemType === 'elo') {
-      if (pl) { await _tryDb({ pts: (pl.pts || 0) + (parseInt(itemValue) || 0) }); }
-      toast(`📈 รับ +${itemValue} ELO แล้ว!`, 'success');
+    if (itemType === 'coins' || itemType === 'elo') {
+      // Server-verified claim — reads item_value from the mailbox row itself and
+      // marks it claimed atomically, so a tampered client-side value can't inflate the reward.
+      await dbClaimMailReward(mailId);
+      toast(itemType === 'coins' ? `🪙 รับ +${itemValue} เหรียญแล้ว!` : `📈 รับ +${itemValue} ELO แล้ว!`, 'success');
+      await loadPlayers();
+      renderMailboxList();
+      checkMailboxBadge();
+      return;
     } else if (itemType === 'gacha_frame') {
       _addToInv('frames', itemValue);
       if (typeof getGachaInventory === 'function' && typeof _saveGachaInventoryToDB === 'function') {

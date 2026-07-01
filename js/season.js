@@ -361,65 +361,52 @@ async function _checkServerSeasonReset() {
     const lastSeen = localStorage.getItem('badminton_season_reset_seen');
     if (lastSeen === latestReset) return;
     localStorage.setItem('badminton_season_reset_seen', latestReset);
-    await performSeasonReset(latestReset);
-    await loadAll();
-    toast(`🏆 Season ${latestReset} Reset เสร็จแล้ว!`, 'success');
+    await performSeasonReset();
   } catch(e) { /* ignore */ }
 }
 
-async function performSeasonReset(monthKey) {
+// The actual pts-floor reset + King Prime-SS-title grant now runs server-side
+// (rpc_apply_season_reset), atomically and race-proof: whichever session calls it
+// first for a given season label wins, every other call is a no-op. This also
+// fixes the reset silently failing for non-admin sessions under the players RLS
+// lockdown (pts/prime_titles writes to OTHER players require admin or the RPC).
+async function performSeasonReset() {
   try {
-    // 1. Award Prime SS title to King before reset
-    const ssLabel = getAwardedSSLabel();
-    const sorted = [...db.players].sort((a, b) => b.pts - a.pts);
-    const king = sorted[0] && sorted[0].pts >= 2000 ? sorted[0] : null;
+    const result = typeof dbApplySeasonReset === 'function' ? await dbApplySeasonReset() : null;
+    if (!result || result.already_done) return;
+
     let kingTitle = '';
-    if (king) {
-      const titles = [...(king.primeTitles || [])];
-      // Check if king defended (had previous season's title — what getAwardedSSLabel returned 1 month ago)
-      const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
-      const prevY = oneMonthAgo.getMonth() === 0 ? oneMonthAgo.getFullYear() - 1 : oneMonthAgo.getFullYear();
-      const prevM = oneMonthAgo.getMonth() === 0 ? 11 : oneMonthAgo.getMonth() - 1;
-      const prevSS = getPrimeSSeasonLabel(prevY, prevM);
-      const defended = titles.includes(prevSS);
-      if (!titles.includes(ssLabel)) {
-        titles.push(ssLabel);
-        if (defended && !titles.includes('🛡️ Season Defender')) { titles.push('🛡️ Season Defender'); kingTitle += ' 🛡️ Defended!'; }
-        try {
-          await dbUpdatePlayer(king.id, { prime_titles: buildPlayerPrimeTitles({...king, primeTitles: titles}) });
-          king.primeTitles = titles;
-        } catch(e) {
-          const lsKey = 'badminton_prime_ls_' + king.id;
-          const lsTitles = (() => { try { return JSON.parse(localStorage.getItem(lsKey) || '[]'); } catch(x) { return []; } })();
-          if (!lsTitles.includes(ssLabel)) { lsTitles.push(ssLabel); localStorage.setItem(lsKey, JSON.stringify(lsTitles)); }
-        }
-        kingTitle = ` · 👑 ${king.name} ได้รับ Prime ${ssLabel}!` + kingTitle;
-        // Record to Hall of Fame
-        try {
+    if (result.king_id) {
+      // Best-effort cosmetic polish only (Defended badge + Hall of Fame) — the
+      // core title grant already happened server-side, so failures here are safe to ignore.
+      try {
+        await loadPlayers();
+        const king = db.players.find(p => p.id === result.king_id);
+        if (king) {
+          const ssLabel = result.ss_label;
+          const titles = [...(king.primeTitles || [])];
+          const oneMonthAgo = new Date(); oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+          const prevY = oneMonthAgo.getMonth() === 0 ? oneMonthAgo.getFullYear() - 1 : oneMonthAgo.getFullYear();
+          const prevM = oneMonthAgo.getMonth() === 0 ? 11 : oneMonthAgo.getMonth() - 1;
+          const prevSS = getPrimeSSeasonLabel(prevY, prevM);
+          const defended = titles.includes(prevSS);
+          if (defended && !titles.includes('🛡️ Season Defender')) {
+            titles.push('🛡️ Season Defender');
+            await dbUpdatePlayer(king.id, { prime_titles: buildPlayerPrimeTitles({...king, primeTitles: titles}) });
+            kingTitle += ' 🛡️ Defended!';
+          }
+          kingTitle = ` · 👑 ${king.name} ได้รับ Prime ${ssLabel}!` + kingTitle;
           const hof = getHoF();
           if (!hof.find(e => e.season === ssLabel)) {
             hof.unshift({ id: king.id, name: king.name, season: ssLabel, pts: king.pts, defended });
             await saveHoF(hof);
           }
-        } catch(e) {}
-      }
+        }
+      } catch(e) {}
     }
 
-    // 2. Reset pts for all ranked players
-    let resetCount = 0;
-    for (const p of db.players) {
-      const rank = getRankByPts(p.pts);
-      const resetPts = getSeasonResetPts(rank.id);
-      if (resetPts !== null && p.pts > resetPts) {
-        await dbUpdatePlayer(p.id, { pts: resetPts });
-        resetCount++;
-      }
-    }
-    if (resetCount > 0 || king) {
-      localStorage.setItem('badminton_season_reset', monthKey);
-      await loadAll();
-      toast(`🏆 Season Reset!${resetCount > 0 ? ` ${resetCount} คนถูกรีคะแนน` : ''}${kingTitle}`, 'success');
-    }
+    await loadAll();
+    toast(`🏆 Season Reset!${result.reset_count > 0 ? ` ${result.reset_count} คนถูกรีคะแนน` : ''}${kingTitle}`, 'success');
   } catch(e) { console.error('Season reset error:', e); }
 }
 

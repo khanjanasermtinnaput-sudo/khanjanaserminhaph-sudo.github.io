@@ -589,8 +589,8 @@ function openHoF() {
   body.innerHTML = hof.length ? hof.map(e => `
     <div class="hof-item${e.defended?' hof-def':''}">
       <div style="font-size:1.4rem">👑</div>
-      <div class="hof-season">Prime ${e.season||'?'}</div>
-      <div class="hof-name">${e.name||'?'}</div>
+      <div class="hof-season">Prime ${esc(e.season||'?')}</div>
+      <div class="hof-name">${esc(e.name||'?')}</div>
       ${e.defended ? '<div class="hof-shield">🛡️ Defended</div>' : ''}
       <div class="hof-pts">${(e.pts||0).toLocaleString()} pts</div>
     </div>`).join('') : `<div style="text-align:center;color:var(--muted);padding:20px">ยังไม่มีข้อมูล Season ที่ผ่านมา</div>`;
@@ -715,7 +715,7 @@ function showSolarEmperorAscension(playerName, isFirst, opts = {}) {
     <div class="sea-card">
       <div class="sea-crown" id="seaCrown">${seCrown}</div>
       <div class="sea-title" id="seaTitle">${seTitle}</div>
-      <div class="sea-name" id="seaName">${playerName}</div>
+      <div class="sea-name" id="seaName">${esc(playerName)}</div>
       <div class="sea-sub" id="seaSub">${seSub}</div>
     </div>
     <div class="sea-hint" id="seaHint">แตะเพื่อปิด</div>

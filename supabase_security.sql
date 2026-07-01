@@ -2,6 +2,11 @@
 -- Badminton Club — Full Security Hardening (v2)
 -- รันใน Supabase → SQL Editor
 -- สามารถรันซ้ำได้ (idempotent) — ทุก statement ใช้ CREATE OR REPLACE / IF NOT EXISTS
+--
+-- SUPERSEDED by supabase_lockdown.sql (v3) — this file's RLS policies (keyed off
+-- request.jwt.claims, which this app never populates since there's no Supabase
+-- Auth session) have been dropped and replaced by session-token-based policies.
+-- Kept for history; do not re-run the policy sections below.
 -- ============================================================
 
 -- ─────────────────────────────────────────────────────────────
@@ -16,7 +21,7 @@ CREATE EXTENSION IF NOT EXISTS pg_cron;  -- ต้องเปิดใน Supab
 --    ถ้า PIN เป็น hash อยู่แล้ว (ขึ้นต้นด้วย $2) ข้ามไป
 -- ─────────────────────────────────────────────────────────────
 UPDATE public.players
-SET pin = crypt(pin, gen_salt('bf', 10))
+SET pin = extensions.crypt(pin, extensions.gen_salt('bf', 10))
 WHERE pin IS NOT NULL AND pin NOT LIKE '$2%';
 
 -- ─────────────────────────────────────────────────────────────
@@ -30,7 +35,7 @@ SET search_path = public
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.players
-    WHERE id = p_id AND pin = crypt(p_pin, pin)
+    WHERE id = p_id AND pin = extensions.crypt(p_pin, pin)
   );
 $$;
 
@@ -65,7 +70,7 @@ CREATE POLICY "settings_read" ON public.app_settings
 DROP POLICY IF EXISTS "settings_write_admin" ON public.app_settings;
 CREATE POLICY "settings_write_admin" ON public.app_settings
   FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM public.players WHERE id = (current_setting('request.jwt.claims', true)::json->>'sub')::bigint AND is_admin = 1)
+    EXISTS (SELECT 1 FROM public.players WHERE id = (current_setting('request.jwt.claims', true)::json->>'sub')::bigint AND is_admin = true)
   );
 
 -- RPC for admin to toggle ELO x2 (validates caller is admin)
@@ -75,10 +80,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE v_is_admin int;
+DECLARE v_is_admin boolean;
 BEGIN
   SELECT is_admin INTO v_is_admin FROM players WHERE id = p_admin_id;
-  IF v_is_admin != 1 THEN RAISE EXCEPTION 'not_admin'; END IF;
+  IF v_is_admin IS NOT TRUE THEN RAISE EXCEPTION 'not_admin'; END IF;
   UPDATE app_settings SET value = p_state::text, updated_at = now() WHERE key = 'elo_x2';
   RETURN true;
 END;
@@ -172,10 +177,10 @@ BEGIN
   UPDATE players SET coins = coins - v_cost WHERE id = p_player_id;
 
   -- Generate cryptographic random roll
-  v_roll := (get_byte(gen_random_bytes(4), 0)::numeric * 16777216 +
-             get_byte(gen_random_bytes(4), 1)::numeric * 65536 +
-             get_byte(gen_random_bytes(4), 2)::numeric * 256 +
-             get_byte(gen_random_bytes(4), 3)::numeric) / 4294967295.0 * 100.0;
+  v_roll := (get_byte(extensions.gen_random_bytes(4), 0)::numeric * 16777216 +
+             get_byte(extensions.gen_random_bytes(4), 1)::numeric * 65536 +
+             get_byte(extensions.gen_random_bytes(4), 2)::numeric * 256 +
+             get_byte(extensions.gen_random_bytes(4), 3)::numeric) / 4294967295.0 * 100.0;
 
   -- Outcome table (must sum to 100)
   v_pool    := ARRAY['secret','ultra','rare','common'];
@@ -215,7 +220,7 @@ CREATE POLICY "mailbox_send_admin" ON public.mailbox
     EXISTS (
       SELECT 1 FROM public.players
       WHERE id = (current_setting('request.jwt.claims', true)::json->>'sub')::bigint
-        AND is_admin = 1
+        AND is_admin = true
     )
   );
 
@@ -266,7 +271,7 @@ CREATE POLICY "players_update_self" ON public.players
     OR EXISTS (
       SELECT 1 FROM public.players p2
       WHERE p2.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p2.is_admin = 1
+        AND p2.is_admin = true
     )
   )
   WITH CHECK (
@@ -274,14 +279,14 @@ CREATE POLICY "players_update_self" ON public.players
     CASE WHEN NOT EXISTS (
       SELECT 1 FROM public.players p3
       WHERE p3.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p3.is_admin = 1
+        AND p3.is_admin = true
     ) THEN is_admin = (SELECT is_admin FROM public.players WHERE id = players.id)
     ELSE true END
   );
 
 DROP POLICY IF EXISTS "players_insert" ON public.players;
 CREATE POLICY "players_insert" ON public.players
-  FOR INSERT WITH CHECK (is_admin = 0 OR NOT EXISTS (SELECT 1 FROM public.players));
+  FOR INSERT WITH CHECK (is_admin = false OR NOT EXISTS (SELECT 1 FROM public.players));
 
 DROP POLICY IF EXISTS "players_delete_admin" ON public.players;
 CREATE POLICY "players_delete_admin" ON public.players
@@ -289,7 +294,7 @@ CREATE POLICY "players_delete_admin" ON public.players
     EXISTS (
       SELECT 1 FROM public.players p2
       WHERE p2.id::text = current_setting('request.jwt.claims', true)::json->>'sub'
-        AND p2.is_admin = 1
+        AND p2.is_admin = true
     )
   );
 
@@ -314,7 +319,7 @@ SELECT cron.schedule(
     )
     ON CONFLICT (season_label) DO NOTHING;
   $$
-) ON CONFLICT DO NOTHING;
+);
 
 -- ─────────────────────────────────────────────────────────────
 -- 11. Rate limiting: pending_matches unique guard (MED-08)

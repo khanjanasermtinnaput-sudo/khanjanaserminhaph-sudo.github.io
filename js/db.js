@@ -1,6 +1,10 @@
 const SUPA_URL = 'https://tprmqsfbeyqurwqpmpia.supabase.co';
 const SUPA_KEY = 'sb_publishable_NeMrUwr4zRl1zRwXZcZN-g_1TkTPdxk';
 
+// Session token issued by rpc_login/rpc_register — server-side RLS resolves this
+// header back to a player id via session_uid(). Never store the PIN itself.
+let currentToken = null;
+
 async function supaFetch(path, options = {}) {
   const { prefer, headers: extraHeaders, ...fetchOptions } = options;
   const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
@@ -9,6 +13,7 @@ async function supaFetch(path, options = {}) {
       'Authorization': 'Bearer ' + SUPA_KEY,
       'Content-Type': 'application/json',
       'Prefer': prefer || 'return=representation',
+      ...(currentToken ? { 'x-player-token': currentToken } : {}),
       ...extraHeaders
     },
     ...fetchOptions
@@ -49,22 +54,35 @@ async function loadPlayers() {
 async function loadMatches() { const rows = await supaFetch('matches?order=played_at.desc&limit=50'); db.matches = rows.map(normalizeMatch); }
 async function loadAll() { await Promise.all([loadPlayers(), loadMatches()]); }
 
-// ── ยืนยัน PIN ฝั่งเซิร์ฟเวอร์แบบเจาะจง (ไม่ดึง PIN ทุกคนลงมา) ──
-// ใช้ RPC verify_player_pin (SECURITY DEFINER) ถ้าติดตั้งแล้ว — ทำให้ PIN อ่านจาก client ไม่ได้เลย
-// ถ้ายังไม่ได้รัน supabase_security.sql จะ fallback ไป query ตรง (ยังทำงานได้)
-async function authVerifyById(id, pin) {
-  // Server-side bcrypt verification only — no plaintext fallback (CRIT-06)
-  try {
-    const res = await supaFetch('rpc/verify_player_pin', { method: 'POST', body: JSON.stringify({ p_id: id, p_pin: String(pin) }) });
-    if (typeof res === 'boolean') return res;
-    if (Array.isArray(res)) return res[0] === true;
-    if (res && typeof res === 'object') return res.verify_player_pin === true;
-    return false;
-  } catch(e) {
-    // Do NOT fall back to plaintext PIN query — fail closed
-    console.error('PIN verification failed (server unreachable):', e.message);
-    return false;
-  }
+// ── Session-based auth (server-side lockdown) ───────────────
+// rpc_login/rpc_login_by_id/rpc_register verify the PIN server-side (bcrypt)
+// and issue a session token. The token — never the PIN — is what authorizes
+// subsequent writes via the x-player-token header (see supaFetch above).
+async function dbLogin(name, pin) {
+  const row = await supaFetch('rpc/rpc_login', { method: 'POST', body: JSON.stringify({ p_name: name, p_pin: String(pin) }) });
+  currentToken = row.token;
+  return row;
+}
+async function dbLoginById(id, pin) {
+  const row = await supaFetch('rpc/rpc_login_by_id', { method: 'POST', body: JSON.stringify({ p_id: id, p_pin: String(pin) }) });
+  currentToken = row.token;
+  return row;
+}
+async function dbRegister(name, pin) {
+  const row = await supaFetch('rpc/rpc_register', { method: 'POST', body: JSON.stringify({ p_name: name, p_pin: String(pin) }) });
+  currentToken = row.token;
+  return row;
+}
+async function dbWhoAmI(token) {
+  const prev = currentToken;
+  currentToken = token;
+  try { return await supaFetch('rpc/rpc_whoami', { method: 'POST', body: JSON.stringify({ p_token: token }) }); }
+  catch(e) { currentToken = prev; throw e; }
+}
+async function dbLogout() {
+  const tok = currentToken;
+  currentToken = null;
+  if (tok) { try { await supaFetch('rpc/rpc_logout', { method: 'POST', body: JSON.stringify({ p_token: tok }) }); } catch(e) {} }
 }
 
 // ── App settings (server-controlled feature flags) ──────────
@@ -81,9 +99,9 @@ function getAppSetting(key, defaultVal = '') {
 }
 async function setAppSettingAdmin(adminId, key, value) {
   if (!isAdminUser()) throw new Error('not_admin');
-  await supaFetch('rpc/set_elo_x2', {
+  await supaFetch('rpc/rpc_set_elo_x2', {
     method: 'POST',
-    body: JSON.stringify({ p_admin_id: adminId, p_state: value === 'true' || value === true })
+    body: JSON.stringify({ p_token: currentToken, p_state: value === 'true' || value === true })
   });
   _appSettings[key] = String(value);
 }
@@ -94,19 +112,19 @@ async function dbGachaPull(playerId) {
   const res = await fetch(SUPA_FUNCTIONS_URL + '/gacha-pull', {
     method: 'POST',
     headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ player_id: playerId })
+    body: JSON.stringify({ player_id: playerId, token: currentToken })
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'gacha_pull_failed');
   return data; // { tier, item: { type, value, label }, coins_remaining }
 }
 
-// ── Server-side daily reward grant (CRIT-03) ─────────────────
+// ── Server-side daily reward grant (coin amount looked up server-side) ──
 async function dbGrantDailyReward(playerId, questId, coins) {
   try {
-    const res = await supaFetch('rpc/grant_daily_reward', {
+    const res = await supaFetch('rpc/rpc_grant_daily_reward', {
       method: 'POST',
-      body: JSON.stringify({ p_player_id: playerId, p_quest_id: questId, p_coins: coins })
+      body: JSON.stringify({ p_token: currentToken, p_quest_id: questId })
     });
     // Returns true if newly granted, false if already claimed today
     if (typeof res === 'boolean') return res;
@@ -116,6 +134,22 @@ async function dbGrantDailyReward(playerId, questId, coins) {
     console.warn('grant_daily_reward failed:', e.message);
     return false;
   }
+}
+
+// ── Mailbox coin/ELO claim (server-verified amount) ─────────
+async function dbClaimMailReward(mailId) {
+  return supaFetch('rpc/rpc_claim_mail_reward', {
+    method: 'POST',
+    body: JSON.stringify({ p_token: currentToken, p_mail_id: mailId })
+  });
+}
+
+// ── Season reset (server-authoritative, race-proof) ──────────
+async function dbApplySeasonReset() {
+  return supaFetch('rpc/rpc_apply_season_reset', {
+    method: 'POST',
+    body: JSON.stringify({ p_token: currentToken })
+  });
 }
 
 // ── Season reset check (CRIT-04) ────────────────────────────
@@ -128,11 +162,6 @@ async function dbGetLatestSeasonReset() {
   } catch(e) { return null; }
 }
 
-async function dbAddPlayer(player) {
-  // ขอคืนเฉพาะคอลัมน์ปลอดภัย (ไม่รวม pin) — กัน error หลัง REVOKE SELECT(pin) และไม่ให้ pin หลุดกลับมา
-  const rows = await supaFetch('players?select=id,name,pts,wins,losses,is_admin', { method: 'POST', body: JSON.stringify({ name: player.name, pin: player.pin, pts: player.pts, wins: player.wins, losses: player.losses, is_admin: player.isAdmin === 1 }) });
-  return rows[0];
-}
 async function dbUpdatePlayer(id, data) {
   try {
     // return=minimal: ไม่อ่านแถวกลับ — จำเป็นหลัง REVOKE SELECT(pin) ไม่งั้นการตั้งคะแนน/อัปเดตจะ error
