@@ -590,7 +590,7 @@ function confirmFinish() {
   const eloResults = [];
   if (currentMatch.type === 'singles') {
     const w = winners[0], l = losers[0];
-    const { gain, loss } = calcElo(w.pts, l.pts, w.wins+w.losses, l.wins+l.losses, scoreW, scoreL);
+    const { gain, loss } = calcElo(w.pts, l.pts, w.wins+w.losses, l.wins+l.losses, scoreW, scoreL, w.id);
     eloResults.push({ player: w, delta: +applyAchBoost(gain, w), baseGain: gain, isWin: true });
     eloResults.push({ player: l, delta: -loss, isWin: false });
     currentMatch._eloGain = gain;
@@ -676,7 +676,7 @@ async function saveMatch() {
     loss = currentMatch._eloLoss;
   } else if (currentMatch.type === 'singles') {
     const w = winners[0], l = losers[0];
-    ({ gain, loss } = calcElo(w.pts, l.pts, w.wins+w.losses, l.wins+l.losses, scoreW, scoreL));
+    ({ gain, loss } = calcElo(w.pts, l.pts, w.wins+w.losses, l.wins+l.losses, scoreW, scoreL, w.id));
   } else {
     ({ perWinner: gain, perLoser: loss } = calcEloTeam(winners, losers, scoreW, scoreL));
   }
