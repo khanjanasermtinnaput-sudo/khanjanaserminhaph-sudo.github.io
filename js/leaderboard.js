@@ -1406,7 +1406,7 @@ async function exportData() {
   toast('กำลังเตรียมไฟล์สำรอง...', 'info');
   try {
     const [players, matches] = await Promise.all([
-      supaFetchAll('players?order=id.asc'),
+      supaFetchAll('players?select=' + PLAYER_PUBLIC_COLS + ',created_at&order=id.asc'),
       supaFetchAll('matches?order=played_at.asc')
     ]);
     const payload = { format: 'bk-backup', version: 2, exported_at: new Date().toISOString(), players, matches };
