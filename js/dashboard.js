@@ -20,6 +20,7 @@
     { icon: '🏅',  name: 'Achievement', go: () => showSection('profile') },
     { icon: '📜',  name: 'ประวัติ',       go: () => showSection('history') },
     { icon: '✦',   name: 'Gacha',       go: () => showSection('gacha') },
+    { icon: '📖',  name: 'Collection',  go: () => showSection('collection') },
     { icon: '🎁',  name: 'รางวัล',        badge: 'mailbox', go: () => callIf('openMailbox') },
     { icon: '🤖',  name: 'AOF AI',       badge: 'new', go: () => showSection('ai') },
     { icon: '🏛️',  name: 'Hall of Fame', go: () => callIf('openHoF') },
