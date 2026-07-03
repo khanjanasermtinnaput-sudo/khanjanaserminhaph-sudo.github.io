@@ -4,6 +4,8 @@
 -- tprmqsfbeyqurwqpmpia via Supabase MCP migrations:
 --   • economy_fusion_lab
 --   • economy_fusion_lab_secure_auth   (session_uid auth hardening)
+--   • economy_fusion_lockdown_phase1   (QA hardening 2026-07-03: CHECK constraints,
+--     REVOKE anon SELECT on fusion_recipes/fusion_log, my_fusion_log()/fusion_stats() RPCs)
 --
 -- AUTH MODEL (critical): this app does NOT use Supabase Auth. Every request
 -- uses the anon publishable key; the acting player is resolved server-side by
@@ -49,6 +51,50 @@ CREATE POLICY fr_read ON public.fusion_recipes FOR SELECT USING (true);
 DROP POLICY IF EXISTS fl_read ON public.fusion_log;
 CREATE POLICY fl_read ON public.fusion_log FOR SELECT USING (true);
 -- Writes to both tables happen ONLY inside the SECURITY DEFINER RPCs below.
+
+-- QA hardening 2026-07-03 (migration economy_fusion_lockdown_phase1):
+--   • RLS policies above still exist, but anon's base-table SELECT grant is
+--     revoked below — the *only* remaining anon read path is through the
+--     masking-aware RPCs (list_fusion_recipes / my_fusion_log / fusion_stats).
+--     A raw `GET /rest/v1/fusion_recipes` from the anon key now 401s, so a
+--     secret recipe (e.g. genesis_frame) can no longer be read before it's
+--     discovered by bypassing list_fusion_recipes()'s masking.
+--   • Integrity CHECKs: a recipe can no longer credit coins (negative cost)
+--     or trivially "fuse" with an empty inputs array.
+ALTER TABLE public.fusion_recipes
+  ADD CONSTRAINT fusion_recipes_coin_cost_nonneg CHECK (coin_cost >= 0);
+ALTER TABLE public.fusion_recipes
+  ADD CONSTRAINT fusion_recipes_inputs_nonempty CHECK (jsonb_array_length(inputs) > 0);
+
+-- my_fusion_log(): the session player's own fuse history (was a direct,
+-- world-readable `fusion_log` SELECT; now scoped via session_uid()).
+CREATE OR REPLACE FUNCTION public.my_fusion_log(p_limit int DEFAULT 20)
+RETURNS TABLE(recipe_id text, output_k text, output_v text, coins_spent int, fused_at timestamptz)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_pid bigint;
+BEGIN
+  v_pid := session_uid();
+  IF v_pid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  RETURN QUERY
+    SELECT fl.recipe_id, fl.output_k, fl.output_v, fl.coins_spent, fl.fused_at
+    FROM fusion_log fl WHERE fl.player_id = v_pid ORDER BY fl.fused_at DESC LIMIT p_limit;
+END; $$;
+GRANT EXECUTE ON FUNCTION public.my_fusion_log(int) TO anon, authenticated;
+
+-- fusion_stats(): global aggregate for the Economy dashboard's Fusion tile
+-- (was a direct `SELECT output_v FROM fusion_log` with no player scoping needed,
+-- but fusion_log itself is no longer anon-readable, so this replaces that read).
+CREATE OR REPLACE FUNCTION public.fusion_stats()
+RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_count int; v_items int;
+BEGIN
+  SELECT count(*), count(DISTINCT output_v) INTO v_count, v_items FROM fusion_log;
+  RETURN jsonb_build_object('count', v_count, 'itemsCreated', v_items);
+END; $$;
+GRANT EXECUTE ON FUNCTION public.fusion_stats() TO anon, authenticated;
+
+REVOKE SELECT ON public.fusion_recipes FROM anon;
+REVOKE SELECT ON public.fusion_log FROM anon;
 
 -- list_fusion_recipes(): recipes for the CURRENT session player; secret recipes
 -- are masked (no name/inputs/output) until the player owns every input.

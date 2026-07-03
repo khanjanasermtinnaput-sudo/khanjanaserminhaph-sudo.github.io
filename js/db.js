@@ -134,13 +134,13 @@ async function dbFuseItems(recipeId) {
   return await supaFetch('rpc/fuse_items', { method: 'POST', body: JSON.stringify({ p_recipe_id: recipeId }) });
 }
 async function dbGetFusionLog(playerId, limit = 20) {
-  return await supaFetch('fusion_log?player_id=eq.' + encodeURIComponent(playerId) +
-    '&select=recipe_id,output_k,output_v,coins_spent,fused_at&order=fused_at.desc&limit=' + limit);
+  // fusion_log is no longer anon-readable; my_fusion_log() scopes to the
+  // acting session via session_uid(), so playerId is only kept for call-site compat.
+  return await supaFetch('rpc/my_fusion_log', { method: 'POST', body: JSON.stringify({ p_limit: limit }) });
 }
 async function dbGetFusionStats() {
   // lightweight global aggregate for the Economy dashboard's Fusion tile
-  const rows = await supaFetch('fusion_log?select=output_v');
-  return { count: (rows || []).length, itemsCreated: new Set((rows || []).map(r => r.output_v)).size };
+  return await supaFetch('rpc/fusion_stats', { method: 'POST', body: '{}' });
 }
 
 // ── Marketplace (System 2) — acting player resolved via x-player-token ──
