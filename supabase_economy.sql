@@ -182,9 +182,11 @@ GRANT EXECUTE ON FUNCTION public.fuse_items(text) TO anon, authenticated;
 
 -- Seed recipes (distinct-item; outputs reuse existing visual styles via
 -- _FRAME_ALIAS/_NAME_ALIAS in js/utils.js: prismatic→halo, genesis→solaremperor, eclipse→void)
+-- NOTE: eclipse_script's 'solaremperor' input matches the canonical value —
+-- see the phase3 migration below for why (this seed originally said 'solar').
 INSERT INTO public.fusion_recipes (id, name, inputs, output, coin_cost, is_secret, sort) VALUES
   ('eclipse_script', '🌘 Eclipse Script',
-     '[{"k":"names","v":"solar"},{"k":"names","v":"void"}]'::jsonb,
+     '[{"k":"names","v":"solaremperor"},{"k":"names","v":"void"}]'::jsonb,
      '{"k":"names","v":"eclipse","label":"🌘 Eclipse Script","rarity":"legendary"}'::jsonb, 30, false, 1),
   ('prismatic_frame', '🌈 Prismatic Frame',
      '[{"k":"frames","v":"rainbow"},{"k":"frames","v":"robot"}]'::jsonb,
@@ -193,6 +195,41 @@ INSERT INTO public.fusion_recipes (id, name, inputs, output, coin_cost, is_secre
      '[{"k":"frames","v":"void"},{"k":"frames","v":"halo"}]'::jsonb,
      '{"k":"frames","v":"genesis","label":"👑 Genesis Frame","rarity":"legendary"}'::jsonb, 60, true, 3)
 ON CONFLICT (id) DO NOTHING;
+
+-- QA hardening 2026-07-03 (migration economy_solar_canon_normalize_phase3):
+-- 'solaremperor' is the catalog's canonical value (js/economy-catalog.js
+-- VALUE_ALIASES maps legacy 'solar' → 'solaremperor' on READS only). But the
+-- DB had raw 'solar' stored in gacha_inventory.{frames,names} for one player,
+-- while Marketplace writes always used the canonical 'solaremperor' — so
+-- that item could never actually be listed ('not_owned', since the DB still
+-- said 'solar'). One-time data fix: replaced 'solar' → 'solaremperor' in
+-- every player's gacha_inventory.frames[]/names[] and the equipped
+-- gacha_frame/gacha_name scalar columns, and updated eclipse_script's input
+-- to match (see seed above). Verified via a rollback DO-block test that
+-- array length/other elements were untouched, then confirmed live that the
+-- item became listable. VALUE_ALIASES is kept in economy-catalog.js as a
+-- defensive fallback, not removed.
+UPDATE public.players
+SET gacha_inventory = jsonb_set(
+      jsonb_set(
+        gacha_inventory::jsonb,
+        '{frames}',
+        (SELECT coalesce(jsonb_agg(CASE WHEN e = 'solar' THEN 'solaremperor' ELSE e END), '[]'::jsonb)
+         FROM jsonb_array_elements_text(coalesce(gacha_inventory::jsonb->'frames','[]'::jsonb)) e),
+        true
+      ),
+      '{names}',
+      (SELECT coalesce(jsonb_agg(CASE WHEN e = 'solar' THEN 'solaremperor' ELSE e END), '[]'::jsonb)
+       FROM jsonb_array_elements_text(coalesce(gacha_inventory::jsonb->'names','[]'::jsonb)) e),
+      true
+    )::text
+WHERE gacha_inventory::jsonb->'frames' @> '"solar"' OR gacha_inventory::jsonb->'names' @> '"solar"';
+UPDATE public.players SET gacha_frame = 'solaremperor' WHERE gacha_frame = 'solar';
+UPDATE public.players SET gacha_name = 'solaremperor' WHERE gacha_name = 'solar';
+UPDATE public.fusion_recipes
+SET inputs = (SELECT jsonb_agg(CASE WHEN inp->>'v' = 'solar' THEN jsonb_set(inp, '{v}', '"solaremperor"') ELSE inp END)
+              FROM jsonb_array_elements(inputs) inp)
+WHERE id = 'eclipse_script';
 
 -- ─────────────────────────────────────────────────────────────
 -- SYSTEM 2 — MARKETPLACE  (added in a later migration; see supabase_marketplace.sql)
