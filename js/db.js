@@ -143,6 +143,34 @@ async function dbGetFusionStats() {
   return { count: (rows || []).length, itemsCreated: new Set((rows || []).map(r => r.output_v)).size };
 }
 
+// ── Marketplace (System 2) — acting player resolved via x-player-token ──
+async function dbGetListings(limit = 200) {
+  return await supaFetch('market_listings?status=eq.active' +
+    '&select=id,seller_id,item_k,item_v,price,created_at&order=created_at.desc&limit=' + limit);
+}
+async function dbGetMyListings(playerId) {
+  return await supaFetch('market_listings?seller_id=eq.' + encodeURIComponent(playerId) +
+    '&status=eq.active&select=id,item_k,item_v,price,created_at&order=created_at.desc');
+}
+async function dbMarketList(itemK, itemV, price) {
+  return await supaFetch('rpc/market_list_item', { method: 'POST',
+    body: JSON.stringify({ p_item_k: itemK, p_item_v: itemV, p_price: price }) });
+}
+async function dbMarketBuy(listingId) {
+  return await supaFetch('rpc/market_buy', { method: 'POST', body: JSON.stringify({ p_listing_id: listingId }) });
+}
+async function dbMarketCancel(listingId) {
+  return await supaFetch('rpc/market_cancel', { method: 'POST', body: JSON.stringify({ p_listing_id: listingId }) });
+}
+async function dbGetMarketHistory(limit = 20) {
+  return await supaFetch('market_transactions?select=item_k,item_v,price,buyer_id,seller_id,traded_at' +
+    '&order=traded_at.desc&limit=' + limit);
+}
+async function dbGetMarketStats() {
+  const r = await supaFetch('rpc/market_stats', { method: 'POST', body: '{}' });
+  return Array.isArray(r) ? (r[0] || {}) : (r || {});
+}
+
 // ── Server-side daily reward grant (coin amount looked up server-side) ──
 async function dbGrantDailyReward(playerId, questId, coins) {
   try {

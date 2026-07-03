@@ -184,15 +184,20 @@
   // re-render so the "coming soon" tiles fill in without blocking first paint.
   let extrasLoading = false;
   async function loadExtras() {
-    if (window.FUSION_STATS || extrasLoading) return;
+    if ((window.FUSION_STATS && window.MARKET_STATS) || extrasLoading) return;
     extrasLoading = true;
     try {
-      if (typeof dbGetFusionStats === 'function') window.FUSION_STATS = await dbGetFusionStats();
+      if (!window.FUSION_STATS && typeof dbGetFusionStats === 'function') window.FUSION_STATS = await dbGetFusionStats();
+      if (!window.MARKET_STATS && typeof dbGetMarketStats === 'function') {
+        const m = await dbGetMarketStats();
+        // normalise to the shape the tile expects
+        window.MARKET_STATS = { volume: m.volume || 0, activeListings: m.activeListings || 0, sales: m.sales || 0 };
+      }
     } catch (e) { /* keep the "coming soon" state */ }
     finally {
       extrasLoading = false;
       const sec = document.getElementById('economySection');
-      if (window.FUSION_STATS && sec && sec.classList.contains('active')) renderTab();
+      if (sec && sec.classList.contains('active')) renderTab();
     }
   }
   window.economyRenderTab = renderTab;
