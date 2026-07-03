@@ -4,6 +4,7 @@
 -- Supabase MCP migrations:
 --   • economy_marketplace                    (original)
 --   • economy_marketplace_escrow_fix_phase2  (QA hardening 2026-07-03)
+--   • economy_ledger_fk_setnull              (QA hardening 2026-07-03, follow-up)
 --
 -- AUTH: no Supabase Auth. Acting player resolved by session_uid() from the
 -- x-player-token header (see supabase_lockdown.sql). Every mutation is
@@ -44,7 +45,8 @@ CREATE INDEX IF NOT EXISTS idx_market_seller ON public.market_listings(seller_id
 
 CREATE TABLE IF NOT EXISTS public.market_transactions (
   id bigserial PRIMARY KEY, listing_id bigint,
-  seller_id bigint NOT NULL, buyer_id bigint NOT NULL,
+  seller_id bigint REFERENCES public.players(id) ON DELETE SET NULL,
+  buyer_id  bigint REFERENCES public.players(id) ON DELETE SET NULL,
   item_k text NOT NULL, item_v text NOT NULL,
   price int NOT NULL, tax int NOT NULL DEFAULT 0, fee int NOT NULL DEFAULT 0,
   traded_at timestamptz DEFAULT now()
@@ -53,6 +55,19 @@ CREATE INDEX IF NOT EXISTS idx_market_tx_time ON public.market_transactions(trad
 -- QA hardening 2026-07-03: ledger integrity backstop (M1)
 ALTER TABLE public.market_transactions
   ADD CONSTRAINT market_transactions_price_nonneg CHECK (price >= 0);
+-- QA hardening 2026-07-03 follow-up: market_transactions originally had NO
+-- FK to players at all (unlike market_listings, which already handles this
+-- correctly). deletePlayer() in js/leaderboard.js is a real, reachable admin
+-- action -- deleting a player who ever bought or sold something silently left
+-- permanently orphaned seller_id/buyer_id in the ledger. ON DELETE SET NULL
+-- (not CASCADE) preserves the trade record itself (item/price/tax/fee/time)
+-- as anonymized history rather than destroying it, matching how
+-- market_listings.buyer_id already behaves. Required dropping NOT NULL on
+-- both columns first. Verified via rollback test: deleting both parties in a
+-- trade leaves the ledger row intact with seller_id/buyer_id nulled and every
+-- other field unchanged; re-verified market_buy() is unaffected.
+ALTER TABLE public.market_transactions ALTER COLUMN seller_id DROP NOT NULL;
+ALTER TABLE public.market_transactions ALTER COLUMN buyer_id DROP NOT NULL;
 ALTER TABLE public.market_transactions
   ADD CONSTRAINT market_transactions_tax_nonneg CHECK (tax >= 0);
 ALTER TABLE public.market_transactions
