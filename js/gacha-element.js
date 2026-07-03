@@ -186,7 +186,7 @@
     ring.setAttribute('stroke-dasharray', `${circ * 0.6} ${circ * 0.4}`);
     _atAnim(ring, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `360 ${cx} ${cy}`, dur: '4s', repeatCount: 'indefinite' });
     svg.appendChild(ring);
-    const ring2 = _mkCirc(cx, cy, r - 9, 'none', el.c.ring2, 3);
+    const ring2 = _mkCirc(cx, cy, Math.max(2, r - 9), 'none', el.c.ring2, 3);
     ring2.setAttribute('stroke-dasharray', `${circ * 0.3} ${circ * 0.7}`);
     _atAnim(ring2, { attributeName: 'transform', type: 'rotate', from: `0 ${cx} ${cy}`, to: `-360 ${cx} ${cy}`, dur: '3s', repeatCount: 'indefinite' });
     svg.appendChild(ring2);
@@ -201,9 +201,12 @@
 
   function _frameWind(el, W) {
     const svg = _mkRoot(W), cx = W / 2, cy = W / 2, r = W / 2 - 5;
+    // clamp: at small avatar sizes (e.g. the 34px compact leaderboard/podium
+    // frame) r-17 goes negative, which throws "attribute r: A negative value
+    // is not valid" and silently drops that ring
     [{ r, sw: 5, color: el.c.ring, dash: '80 30', dur: '2s', dir: 1 },
-     { r: r - 9, sw: 3, color: el.c.ring2, dash: '50 40', dur: '1.5s', dir: -1 },
-     { r: r - 17, sw: 2, color: el.c.glow, dash: '30 50', dur: '1s', dir: 1 }
+     { r: Math.max(2, r - 9), sw: 3, color: el.c.ring2, dash: '50 40', dur: '1.5s', dir: -1 },
+     { r: Math.max(2, r - 17), sw: 2, color: el.c.glow, dash: '30 50', dur: '1s', dir: 1 }
     ].forEach(o => {
       svg.appendChild(_mkCirc(cx, cy, o.r + 2, 'none', '#0e0e1a', o.sw + 2));
       const arc = _mkCirc(cx, cy, o.r, 'none', o.color, o.sw);
