@@ -119,6 +119,30 @@ async function dbGachaPull(playerId) {
   return data; // { tier, item: { type, value, label }, coins_remaining }
 }
 
+// ── Fusion Lab (System 1) — acting player resolved via x-player-token ──
+// Pull a friendly error code out of a thrown PostgREST/RPC error body.
+function economyErrCode(e) {
+  const raw = (e && e.message) ? String(e.message) : '';
+  try { const j = JSON.parse(raw); return j.message || j.hint || raw; } catch (_) { return raw; }
+}
+async function dbListFusionRecipes() {
+  const res = await supaFetch('rpc/list_fusion_recipes', { method: 'POST', body: '{}' });
+  return Array.isArray(res) ? res : (res || []);
+}
+async function dbFuseItems(recipeId) {
+  // returns { ok, output, coins_remaining }; throws on insufficient_coins / missing_input / etc.
+  return await supaFetch('rpc/fuse_items', { method: 'POST', body: JSON.stringify({ p_recipe_id: recipeId }) });
+}
+async function dbGetFusionLog(playerId, limit = 20) {
+  return await supaFetch('fusion_log?player_id=eq.' + encodeURIComponent(playerId) +
+    '&select=recipe_id,output_k,output_v,coins_spent,fused_at&order=fused_at.desc&limit=' + limit);
+}
+async function dbGetFusionStats() {
+  // lightweight global aggregate for the Economy dashboard's Fusion tile
+  const rows = await supaFetch('fusion_log?select=output_v');
+  return { count: (rows || []).length, itemsCreated: new Set((rows || []).map(r => r.output_v)).size };
+}
+
 // ── Server-side daily reward grant (coin amount looked up server-side) ──
 async function dbGrantDailyReward(playerId, questId, coins) {
   try {

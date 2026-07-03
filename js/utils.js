@@ -35,9 +35,13 @@ const GACHA_FRAME_INNER = {
   solar: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
   thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
-// Backward-compat alias: old 'solar' key maps to new 'solaremperor'
-function _resolveFrameKey(f) { return (f === 'solar') ? 'solaremperor' : f; }
-function _resolveNameKey(n)  { return (n === 'solar') ? 'solaremperor' : n; }
+// Backward-compat alias: old 'solar' key maps to new 'solaremperor'.
+// Fusion-forged items (Fusion Lab) reuse an existing visual style rather than
+// shipping bespoke CSS: prismatic→halo, genesis→solaremperor, eclipse→void.
+const _FRAME_ALIAS = { solar: 'solaremperor', prismatic: 'halo', genesis: 'solaremperor' };
+const _NAME_ALIAS  = { solar: 'solaremperor', eclipse: 'void' };
+function _resolveFrameKey(f) { return _FRAME_ALIAS[f] || f; }
+function _resolveNameKey(n)  { return _NAME_ALIAS[n]  || n; }
 
 // ── Liquid UI profile frame (lightweight, GPU-only: transform + opacity) ──
 // Rotating ring + soft pulse glow + a few orbiting particles. Injected as child

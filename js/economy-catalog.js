@@ -77,6 +77,10 @@
     I('element', 'elements', 'yinyang',   'secret',   '☯️ YIN YANG'),
     // Special effects ----------------------------------------------
     I('effect', 'effects', 'rotating_arcs', 'secret', '⚡ Thunder God'),
+    // Fusion outputs (craft-only — cannot be pulled, only forged in Fusion Lab)
+    Object.assign(I('name',  'names',  'eclipse',   'legendary', '🌘 Eclipse Script'),  { craftOnly: true }),
+    Object.assign(I('frame', 'frames', 'prismatic', 'legendary', '🌈 Prismatic Frame'), { craftOnly: true }),
+    Object.assign(I('frame', 'frames', 'genesis',   'legendary', '👑 Genesis Frame'),   { craftOnly: true }),
   ];
 
   const byId = {};
@@ -165,6 +169,10 @@
   window.catalogRarityOrder = rarityOrder;
   window.catalogCanonValue  = canon;
   window.getCatalogItem     = function (id) { return byId[id] || null; };
+  window.getCatalogByInv    = function (invKey, value) {
+    const v = canon(value);
+    return CATALOG.find(it => it.invKey === invKey && canon(it.value) === v) || null;
+  };
   window.getOwnedSets       = getOwnedSets;
   window.ownsCatalogItem    = ownsItem;
   window.getCollectionStats = getCollectionStats;

@@ -22,6 +22,7 @@
     { icon: '✦',   name: 'Gacha',       go: () => showSection('gacha') },
     { icon: '📖',  name: 'Collection',  go: () => showSection('collection') },
     { icon: '📊',  name: 'Economy',     go: () => showSection('economy') },
+    { icon: '🔬',  name: 'Fusion',      go: () => showSection('fusion') },
     { icon: '🎁',  name: 'รางวัล',        badge: 'mailbox', go: () => callIf('openMailbox') },
     { icon: '🤖',  name: 'AOF AI',       badge: 'new', go: () => showSection('ai') },
     { icon: '🏛️',  name: 'Hall of Fame', go: () => callIf('openHoF') },

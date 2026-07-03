@@ -177,6 +177,23 @@
     </main>`;
 
     sec.innerHTML = html;
+    loadExtras();
+  }
+
+  // Lazily fetch cross-system aggregates (Fusion now; Market later) once, then
+  // re-render so the "coming soon" tiles fill in without blocking first paint.
+  let extrasLoading = false;
+  async function loadExtras() {
+    if (window.FUSION_STATS || extrasLoading) return;
+    extrasLoading = true;
+    try {
+      if (typeof dbGetFusionStats === 'function') window.FUSION_STATS = await dbGetFusionStats();
+    } catch (e) { /* keep the "coming soon" state */ }
+    finally {
+      extrasLoading = false;
+      const sec = document.getElementById('economySection');
+      if (window.FUSION_STATS && sec && sec.classList.contains('active')) renderTab();
+    }
   }
   window.economyRenderTab = renderTab;
   window.economyRefresh = function () {
