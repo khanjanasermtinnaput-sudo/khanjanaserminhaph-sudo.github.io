@@ -200,6 +200,7 @@
         render();
         // refresh sibling systems
         if (typeof window.economyRefresh === 'function') { window.FUSION_STATS = undefined; window.economyRefresh(); }
+        if (typeof window.collectionRefresh === 'function') window.collectionRefresh();
       } else {
         if (typeof toast === 'function') toast('หลอมไม่สำเร็จ', 'error');
       }

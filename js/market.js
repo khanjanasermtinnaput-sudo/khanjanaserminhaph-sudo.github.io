@@ -228,6 +228,7 @@
     await refreshData();
     render();
     if (typeof window.economyRefresh === 'function') { window.MARKET_STATS = undefined; window.economyRefresh(); }
+    if (typeof window.collectionRefresh === 'function') window.collectionRefresh();
   }
 
   // After a successful sale, the sold item is gone server-side, but local

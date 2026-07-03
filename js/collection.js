@@ -139,6 +139,15 @@
   }
   window.collectionRenderTab = renderTab;
 
+  // Called by Fusion/Marketplace after a mutation so an already-open
+  // Collection tab reflects the change immediately (same pattern as
+  // economy.js's economyRefresh — no-op if the tab isn't currently visible,
+  // since renderTab() runs fresh from live data on the next navigation anyway).
+  window.collectionRefresh = function () {
+    const sec = document.getElementById('collectionSection');
+    if (sec && sec.classList.contains('active')) renderTab();
+  };
+
   // ── hook into the section router (same pattern as gacha-element.js) ─
   function patchRouter() {
     if (window.__cbRouted) return;
