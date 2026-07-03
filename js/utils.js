@@ -34,12 +34,17 @@ const GACHA_FRAME_INNER = {
   solaremperor: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
   solar: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
   thundergod: '<div class="gf-glow"></div><div class="gf-ring"></div><div class="gf-ring2"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-bolt"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  // Fusion Lab legendaries (bespoke visuals, see styles.css "FUSION LEGENDARY EFFECTS"):
+  prismatic: '<div class="gf-glow"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div>',
+  genesis: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
 };
 // Backward-compat alias: old 'solar' key maps to new 'solaremperor'.
-// Fusion-forged items (Fusion Lab) reuse an existing visual style rather than
-// shipping bespoke CSS: prismatic→halo, genesis→solaremperor, eclipse→void.
-const _FRAME_ALIAS = { solar: 'solaremperor', prismatic: 'halo', genesis: 'solaremperor' };
-const _NAME_ALIAS  = { solar: 'solaremperor', eclipse: 'void' };
+// Fusion Lab legendaries (prismatic/genesis frames, eclipse name) have their
+// own bespoke CSS — see styles.css "FUSION LEGENDARY EFFECTS" — so they are
+// intentionally NOT in these alias maps (they used to reuse halo/solaremperor/
+// void until the QA pass on 2026-07-03 replaced that with distinct visuals).
+const _FRAME_ALIAS = { solar: 'solaremperor' };
+const _NAME_ALIAS  = { solar: 'solaremperor' };
 function _resolveFrameKey(f) { return _FRAME_ALIAS[f] || f; }
 function _resolveNameKey(n)  { return _NAME_ALIAS[n]  || n; }
 
@@ -73,7 +78,7 @@ function getGachaNameClass(player) {
   if (player && player.ownedEffects && player.ownedEffects.includes('rotating_arcs')) return 'gn-thundergod';
   const raw = player && player.gachaName;
   const n = _resolveNameKey(raw);
-  if (!n || !['void','halo','blaze','ice','solaremperor'].includes(n)) return '';
+  if (!n || !['void','halo','blaze','ice','solaremperor','eclipse'].includes(n)) return '';
   return 'gn-' + n;
 }
 

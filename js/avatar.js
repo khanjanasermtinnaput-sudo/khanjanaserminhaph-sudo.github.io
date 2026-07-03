@@ -21,7 +21,7 @@ function _avbUpdatePreview() {
   const frameInner = (_myFrameResolved && (_myFrameResolved in GACHA_FRAME_INNER)) ? GACHA_FRAME_INNER[_myFrameResolved] : '';
   // name class
   const _myNameResolved = _resolveNameKey(myNameFx);
-  const nameClass = (_myNameResolved && ['void','halo','blaze','ice','thundergod','solaremperor'].includes(_myNameResolved)) ? 'gn-'+_myNameResolved : '';
+  const nameClass = (_myNameResolved && ['void','halo','blaze','ice','thundergod','solaremperor','eclipse'].includes(_myNameResolved)) ? 'gn-'+_myNameResolved : '';
   const wrap = document.getElementById('avPreviewWrap');
   if (!wrap) return;
   wrap.innerHTML = `
