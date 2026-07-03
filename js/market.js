@@ -210,7 +210,7 @@
     sec.querySelectorAll('[data-list]').forEach(b => b.addEventListener('click', () => {
       const [k, v] = b.getAttribute('data-list').split('|');
       const inp = sec.querySelector('#mkprice_' + k + '_' + cssId(v));
-      doList(k, v, inp ? parseInt(inp.value, 10) : NaN);
+      doList(k, v, inp ? inp.value : '');
     }));
   }
 
@@ -230,33 +230,101 @@
     if (typeof window.economyRefresh === 'function') { window.MARKET_STATS = undefined; window.economyRefresh(); }
   }
 
+  // After a successful sale, the sold item is gone server-side, but local
+  // caches (bmt_gacha_<id> for elements, bmt_owned_effects_<id> / bmt_gacha_inv_<id>
+  // for effects) are UNION-merged with the server on read — they only ever grow,
+  // never shrink — so getOwnedSets() would keep showing the sold item as owned
+  // on this device forever unless we actively strike it from those caches here.
+  function reconcileLocalShadowOnSell(k, v) {
+    if (!currentUser) return;
+    try {
+      if (k === 'elements') {
+        const raw = localStorage.getItem('bmt_gacha_' + currentUser.id);
+        if (raw) {
+          const d = JSON.parse(raw);
+          let inv = [];
+          try { inv = JSON.parse(d.elementInventory || '[]'); } catch (e) {}
+          d.elementInventory = JSON.stringify(inv.filter(e => e !== v));
+          if (d.equippedElement === v) { d.equippedElement = null; d.element = null; }
+          localStorage.setItem('bmt_gacha_' + currentUser.id, JSON.stringify(d));
+        }
+      } else if (k === 'effects') {
+        const rawEff = localStorage.getItem('bmt_owned_effects_' + currentUser.id);
+        if (rawEff !== null) {
+          try {
+            const arr = (JSON.parse(rawEff) || []).filter(e => e !== v);
+            localStorage.setItem('bmt_owned_effects_' + currentUser.id, JSON.stringify(arr));
+          } catch (e) {}
+        }
+        const rawInv = localStorage.getItem('bmt_gacha_inv_' + currentUser.id);
+        if (rawInv) {
+          try {
+            const inv = JSON.parse(rawInv);
+            if (Array.isArray(inv.effects)) inv.effects = inv.effects.filter(e => e !== v);
+            if (Array.isArray(inv.equippedEffects)) inv.equippedEffects = inv.equippedEffects.filter(e => e !== v);
+            localStorage.setItem('bmt_gacha_inv_' + currentUser.id, JSON.stringify(inv));
+          } catch (e) {}
+        }
+      }
+    } catch (e) {}
+  }
+
   async function doBuy(id) {
     if (busy) return;
     const l = listings.find(x => x.id === id); if (!l) return;
     const iv = itemView(l.item_k, l.item_v);
     if (!confirm('ซื้อ "' + iv.label + '" ราคา 🪙 ' + l.price + ' ?')) return;
     busy = true;
-    try { const r = await dbMarketBuy(id); if (r && r.ok) { toastOk('✅ ซื้อสำเร็จ!'); await afterMutation(); } }
-    catch (e) { toastErr('⚠️ ' + errMsg(e)); await afterMutation(); }
-    finally { busy = false; }
+    try {
+      const r = await dbMarketBuy(id);
+      if (r && r.ok) toastOk('✅ ซื้อสำเร็จ!'); else toastErr('⚠️ ทำรายการไม่สำเร็จ');
+    } catch (e) {
+      toastErr('⚠️ ' + errMsg(e));
+    } finally {
+      // always resync, even on an unexpected non-throwing/non-ok response —
+      // otherwise a schema drift could leave a sold item showing as available
+      await afterMutation();
+      busy = false;
+    }
   }
   async function doCancel(id) {
     if (busy) return;
     if (!confirm('ยกเลิกรายการขายนี้? ไอเทมจะถูกคืนเข้าคลัง')) return;
     busy = true;
-    try { const r = await dbMarketCancel(id); if (r && r.ok) { toastOk('↩️ ยกเลิกแล้ว'); await afterMutation(); } }
-    catch (e) { toastErr('⚠️ ' + errMsg(e)); await afterMutation(); }
-    finally { busy = false; }
+    try {
+      const r = await dbMarketCancel(id);
+      if (r && r.ok) toastOk('↩️ ยกเลิกแล้ว'); else toastErr('⚠️ ทำรายการไม่สำเร็จ');
+    } catch (e) {
+      toastErr('⚠️ ' + errMsg(e));
+    } finally {
+      await afterMutation();
+      busy = false;
+    }
   }
-  async function doList(k, v, price) {
+  async function doList(k, v, rawPrice) {
     if (busy) return;
-    if (!Number.isInteger(price) || price < 1 || price > 1000000) { toastErr('กรุณาใส่ราคา 1–1,000,000'); return; }
+    // validate the RAW string, not a parseInt() result — parseInt("1e9",10)===1
+    // and parseInt("10.99",10)===10, both of which would silently mis-price
+    // the listing instead of surfacing an error.
+    const trimmed = String(rawPrice == null ? '' : rawPrice).trim();
+    if (!/^[0-9]+$/.test(trimmed)) { toastErr('กรุณาใส่ราคาเป็นจำนวนเต็ม 1–1,000,000 (ห้ามมีจุดทศนิยมหรือตัวอักษร)'); return; }
+    const price = parseInt(trimmed, 10);
+    if (price < 1 || price > 1000000) { toastErr('กรุณาใส่ราคา 1–1,000,000'); return; }
     const iv = itemView(k, v);
     if (!confirm('ลงขาย "' + iv.label + '" ราคา 🪙 ' + price + ' ?\n(ค่าธรรมเนียม 🪙1)')) return;
     busy = true;
-    try { const r = await dbMarketList(k, v, price); if (r && r.ok) { toastOk('🏷️ ลงขายแล้ว!'); tab = 'mine'; await afterMutation(); } }
-    catch (e) { toastErr('⚠️ ' + errMsg(e)); }
-    finally { busy = false; }
+    let ok = false;
+    try {
+      const r = await dbMarketList(k, v, price);
+      ok = !!(r && r.ok);
+      if (ok) { toastOk('🏷️ ลงขายแล้ว!'); tab = 'mine'; reconcileLocalShadowOnSell(k, v); }
+      else toastErr('⚠️ ทำรายการไม่สำเร็จ');
+    } catch (e) {
+      toastErr('⚠️ ' + errMsg(e));
+    } finally {
+      if (ok) await afterMutation();
+      busy = false;
+    }
   }
 
   function toastOk(m) { if (typeof toast === 'function') toast(m, 'success'); }
