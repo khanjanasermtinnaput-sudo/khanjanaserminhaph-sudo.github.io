@@ -321,6 +321,70 @@ body.x2-active .toast-wrap{bottom:120px}
 [data-style="lite"] .gf-solaremperor .se-ring{animation:none!important;box-shadow:0 0 0 2px rgba(255,215,0,.75)!important}
 [data-style="lite"] .gf-solaremperor .se-sweep,[data-style="lite"] .gf-solaremperor .se-sweep2{display:none}
 [data-style="lite"] .gf-solaremperor .se-flare,[data-style="lite"] .gf-solaremperor .se-sp{animation:none!important;opacity:.35}
+/* ══════ FUSION LEGENDARY EFFECTS (Fusion Lab crafted-only outputs) ══════
+   Added 2026-07-03 QA pass — these 3 outputs used to silently reuse an
+   existing item's CSS (prismatic→halo, genesis→solaremperor, eclipse→void),
+   so a freshly-forged Legendary looked pixel-identical to the Epic/Secret
+   item that made it. Each now has its own distinct, thematically-fused look. */
+
+/* ── 🌈 PRISMATIC FRAME (Rainbow + Robot): true hue-cycling prism, not a
+   static rainbow spin — the hue-rotate is what makes this read as distinct
+   from every other frame, all of which use a fixed palette. ── */
+@keyframes prSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes prHueShift{0%{filter:hue-rotate(0deg)}100%{filter:hue-rotate(360deg)}}
+@keyframes prGlow{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.08)}}
+@keyframes prShard{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:1}100%{transform:rotate(calc(var(--gd) + 360deg)) translateX(calc(var(--gr) + 6px)) scale(.2);opacity:0}}
+.gf-prismatic::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#ff003c,#ff8a00,#ffee00,#4dff00,#00e5ff,#3d5cff,#b400ff,#ff00c8,#ff003c);animation:prSpin 6s linear infinite,prHueShift 3s linear infinite;box-shadow:0 0 0 1px rgba(255,255,255,.2),0 0 16px rgba(255,255,255,.22)}
+.gf-prismatic::after{content:'';position:absolute;inset:-14px;border-radius:50%;z-index:-2;background:conic-gradient(from 180deg,transparent 0%,rgba(255,255,255,.35) 8%,transparent 16%,transparent 48%,rgba(255,255,255,.28) 56%,transparent 64%);animation:prSpin 4s linear infinite reverse,prHueShift 5s linear infinite;filter:blur(4px)}
+.gf-prismatic .gf-glow{position:absolute;inset:-16px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 30%,rgba(255,255,255,.14) 55%,rgba(180,0,255,.12) 78%,transparent);animation:prGlow 2.4s ease-in-out infinite,prHueShift 4s linear infinite}
+.gf-prismatic .gf-shard{position:absolute;border-radius:2px;top:50%;left:50%;pointer-events:none;width:5px;height:5px;margin:-2.5px;background:#fff;animation:prShard 2.6s linear infinite;--gr:48px;--gd:0deg}
+.gf-prismatic .gf-shard:nth-child(2){background:#ff8a00;width:4px;height:4px;margin:-2px;animation-delay:-.6s;--gd:60deg;--gr:48px}
+.gf-prismatic .gf-shard:nth-child(3){background:#4dff00;animation-delay:-1.2s;--gd:120deg;--gr:48px}
+.gf-prismatic .gf-shard:nth-child(4){background:#00e5ff;width:4px;height:4px;margin:-2px;animation-delay:-1.8s;--gd:180deg;--gr:48px}
+.gf-prismatic .gf-shard:nth-child(5){background:#b400ff;animation-delay:-2.2s;--gd:240deg;--gr:48px}
+.gf-prismatic .gf-shard:nth-child(6){background:#ff00c8;width:3px;height:3px;margin:-1.5px;animation-delay:-2.8s;--gd:300deg;--gr:48px}
+[data-style="lite"] .gf-prismatic::before,[data-style="lite"] .gf-prismatic::after{animation:none!important}
+[data-style="lite"] .gf-prismatic .gf-glow{animation:none!important;opacity:.5}
+[data-style="lite"] .gf-prismatic .gf-shard{animation:none!important;opacity:.5}
+
+/* ── 👑 GENESIS FRAME (Void + Halo, secret recipe): "dawn of creation" —
+   the same cosmic-sky structure as Solar Emperor but a violet+gold two-tone
+   palette (void's darkness + halo's light), so it reads as a distinct fusion
+   of its two inputs rather than a copy of either. ── */
+@keyframes gnRingPulse{0%,100%{box-shadow:0 0 0 2px rgba(180,60,255,.55),0 0 10px rgba(255,215,0,.4),0 0 24px rgba(140,0,220,.3),0 0 50px rgba(255,180,0,.14)}50%{box-shadow:0 0 0 2.5px rgba(220,140,255,.9),0 0 18px rgba(255,225,80,.75),0 0 42px rgba(170,0,255,.5),0 0 88px rgba(255,190,0,.28)}}
+.gf-genesis{background:radial-gradient(circle at 44% 38%,#180a2e 0%,#0a0518 55%,#020105 100%)}
+.gf-genesis::before{content:'';position:absolute;inset:-5px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#5c00a3 0%,#9a1fff 8%,#3d0070 16%,#9a6b04 26%,#ffd700 34%,#fff3b0 40%,#ffd700 46%,#7700bb 56%,#b833ff 64%,#3d0070 72%,#cc8c00 82%,#ffd700 90%,#5c00a3 100%);box-shadow:0 0 0 1px rgba(200,120,255,.32),0 0 14px rgba(180,60,255,.34),0 0 32px rgba(255,195,0,.16);animation:seSweepRot 16s linear infinite}
+.gf-genesis::after{content:'';position:absolute;inset:-26px;border-radius:50%;z-index:-4;background:radial-gradient(circle,transparent 43%,rgba(150,0,220,.14) 60%,rgba(255,190,0,.14) 76%,rgba(90,0,160,.1) 91%,transparent);pointer-events:none;animation:seOuterBloom 4s ease-in-out infinite}
+.gf-genesis .se-bg{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-7;background:radial-gradient(circle at 34% 30%,rgba(60,10,90,.75) 0%,transparent 50%),radial-gradient(circle at 70% 68%,rgba(40,20,10,.5) 0%,transparent 44%),radial-gradient(circle at 52% 52%,rgba(14,6,24,.92) 0%,rgba(6,3,10,.96) 60%,rgba(2,1,4,1) 100%)}
+.gf-genesis .se-stars{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-6;background-image:radial-gradient(circle,rgba(255,255,255,.9) .65px,transparent .65px),radial-gradient(circle,rgba(200,120,255,.85) .55px,transparent .55px),radial-gradient(circle,rgba(255,215,0,.65) .42px,transparent .42px),radial-gradient(circle,rgba(180,80,255,.68) .58px,transparent .58px),radial-gradient(circle,rgba(255,255,255,.42) .35px,transparent .35px);background-size:20px 20px,16px 15px,9px 8px,26px 23px,6px 7px;background-position:2px 3px,9px 12px,4px 7px,17px 9px,1px 5px;animation:seStarsMove 20s linear infinite;opacity:.85}
+.gf-genesis .se-stars2{position:absolute;inset:0;border-radius:50%;overflow:hidden;z-index:-5;background-image:radial-gradient(circle,rgba(255,215,0,.8) .5px,transparent .5px),radial-gradient(circle,rgba(220,150,255,.7) .38px,transparent .38px),radial-gradient(circle,rgba(255,255,255,.5) .45px,transparent .45px);background-size:30px 28px,18px 22px,12px 11px;background-position:6px 8px,11px 4px,3px 11px;animation:seStars2Move 13s linear infinite;opacity:.7}
+.gf-genesis .se-ring{position:absolute;inset:-9px;border-radius:50%;pointer-events:none;z-index:-2;animation:gnRingPulse 3.2s ease-in-out infinite}
+.gf-genesis .se-sweep{position:absolute;inset:-14px;border-radius:50%;z-index:-1;pointer-events:none;background:conic-gradient(from 0deg,transparent 0deg,transparent 158deg,rgba(220,170,255,.06) 170deg,rgba(255,255,255,.46) 180deg,rgba(255,225,150,.08) 190deg,transparent 202deg,transparent 360deg);animation:seSweepRot 5s linear infinite}
+.gf-genesis .se-sweep2{position:absolute;inset:-16px;border-radius:50%;z-index:-1;pointer-events:none;background:conic-gradient(from 90deg,transparent 0deg,transparent 170deg,rgba(150,0,220,.05) 178deg,rgba(255,220,120,.2) 185deg,transparent 194deg,transparent 360deg);animation:seSweepRotR 8s linear infinite}
+.gf-genesis .se-flare{position:absolute;top:50%;left:50%;transform-origin:0 0;border-radius:2px;pointer-events:none;z-index:-1;animation:seFlareGlow 3s ease-in-out infinite}
+.gf-genesis .se-flare:nth-child(7){height:24px;width:3px;background:linear-gradient(rgba(255,248,140,1),rgba(180,60,255,.6),transparent);transform:rotate(52deg) translateY(-64px);animation-delay:0s}
+.gf-genesis .se-flare:nth-child(8){height:17px;width:2px;background:linear-gradient(rgba(220,150,255,.9),rgba(255,210,0,.5),transparent);transform:rotate(224deg) translateY(-62px);animation-delay:1.5s}
+.gf-genesis .se-sp{position:absolute;pointer-events:none;z-index:2;border-radius:50%}
+.gf-genesis .se-sp:nth-child(10){width:3px;height:3px;top:10%;left:14%;background:rgba(255,255,255,.9);animation:seSpTwinkle 3.1s ease-in-out infinite}
+.gf-genesis .se-sp:nth-child(11){width:2px;height:2px;top:74%;left:80%;background:rgba(200,120,255,.9);animation:seSpTwinkle 4s ease-in-out infinite .85s}
+.gf-genesis .se-sp:nth-child(12){width:2px;height:2px;top:16%;left:76%;background:rgba(255,215,0,.85);animation:seSpTwinkle 2.6s ease-in-out infinite 1.7s}
+.gf-genesis .se-sp:nth-child(13){width:3px;height:3px;top:70%;left:12%;background:rgba(180,60,255,.85);animation:seSpTwinkle 3.5s ease-in-out infinite 2.55s}
+[data-style="lite"] .gf-genesis::before{animation:none!important}
+[data-style="lite"] .gf-genesis::after{display:none}
+[data-style="lite"] .gf-genesis .se-bg{background:#0a0518!important}
+[data-style="lite"] .gf-genesis .se-stars,[data-style="lite"] .gf-genesis .se-stars2{animation:none!important;opacity:.35}
+[data-style="lite"] .gf-genesis .se-ring{animation:none!important;box-shadow:0 0 0 2px rgba(180,60,255,.6)!important}
+[data-style="lite"] .gf-genesis .se-sweep,[data-style="lite"] .gf-genesis .se-sweep2{display:none}
+[data-style="lite"] .gf-genesis .se-flare,[data-style="lite"] .gf-genesis .se-sp{animation:none!important;opacity:.3}
+
+/* ── 🌘 ECLIPSE SCRIPT (Solar Emperor + Void names): eclipse corona — a
+   bright gold/white corona band sweeping across a deep violet "disc" base
+   (void's darkness eclipsing solar's light, with the corona ring still
+   blazing through), rather than either input's own solid color. ── */
+@keyframes gnEclipseCorona{0%,100%{filter:drop-shadow(0 0 3px rgba(255,215,0,.85)) drop-shadow(0 0 8px rgba(120,0,200,.55)) drop-shadow(0 0 16px rgba(255,180,0,.3))}50%{filter:drop-shadow(0 0 7px rgba(255,240,150,1)) drop-shadow(0 0 18px rgba(160,0,255,.8)) drop-shadow(0 0 34px rgba(255,200,0,.5)) drop-shadow(0 0 60px rgba(90,0,160,.32))}}
+.gn-eclipse{background:linear-gradient(90deg,#2a0050 0%,#4d0090 10%,#1a0030 22%,#ffd700 32%,#fff9dd 38%,#ffd700 44%,#3d0070 54%,#1a0030 64%,#ffd700 74%,#fff9dd 80%,#ffd700 86%,#4d0090 94%,#2a0050 100%);background-size:320% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 4.5s linear infinite,gnEclipseCorona 2.6s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+@keyframes gnEclipseCoronaLight{0%,100%{filter:drop-shadow(0 0 2px rgba(180,120,0,.7)) drop-shadow(0 0 6px rgba(90,0,160,.4))}50%{filter:drop-shadow(0 0 5px rgba(210,150,0,.9)) drop-shadow(0 0 12px rgba(120,0,200,.6))}}
+[data-style="lite"] .gn-eclipse,[data-theme="light"] .gn-eclipse{background:linear-gradient(90deg,#3d1a5c 0%,#5c2e8c 12%,#241540 24%,#a86f00 34%,#c99400 40%,#a86f00 46%,#5c2e8c 58%,#241540 68%,#a86f00 78%,#c99400 84%,#a86f00 90%,#5c2e8c 96%,#3d1a5c 100%);background-size:320% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 4.5s linear infinite,gnEclipseCoronaLight 2.6s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
 /* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
 @keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes tgPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}

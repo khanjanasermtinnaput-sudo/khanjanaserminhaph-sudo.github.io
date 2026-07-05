@@ -2,7 +2,7 @@
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
 // CACHE version is bumped on every deploy by CI (replace __BUILD_HASH__ via build script)
 // If you deploy manually, increment the number suffix each time (MED-05)
-const CACHE = 'bk-v36';
+const CACHE = 'bk-v44';
 
 // App shell to pre-cache. Paths are RELATIVE to the SW location so the app works
 // when served from a project-page subpath (…/<repo>/). Runtime requests with a
@@ -31,6 +31,12 @@ const ASSETS = [
   'js/avatar.js',
   'js/gacha.js',
   'js/gacha-element.js',
+  'js/economy-catalog.js',
+  'js/collection.js',
+  'js/economy.js',
+  'js/fusion.js',
+  'js/market.js',
+  'js/dashboard.js',
   'js/aof.js',
   'js/mailbox.js',
   'js/tournament.js',

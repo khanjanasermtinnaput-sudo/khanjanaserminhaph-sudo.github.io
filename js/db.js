@@ -155,6 +155,58 @@ async function dbGetExpLogs(limit = 10) {
   } catch(e) { return []; }
 }
 
+// ── Fusion Lab (System 1) — acting player resolved via x-player-token ──
+// Pull a friendly error code out of a thrown PostgREST/RPC error body.
+function economyErrCode(e) {
+  const raw = (e && e.message) ? String(e.message) : '';
+  try { const j = JSON.parse(raw); return j.message || j.hint || raw; } catch (_) { return raw; }
+}
+async function dbListFusionRecipes() {
+  const res = await supaFetch('rpc/list_fusion_recipes', { method: 'POST', body: '{}' });
+  return Array.isArray(res) ? res : (res || []);
+}
+async function dbFuseItems(recipeId) {
+  // returns { ok, output, coins_remaining }; throws on insufficient_coins / missing_input / etc.
+  return await supaFetch('rpc/fuse_items', { method: 'POST', body: JSON.stringify({ p_recipe_id: recipeId }) });
+}
+async function dbGetFusionLog(playerId, limit = 20) {
+  // fusion_log is no longer anon-readable; my_fusion_log() scopes to the
+  // acting session via session_uid(), so playerId is only kept for call-site compat.
+  return await supaFetch('rpc/my_fusion_log', { method: 'POST', body: JSON.stringify({ p_limit: limit }) });
+}
+async function dbGetFusionStats() {
+  // lightweight global aggregate for the Economy dashboard's Fusion tile
+  return await supaFetch('rpc/fusion_stats', { method: 'POST', body: '{}' });
+}
+
+// ── Marketplace (System 2) — acting player resolved via x-player-token ──
+async function dbGetListings(limit = 200) {
+  return await supaFetch('market_listings?status=eq.active' +
+    '&select=id,seller_id,item_k,item_v,price,created_at&order=created_at.desc&limit=' + limit);
+}
+async function dbGetMyListings(playerId) {
+  return await supaFetch('market_listings?seller_id=eq.' + encodeURIComponent(playerId) +
+    '&status=eq.active&select=id,item_k,item_v,price,created_at&order=created_at.desc');
+}
+async function dbMarketList(itemK, itemV, price) {
+  return await supaFetch('rpc/market_list_item', { method: 'POST',
+    body: JSON.stringify({ p_item_k: itemK, p_item_v: itemV, p_price: price }) });
+}
+async function dbMarketBuy(listingId) {
+  return await supaFetch('rpc/market_buy', { method: 'POST', body: JSON.stringify({ p_listing_id: listingId }) });
+}
+async function dbMarketCancel(listingId) {
+  return await supaFetch('rpc/market_cancel', { method: 'POST', body: JSON.stringify({ p_listing_id: listingId }) });
+}
+async function dbGetMarketHistory(limit = 20) {
+  return await supaFetch('market_transactions?select=item_k,item_v,price,buyer_id,seller_id,traded_at' +
+    '&order=traded_at.desc&limit=' + limit);
+}
+async function dbGetMarketStats() {
+  const r = await supaFetch('rpc/market_stats', { method: 'POST', body: '{}' });
+  return Array.isArray(r) ? (r[0] || {}) : (r || {});
+}
+
 // ── Server-side daily reward grant (coin amount looked up server-side) ──
 async function dbGrantDailyReward(playerId, questId, coins) {
   try {
