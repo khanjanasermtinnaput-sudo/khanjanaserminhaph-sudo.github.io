@@ -38,9 +38,13 @@ async function supaFetchAll(pathWithQuery, pageSize = 1000) {
 let db = { players: [], matches: [] };
 let currentUser = null;
 let currentMatch = null;
+// id of the most recently inserted/promoted `matches` row — set by saveMatch()/
+// approvePending() right after dbAddMatch() resolves, read by the EXP-award
+// wrapper in index.html (see supabase_level_system.sql, js/exp-engine.js).
+let _lastSavedMatchId = null;
 
 // คอลัมน์ที่ปลอดภัยต่อการเปิดเผย (ไม่รวม pin) — กัน PIN ของทุกคนรั่วมาที่ client
-const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen';
+const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,level,total_exp,current_exp,required_exp,last_level_up,reward_claimed';
 async function loadPlayers() {
   let rows;
   try {
@@ -117,6 +121,38 @@ async function dbGachaPull(playerId) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'gacha_pull_failed');
   return data; // { tier, item: { type, value, label }, coins_remaining }
+}
+
+// ── Level / EXP system (server-authoritative; see supabase_level_system.sql) ──
+// Awards match-completion EXP for a real `matches` row (admin-only server-side;
+// amounts are computed and verified in the DB, never trusted from the client).
+// Returns { awarded, results:[{player_id, source, result:{leveled, new_level, ...}}] }
+// or { awarded:false, already_awarded:true } on a repeat call, or null on failure.
+async function dbAwardMatchExp(matchId) {
+  if (!matchId) return null;
+  try {
+    return await supaFetch('rpc/rpc_award_match_exp', {
+      method: 'POST',
+      body: JSON.stringify({ p_token: currentToken, p_match_id: matchId })
+    });
+  } catch(e) {
+    console.warn('award_match_exp failed:', e.message);
+    return null;
+  }
+}
+// Throws on failure (already_claimed / level_too_low / invalid_reward) so the
+// caller can show a specific error toast — unlike the award functions above,
+// a failed claim should not be silently swallowed.
+async function dbClaimLevelReward(rewardId) {
+  return supaFetch('rpc/rpc_claim_level_reward', {
+    method: 'POST',
+    body: JSON.stringify({ p_token: currentToken, p_reward_id: rewardId })
+  });
+}
+async function dbGetExpLogs(limit = 10) {
+  try {
+    return await supaFetch('exp_logs?select=source,amount,total_exp,level,created_at&player_id=eq.' + currentUser.id + '&order=created_at.desc&limit=' + limit);
+  } catch(e) { return []; }
 }
 
 // ── Server-side daily reward grant (coin amount looked up server-side) ──
@@ -227,16 +263,21 @@ async function dbDeleteMatchesByPlayer(playerId) {
   });
   await Promise.all(toDelete.map(m => supaFetch('matches?id=eq.' + m.id, { method: 'DELETE', prefer: 'return=minimal' })));
 }
+// Returns the inserted match's id (used to award match-completion EXP —
+// see supabase_level_system.sql rpc_award_match_exp) or null if it couldn't
+// be determined.
 async function dbAddMatch(match) {
   const row = { type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss };
   if (match.mood) row.mood = match.mood;
   try {
-    await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=minimal' });
+    const res = await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=representation' });
+    return Array.isArray(res) && res[0] ? res[0].id : null;
   } catch(e) {
     // คอลัมน์ mood ยังไม่ถูกสร้าง → บันทึกแบบไม่มี mood แทน (ดู SQL ในหน้า Admin)
     if (row.mood && e.message && (e.message.includes('PGRST204') || e.message.includes('mood'))) {
       delete row.mood;
-      await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=minimal' });
+      const res = await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=representation' });
+      return Array.isArray(res) && res[0] ? res[0].id : null;
     } else throw e;
   }
 }

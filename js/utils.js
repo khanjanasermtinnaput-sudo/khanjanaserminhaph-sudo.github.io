@@ -513,7 +513,8 @@ function normalizePlayer(p) {
   if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {
     _ownedEffects = [..._ownedEffects, 'rotating_arcs'];
   }
-  return { id: p.id, name: p.name, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null };
+  let rewardClaimed = []; try { rewardClaimed = JSON.parse(p.reward_claimed || '[]'); } catch(e) {}
+  return { id: p.id, name: p.name, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null, level: p.level || 1, totalExp: p.total_exp || 0, currentExp: p.current_exp || 0, requiredExp: p.required_exp || 100, lastLevelUp: p.last_level_up ? new Date(p.last_level_up).getTime() : null, rewardClaimed };
 }
 
 function getPresenceHTML(player, compact) {

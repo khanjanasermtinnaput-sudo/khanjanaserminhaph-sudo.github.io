@@ -59,6 +59,9 @@ const I18N = {
     peak_elo_m:'ELO สูงสุด/แมตช์', wins_day:'ชนะมากสุด/วัน',
     // profile rank stats
     cur_rank_pos:'อันดับปัจจุบัน', peak_rank_pos:'อันดับสูงสุด', days_played:'วันที่เล่น',
+    // level / exp system (V1)
+    level:'เลเวล', total_exp:'EXP รวม', next_reward:'รางวัลถัดไป', claim:'รับรางวัล', claimed:'รับแล้ว',
+    exp_history:'EXP ล่าสุด', exp_src_complete:'จบแมตช์', exp_src_win:'ชนะแมตช์', exp_src_lose:'แพ้แมตช์',
   },
   en: {
     nav_lb:'Ranking', nav_match:'Match', nav_hist:'History', nav_profile:'Profile',
@@ -119,6 +122,9 @@ const I18N = {
     peak_elo_m:'Peak ELO/Match', wins_day:'Most Wins/Day',
     // profile rank stats
     cur_rank_pos:'Current Rank', peak_rank_pos:'Highest Rank', days_played:'Days Played',
+    // level / exp system (V1)
+    level:'Level', total_exp:'Total EXP', next_reward:'Next Reward', claim:'Claim', claimed:'Claimed',
+    exp_history:'Recent EXP', exp_src_complete:'Match played', exp_src_win:'Match won', exp_src_lose:'Match lost',
   }
 };
 let _lang = localStorage.getItem('badminton_lang') || 'th';

@@ -719,7 +719,7 @@ async function saveMatch() {
           await dbUpdatePlayer(p.id, { pts: Math.max(0, pl.pts - actualLoss), losses: pl.losses + 1 });
         }
       }
-      await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
+      _lastSavedMatchId = await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
       await loadAll();
       closeModal('finishModal');
       currentMatch = null;
@@ -1015,7 +1015,7 @@ async function approvePending(pendingId) {
         }
       }
     }
-    await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss }, mood: r.mood || null });
+    _lastSavedMatchId = await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss }, mood: r.mood || null });
     await dbDeletePending(pendingId);
     await loadAll();
     toast('✅ ยืนยันแมตช์สำเร็จ! คะแนนถูกบันทึกแล้ว 🎉', 'success');
