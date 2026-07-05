@@ -794,6 +794,24 @@ async function executeDeclareChampion(tournamentId) {
       match_type: matchType,
       ended_at: new Date().toISOString(),
     });
+    // Tournament EXP — server re-derives tier + champion_ids from the just-
+    // completed tournament row (never trusts client amounts). Result shape
+    // is {player_id, result} per champion — distinct from rpc_award_match_exp's
+    // {player_id, source, result}, so handled directly rather than via
+    // handleMatchExpResult (js/levels.js).
+    if (typeof dbAwardTournamentExp === 'function') {
+      try {
+        const expRes = await dbAwardTournamentExp(tournamentId);
+        if (expRes && expRes.awarded && Array.isArray(expRes.results)) {
+          for (const r of expRes.results) {
+            if (r.result && r.result.leveled && typeof queueLevelUp === 'function') {
+              const pl = db.players.find(x => x.id === r.player_id);
+              queueLevelUp(pl ? pl.name : '', r.result, expRes.amount || 0);
+            }
+          }
+        }
+      } catch(e) {}
+    }
   } catch(e) {
     try { await dbDeleteTournament(tournamentId); } catch(e2) {}
   }

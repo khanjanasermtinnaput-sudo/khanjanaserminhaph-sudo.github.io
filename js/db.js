@@ -44,7 +44,7 @@ let currentMatch = null;
 let _lastSavedMatchId = null;
 
 // คอลัมน์ที่ปลอดภัยต่อการเปิดเผย (ไม่รวม pin) — กัน PIN ของทุกคนรั่วมาที่ client
-const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,level,total_exp,current_exp,required_exp,last_level_up,reward_claimed';
+const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,level,total_exp,current_exp,required_exp,last_level_up,reward_claimed,prestige,lifetime_exp,highest_level,best_win_streak,consecutive_wins,prestige_at';
 async function loadPlayers() {
   let rows;
   try {
@@ -153,6 +153,38 @@ async function dbGetExpLogs(limit = 10) {
   try {
     return await supaFetch('exp_logs?select=source,amount,total_exp,level,created_at&player_id=eq.' + currentUser.id + '&order=created_at.desc&limit=' + limit);
   } catch(e) { return []; }
+}
+// Paged/filterable variant for the Level History timeline (js/levels.js).
+// fromDate: 'YYYY-MM-DD' inclusive lower bound, or null for no lower bound.
+async function dbGetExpLogsPaged(offset = 0, limit = 20, fromDate = null) {
+  try {
+    let q = 'exp_logs?select=source,amount,total_exp,level,current_exp,meta,created_at&player_id=eq.' + currentUser.id;
+    if (fromDate) q += '&created_at=gte.' + fromDate;
+    q += '&order=created_at.desc&offset=' + offset + '&limit=' + limit;
+    return await supaFetch(q);
+  } catch(e) { return []; }
+}
+
+// ── V2: remaining EXP sources + Prestige ──────────────────────────────
+// All award functions swallow errors (never block the underlying flow);
+// dbPrestige() throws so the caller can show a specific error toast.
+async function dbAwardDailyLogin() {
+  try {
+    return await supaFetch('rpc/rpc_award_daily_login', { method: 'POST', body: JSON.stringify({ p_token: currentToken }) });
+  } catch(e) { console.warn('award_daily_login failed:', e.message); return null; }
+}
+async function dbAwardMissionExp(questId) {
+  try {
+    return await supaFetch('rpc/rpc_award_mission_exp', { method: 'POST', body: JSON.stringify({ p_token: currentToken, p_quest_id: questId }) });
+  } catch(e) { console.warn('award_mission_exp failed:', e.message); return null; }
+}
+async function dbAwardTournamentExp(tournamentId) {
+  try {
+    return await supaFetch('rpc/rpc_award_tournament_exp', { method: 'POST', body: JSON.stringify({ p_token: currentToken, p_tournament_id: tournamentId }) });
+  } catch(e) { console.warn('award_tournament_exp failed:', e.message); return null; }
+}
+async function dbPrestige() {
+  return supaFetch('rpc/rpc_prestige', { method: 'POST', body: JSON.stringify({ p_token: currentToken }) });
 }
 
 // ── Fusion Lab (System 1) — acting player resolved via x-player-token ──

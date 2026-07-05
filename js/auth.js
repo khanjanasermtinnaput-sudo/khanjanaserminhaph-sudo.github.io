@@ -110,6 +110,16 @@ function afterLogin() {
   showSection('leaderboard');
   startPresenceHeartbeat();
   if (typeof initNotifications === 'function') initNotifications();
+  // Daily login EXP — server date-keyed (rpc_award_daily_login), safe to call
+  // on every login since it silently no-ops if already granted today.
+  if (typeof dbAwardDailyLogin === 'function') {
+    dbAwardDailyLogin().then(res => {
+      if (res && res.awarded && res.result && res.result.leveled && typeof queueLevelUp === 'function') {
+        queueLevelUp(currentUser.name, res.result, 20);
+      }
+      if (typeof loadPlayers === 'function') loadPlayers().catch(() => {});
+    }).catch(() => {});
+  }
   // Load server-controlled feature flags so client cannot self-enable ELO x2 (CRIT-01)
   if (typeof loadAppSettings === 'function') loadAppSettings().then(() => {
     if (typeof syncEloX2FromServer === 'function') syncEloX2FromServer();

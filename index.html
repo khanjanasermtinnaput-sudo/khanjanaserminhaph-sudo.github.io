@@ -628,6 +628,9 @@ function initCrownSparkle(canvas, W, H) {
 <!-- MARKETPLACE TAB -->
 <div id="marketSection" class="section"></div>
 
+<!-- LEVEL REWARDS TAB -->
+<div id="levelrewardsSection" class="section"></div>
+
 <!-- HISTORY -->
 <div id="historySection" class="section">
   <main>
@@ -1838,6 +1841,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Dashboard redesign controller — loads LAST so it wraps showSection/afterLogin/loadAll cleanly -->
 <script src="js/dashboard.js?v=20260703a"></script>
 <!-- Level/EXP UI — loads after all other renderProfile wrappers so #levelCard appends last -->
-<script src="js/levels.js?v=20260705a"></script>
+<script src="js/levels.js?v=20260706a"></script>
+<!-- Level Rewards page — needs LEVEL_REWARDS/claimLevelRewardUI from levels.js -->
+<script src="js/levelrewards.js?v=20260706a"></script>
 </body>
 </html>

@@ -63,6 +63,17 @@ async function checkDCRewardsFor(pid, notify) {
         _setLsCoins(pid, _lsCoins(pid) + q.coins);
         const dbPl = db.players.find(x => x.id === pid);
         if (dbPl) dbPl.coins = (dbPl.coins || 0) + q.coins;
+        // Mission EXP — same caller-token-scoped grant as the coin RPC above,
+        // so this only actually credits whichever player owns the current
+        // session (mirrors dbGrantDailyReward's existing behavior).
+        if (typeof dbAwardMissionExp === 'function') {
+          try {
+            const expRes = await dbAwardMissionExp(q.id);
+            if (expRes && expRes.awarded && expRes.result && expRes.result.leveled && typeof queueLevelUp === 'function') {
+              queueLevelUp(dbPl ? dbPl.name : '', expRes.result, { q0: 50, q1: 100, q2: 150 }[q.id] || 0);
+            }
+          } catch(e) {}
+        }
         if (notify) {
           toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
           const pcEl = document.getElementById('profileCoinBalance');
