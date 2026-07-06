@@ -53,6 +53,7 @@
     I('frame', 'frames', 'void',         'epic',     '🌑 Void Abyss'),
     I('frame', 'frames', 'halo',         'epic',     '✨ Celestial Halo'),
     I('frame', 'frames', 'solaremperor', 'secret',   '👑 Solar Emperor'),
+    I('frame', 'frames', 'thunder',      'secret',   '⚡ Thunder God'),
     // Name effects -------------------------------------------------
     I('name', 'names', 'ice',          'rare',   '❄️ Ice Script'),
     I('name', 'names', 'blaze',        'rare',   '🔥 Blaze Script'),
@@ -68,6 +69,10 @@
     I('emoji', 'emojis', '🎯', 'common', '🎯 Target'),
     I('emoji', 'emojis', '🦅', 'common', '🦅 Eagle'),
     I('emoji', 'emojis', '🌊', 'common', '🌊 Wave'),
+    I('emoji', 'emojis', '🛡️', 'common', '🛡️ Shield'),
+    I('emoji', 'emojis', '⚔️', 'common', '⚔️ Swords'),
+    I('emoji', 'emojis', '🎪', 'common', '🎪 Circus'),
+    I('emoji', 'emojis', '🎮', 'common', '🎮 Game'),
     // Elements -----------------------------------------------------
     I('element', 'elements', 'earth',     'common',   '🌍 TERRA ดิน'),
     I('element', 'elements', 'water',     'uncommon', '💧 AQUA น้ำ'),
