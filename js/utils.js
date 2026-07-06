@@ -37,6 +37,10 @@ const GACHA_FRAME_INNER = {
   // Fusion Lab legendaries (bespoke visuals, see styles.css "FUSION LEGENDARY EFFECTS"):
   prismatic: '<div class="gf-glow"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div><div class="gf-shard"></div>',
   genesis: '<div class="se-bg"></div><div class="se-stars"></div><div class="se-stars2"></div><div class="se-ring"></div><div class="se-sweep"></div><div class="se-sweep2"></div><div class="se-flare"></div><div class="se-flare"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div><div class="se-sp"></div>',
+  // Level Rewards marquee cosmetics (bespoke visuals, see styles.css "LEVEL REWARD FRAMES"):
+  lvlgolden: '<div class="gf-glow"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  lvlaura: '<div class="gf-glow"></div><div class="gf-aura"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
+  lvllegend: '<div class="gf-glow"></div><div class="gf-aura"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div><div class="gf-p"></div>',
 };
 // Backward-compat alias: old 'solar' key maps to new 'solaremperor'.
 // Fusion Lab legendaries (prismatic/genesis frames, eclipse name) have their
@@ -470,13 +474,14 @@ function normalizePlayer(p) {
   const HOF_PFX = '__hof:';
   const S1000_PFX = '__s1000:';
   const ACHPINS_PFX = '__achpins:';
+  const PRESTIGE_PFX = '__prestige:';
   let pt = []; try { pt = JSON.parse(p.prime_titles || '[]'); } catch(e) {}
   const cachEntry    = pt.find(t => typeof t === 'string' && t.startsWith(CACH_PFX));
   const catalogEntry = pt.find(t => typeof t === 'string' && t.startsWith(CATALOG_PFX));
   const hofEntry     = pt.find(t => typeof t === 'string' && t.startsWith(HOF_PFX));
   const s1000Entry   = pt.find(t => typeof t === 'string' && t.startsWith(S1000_PFX));
   const achpinsEntry = pt.find(t => typeof t === 'string' && t.startsWith(ACHPINS_PFX));
-  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX) || t.startsWith(ACHPINS_PFX))));
+  const realPt = pt.filter(t => !(typeof t === 'string' && (t.startsWith(CACH_PFX) || t.startsWith(CATALOG_PFX) || t.startsWith(HOF_PFX) || t.startsWith(S1000_PFX) || t.startsWith(ACHPINS_PFX) || t.startsWith(PRESTIGE_PFX))));
   let ca = [];
   if (cachEntry) {
     try { ca = JSON.parse(cachEntry.slice(CACH_PFX.length)); } catch(e) {}
@@ -522,7 +527,8 @@ function normalizePlayer(p) {
   if ((_gFrame === 'thundergod' || _gName === 'thundergod') && !_ownedEffects.includes('rotating_arcs')) {
     _ownedEffects = [..._ownedEffects, 'rotating_arcs'];
   }
-  return { id: p.id, name: p.name, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null };
+  let rewardClaimed = []; try { rewardClaimed = JSON.parse(p.reward_claimed || '[]'); } catch(e) {}
+  return { id: p.id, name: p.name, pts: p.pts, wins: p.wins, losses: p.losses, isAdmin: (p.is_admin === true || p.is_admin === 1) ? 1 : 0, primeTitles: realPt, customAch: ca, _catalogShared: catalogShared, _hofShared: hofShared, gachaFrame: _gFrame, gachaName: _gName, coins: p.coins || 0, gachaEmoji: _gEmoji, consecutiveLosses: p.consecutive_losses || 0, _dbGachaInv: _dbInv, super1000Titles, pinnedAchs, ownedEffects: _ownedEffects, lastSeen: p.last_seen ? new Date(p.last_seen).getTime() : null, level: p.level || 1, totalExp: p.total_exp || 0, currentExp: p.current_exp || 0, requiredExp: p.required_exp || 100, lastLevelUp: p.last_level_up ? new Date(p.last_level_up).getTime() : null, rewardClaimed, prestige: p.prestige || 0, lifetimeExp: p.lifetime_exp || 0, highestLevel: p.highest_level || 1, bestWinStreak: p.best_win_streak || 0, consecutiveWins: p.consecutive_wins || 0, prestigeAt: p.prestige_at ? new Date(p.prestige_at).getTime() : null };
 }
 
 function getPresenceHTML(player, compact) {

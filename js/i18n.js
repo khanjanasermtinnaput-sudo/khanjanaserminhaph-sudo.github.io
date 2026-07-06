@@ -59,6 +59,18 @@ const I18N = {
     peak_elo_m:'ELO สูงสุด/แมตช์', wins_day:'ชนะมากสุด/วัน',
     // profile rank stats
     cur_rank_pos:'อันดับปัจจุบัน', peak_rank_pos:'อันดับสูงสุด', days_played:'วันที่เล่น',
+    // level / exp system (V1)
+    level:'เลเวล', total_exp:'EXP รวม', next_reward:'รางวัลถัดไป', claim:'รับรางวัล', claimed:'รับแล้ว',
+    exp_history:'EXP ล่าสุด', exp_src_complete:'จบแมตช์', exp_src_win:'ชนะแมตช์', exp_src_lose:'แพ้แมตช์',
+    // level / exp system (V2)
+    lifetime_exp:'EXP ตลอดชีพ', statistics:'สถิติ', tournament_wins:'ชนะทัวร์นาเมนต์',
+    cur_streak:'สตรีคปัจจุบัน', best_streak:'สตรีคสูงสุด', highest_level:'เลเวลสูงสุด',
+    view_all_rewards:'ดูรางวัลทั้งหมด', prestige_btn:'Prestige',
+    sort:'เรียง', export:'ส่งออก', load_more:'โหลดเพิ่ม', search_history:'ค้นหาประวัติ...',
+    filter_all:'ทั้งหมด', filter_today:'วันนี้', filter_week:'สัปดาห์นี้', filter_month:'เดือนนี้',
+    exp_src_login:'ล็อกอินรายวัน', exp_src_mission:'ภารกิจรายวัน', exp_src_tournament:'ทัวร์นาเมนต์',
+    exp_src_levelup:'เลเวลอัป!', exp_src_prestige:'Prestige',
+    locked:'ล็อก', unlocked:'ปลดล็อกแล้ว', reward_ladder:'บันไดรางวัล',
   },
   en: {
     nav_lb:'Ranking', nav_match:'Match', nav_hist:'History', nav_profile:'Profile',
@@ -119,6 +131,18 @@ const I18N = {
     peak_elo_m:'Peak ELO/Match', wins_day:'Most Wins/Day',
     // profile rank stats
     cur_rank_pos:'Current Rank', peak_rank_pos:'Highest Rank', days_played:'Days Played',
+    // level / exp system (V1)
+    level:'Level', total_exp:'Total EXP', next_reward:'Next Reward', claim:'Claim', claimed:'Claimed',
+    exp_history:'Recent EXP', exp_src_complete:'Match played', exp_src_win:'Match won', exp_src_lose:'Match lost',
+    // level / exp system (V2)
+    lifetime_exp:'Lifetime EXP', statistics:'Statistics', tournament_wins:'Tournament Wins',
+    cur_streak:'Current Streak', best_streak:'Best Streak', highest_level:'Highest Level',
+    view_all_rewards:'View All Rewards', prestige_btn:'Prestige',
+    sort:'Sort', export:'Export', load_more:'Load More', search_history:'Search history...',
+    filter_all:'All', filter_today:'Today', filter_week:'This Week', filter_month:'This Month',
+    exp_src_login:'Daily login', exp_src_mission:'Daily mission', exp_src_tournament:'Tournament',
+    exp_src_levelup:'Level Up!', exp_src_prestige:'Prestige',
+    locked:'Locked', unlocked:'Unlocked', reward_ladder:'Reward Ladder',
   }
 };
 let _lang = localStorage.getItem('badminton_lang') || 'th';

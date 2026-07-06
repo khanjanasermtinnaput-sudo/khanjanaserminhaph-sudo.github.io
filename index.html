@@ -628,6 +628,9 @@ function initCrownSparkle(canvas, W, H) {
 <!-- MARKETPLACE TAB -->
 <div id="marketSection" class="section"></div>
 
+<!-- LEVEL REWARDS TAB -->
+<div id="levelrewardsSection" class="section"></div>
+
 <!-- HISTORY -->
 <div id="historySection" class="section">
   <main>
@@ -1098,6 +1101,7 @@ END $$;</pre>
 <div id="ppOverlay" style="display:none"></div>
 
 <script src="js/i18n.js?v=20260529l"></script>
+<script src="js/exp-engine.js?v=20260705a"></script>
 <script src="js/db.js?v=20260703b"></script>
 <script src="js/elo.js?v=20260610a"></script>
 <script src="js/auth.js?v=20260610b"></script>
@@ -1132,6 +1136,7 @@ saveMatch = async function() {
   await _saveMatchForCoins();
   if (matchSnap2 && isAdminUser()) {
     try { await awardMatchCoins(matchSnap2.allIds); } catch(e) {}
+    try { handleMatchExpResult(await dbAwardMatchExp(_lastSavedMatchId)); } catch(e) {}
     for (const wid of matchSnap2.winnersIds) {
       try { await checkFirstBlood(wid); } catch(e) {}
       try { await checkPitySystem(wid, true); } catch(e) {}
@@ -1163,6 +1168,7 @@ approvePending = async function(pendingId) {
   await _approvePendingForCoins(pendingId);
   if (pendingSnap) {
     try { await awardMatchCoins(pendingSnap.allIds); } catch(e) {}
+    try { handleMatchExpResult(await dbAwardMatchExp(_lastSavedMatchId)); } catch(e) {}
     for (const wid of pendingSnap.winnersIds) {
       try { await checkFirstBlood(wid); } catch(e) {}
       try { await checkPitySystem(wid, true); } catch(e) {}
@@ -1834,5 +1840,9 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/market.js?v=20260703c"></script>
 <!-- Dashboard redesign controller — loads LAST so it wraps showSection/afterLogin/loadAll cleanly -->
 <script src="js/dashboard.js?v=20260703a"></script>
+<!-- Level/EXP UI — loads after all other renderProfile wrappers so #levelCard appends last -->
+<script src="js/levels.js?v=20260706a"></script>
+<!-- Level Rewards page — needs LEVEL_REWARDS/claimLevelRewardUI from levels.js -->
+<script src="js/levelrewards.js?v=20260706a"></script>
 </body>
 </html>

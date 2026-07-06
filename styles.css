@@ -385,6 +385,63 @@ body.x2-active .toast-wrap{bottom:120px}
 .gn-eclipse{background:linear-gradient(90deg,#2a0050 0%,#4d0090 10%,#1a0030 22%,#ffd700 32%,#fff9dd 38%,#ffd700 44%,#3d0070 54%,#1a0030 64%,#ffd700 74%,#fff9dd 80%,#ffd700 86%,#4d0090 94%,#2a0050 100%);background-size:320% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 4.5s linear infinite,gnEclipseCorona 2.6s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
 @keyframes gnEclipseCoronaLight{0%,100%{filter:drop-shadow(0 0 2px rgba(180,120,0,.7)) drop-shadow(0 0 6px rgba(90,0,160,.4))}50%{filter:drop-shadow(0 0 5px rgba(210,150,0,.9)) drop-shadow(0 0 12px rgba(120,0,200,.6))}}
 [data-style="lite"] .gn-eclipse,[data-theme="light"] .gn-eclipse{background:linear-gradient(90deg,#3d1a5c 0%,#5c2e8c 12%,#241540 24%,#a86f00 34%,#c99400 40%,#a86f00 46%,#5c2e8c 58%,#241540 68%,#a86f00 78%,#c99400 84%,#a86f00 90%,#5c2e8c 96%,#3d1a5c 100%);background-size:320% auto;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:seNameShimmer 4.5s linear infinite,gnEclipseCoronaLight 2.6s ease-in-out infinite;font-weight:900;letter-spacing:2.5px}
+/* ══════ LEVEL REWARD FRAMES (Lv50 Golden / Lv90 Legend Aura / Lv100 Legend) ══════
+   Bespoke marquee cosmetics for the Level Rewards ladder — see js/levels.js
+   LEVEL_REWARDS and supabase_level_system_v2_rewards.sql. Distinct palettes/
+   timings from every existing frame so they read as genuinely new unlocks. */
+@keyframes lvGoldSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes lvGoldGlow{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:1;transform:scale(1.12)}}
+@keyframes lvGoldParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr));opacity:1}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(var(--gr));opacity:0}}
+.gf-lvlgolden::before{content:'';position:absolute;inset:-4px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#ffb300,#fff2b0,#ff8f00,#ffe082,#ffa000,#fff8e1,#ffb300);animation:lvGoldSpin 3.2s linear infinite;box-shadow:0 0 0 1px rgba(255,200,0,.3),0 0 14px rgba(255,170,0,.3)}
+.gf-lvlgolden::after{content:'';position:absolute;inset:-12px;border-radius:50%;z-index:-2;background:conic-gradient(from 45deg,transparent 0%,rgba(255,200,0,.5) 10%,transparent 20%,transparent 45%,rgba(255,225,120,.4) 55%,transparent 65%);animation:lvGoldSpin 5s linear infinite reverse;filter:blur(5px)}
+.gf-lvlgolden .gf-glow{position:absolute;inset:-16px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 28%,rgba(255,180,0,.16) 55%,rgba(255,140,0,.22) 78%,transparent);animation:lvGoldGlow 2.2s ease-in-out infinite}
+.gf-lvlgolden .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#ffd54f;animation:lvGoldParticle 3.2s linear infinite;--gr:48px;--gd:0deg}
+.gf-lvlgolden .gf-p:nth-child(2){background:#fff3c4;width:3px;height:3px;margin:-1.5px;animation-delay:-.8s;--gd:72deg;--gr:48px}
+.gf-lvlgolden .gf-p:nth-child(3){background:#ffb300;animation-delay:-1.6s;--gd:144deg;--gr:48px}
+.gf-lvlgolden .gf-p:nth-child(4){background:#ffe082;width:5px;height:5px;margin:-2.5px;animation-delay:-2.4s;--gd:216deg;--gr:48px}
+.gf-lvlgolden .gf-p:nth-child(5){background:#ff8f00;width:2px;height:2px;margin:-1px;animation-delay:-.4s;--gd:288deg;--gr:48px}
+[data-style="lite"] .gf-lvlgolden::before,[data-style="lite"] .gf-lvlgolden::after{animation:none!important}
+
+@keyframes lvAuraSpin{0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
+@keyframes lvAuraPulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+@keyframes lvAuraParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:1}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(calc(var(--gr) + 8px)) scale(.3);opacity:0}}
+.gf-lvlaura::before{content:'';position:absolute;inset:-6px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#7b1fa2,#ffd700,#4a0072,#ffe97d,#6a0dad,#fff3b0,#7b1fa2);animation:lvAuraSpin 7s linear infinite;box-shadow:0 0 0 1px rgba(180,80,255,.35),0 0 18px rgba(150,50,255,.3)}
+.gf-lvlaura::after{content:'';position:absolute;inset:-20px;border-radius:50%;z-index:-2;background:radial-gradient(circle,transparent 40%,rgba(150,50,255,.16) 60%,rgba(255,215,0,.14) 80%,transparent);animation:lvAuraPulse 3.4s ease-in-out infinite;filter:blur(6px)}
+.gf-lvlaura .gf-glow{position:absolute;inset:-24px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 32%,rgba(180,80,255,.14) 58%,rgba(255,200,0,.12) 80%,transparent);animation:lvAuraPulse 2.8s ease-in-out infinite reverse}
+.gf-lvlaura .gf-aura{position:absolute;inset:-6px;border-radius:50%;pointer-events:none;box-shadow:0 0 24px rgba(150,50,255,.4),0 0 48px rgba(255,215,0,.18);animation:lvAuraPulse 3.6s ease-in-out infinite}
+.gf-lvlaura .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#e1bee7;animation:lvAuraParticle 4.4s linear infinite;--gr:52px;--gd:0deg}
+.gf-lvlaura .gf-p:nth-child(2){background:#ffd700;width:3px;height:3px;margin:-1.5px;animation-delay:-1.1s;--gd:90deg;--gr:52px}
+.gf-lvlaura .gf-p:nth-child(3){background:#ba68c8;animation-delay:-2.2s;--gd:180deg;--gr:52px}
+.gf-lvlaura .gf-p:nth-child(4){background:#fff3b0;width:5px;height:5px;margin:-2.5px;animation-delay:-3.3s;--gd:270deg;--gr:52px}
+[data-style="lite"] .gf-lvlaura::before,[data-style="lite"] .gf-lvlaura::after{animation:none!important}
+
+@keyframes lvLegendSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+@keyframes lvLegendGlow{0%,100%{opacity:.6;transform:scale(1)}50%{opacity:1;transform:scale(1.18)}}
+@keyframes lvLegendParticle{0%{transform:rotate(var(--gd)) translateX(var(--gr)) scale(1);opacity:1}100%{transform:rotate(calc(var(--gd)+360deg)) translateX(calc(var(--gr) + 10px)) scale(.2);opacity:0}}
+.gf-lvllegend::before{content:'';position:absolute;inset:-6px;border-radius:50%;z-index:-1;background:conic-gradient(from 0deg,#ffd700,#fff,#7b1fa2,#ffd700,#ff8f00,#fff,#ffd700);animation:lvLegendSpin 5s linear infinite;box-shadow:0 0 0 1.5px rgba(255,255,255,.4),0 0 22px rgba(255,215,0,.4)}
+.gf-lvllegend::after{content:'';position:absolute;inset:-18px;border-radius:50%;z-index:-2;background:conic-gradient(from 90deg,transparent 0%,rgba(255,255,255,.4) 8%,transparent 16%,transparent 48%,rgba(180,80,255,.32) 56%,transparent 64%);animation:lvLegendSpin 4s linear infinite reverse;filter:blur(5px)}
+.gf-lvllegend .gf-glow{position:absolute;inset:-26px;border-radius:50%;pointer-events:none;z-index:-3;background:radial-gradient(circle,transparent 26%,rgba(255,215,0,.18) 52%,rgba(180,80,255,.16) 76%,transparent);animation:lvLegendGlow 2.6s ease-in-out infinite}
+.gf-lvllegend .gf-aura{position:absolute;inset:-8px;border-radius:50%;pointer-events:none;box-shadow:0 0 26px rgba(255,215,0,.5),0 0 52px rgba(150,50,255,.24);animation:lvLegendGlow 3s ease-in-out infinite reverse}
+.gf-lvllegend .gf-p{position:absolute;border-radius:50%;top:50%;left:50%;pointer-events:none;width:4px;height:4px;margin:-2px;background:#fff;animation:lvLegendParticle 3.6s linear infinite;--gr:54px;--gd:0deg}
+.gf-lvllegend .gf-p:nth-child(2){background:#ffd700;width:3px;height:3px;margin:-1.5px;animation-delay:-.9s;--gd:51deg;--gr:54px}
+.gf-lvllegend .gf-p:nth-child(3){background:#ba68c8;animation-delay:-1.8s;--gd:102deg;--gr:54px}
+.gf-lvllegend .gf-p:nth-child(4){background:#fff3b0;width:5px;height:5px;margin:-2.5px;animation-delay:-2.7s;--gd:153deg;--gr:54px}
+.gf-lvllegend .gf-p:nth-child(5){background:#ffb300;width:3px;height:3px;margin:-1.5px;animation-delay:-3.6s;--gd:204deg;--gr:54px}
+.gf-lvllegend .gf-p:nth-child(6){background:#e1bee7;width:2px;height:2px;margin:-1px;animation-delay:-4.5s;--gd:255deg;--gr:54px}
+.gf-lvllegend .gf-p:nth-child(7){background:#fff;width:4px;height:4px;margin:-2px;animation-delay:-5.4s;--gd:306deg;--gr:54px}
+[data-style="lite"] .gf-lvllegend::before,[data-style="lite"] .gf-lvllegend::after{animation:none!important}
+
+/* ══════ LEVEL-UP / PRESTIGE CELEBRATION (lightweight DOM confetti) ══════
+   Spawned by js/levels.js _spawnCelebrationFx() inside #levelUpModal .modal.
+   Skipped entirely when data-style=lite (see the JS guard). */
+@keyframes lvlConfettiFall{0%{transform:translate(0,0) rotate(0deg);opacity:1}100%{transform:translate(var(--tx),var(--ty)) rotate(540deg);opacity:0}}
+.lvl-confetti{position:absolute;top:50%;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:5;animation:lvlConfettiFall var(--dur) ease-out forwards}
+/* Level-up modal star: soft golden pulse (reuses lvGoldGlow keyframe) */
+.lvl-up-star{display:inline-block;animation:lvGoldGlow 1.8s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(255,215,0,.6))}
+[data-style="lite"] .lvl-up-star{animation:none;filter:none}
+/* History range-filter buttons: visible selected state */
+.lvl-hist-filter.active{background:rgba(0,245,160,.15)!important;color:var(--neon)!important;border-color:rgba(0,245,160,.4)!important}
+
 /* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
 @keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
 @keyframes tgPulse{0%,100%{opacity:.7;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
@@ -802,7 +859,9 @@ body.x2-active .toast-wrap{bottom:120px}
 @media (max-width:620px){
   /* drop blurred secondary rings, particles, crackle/aura, bolts */
   .gf-void::after,.gf-halo::after,.gf-blaze::after,.gf-ice::after,.gf-champion::after,.gf-thundergod::after,.gf-rainbow::after,
+  .gf-lvlgolden::after,.gf-lvlaura::after,.gf-lvllegend::after,
   .gf-void .gf-glow,.gf-halo .gf-glow,.gf-blaze .gf-glow,.gf-ice .gf-glow,.gf-champion .gf-glow,.gf-thundergod .gf-glow,
+  .gf-lvlgolden .gf-glow,.gf-lvlaura .gf-glow,.gf-lvllegend .gf-glow,
   .gf-p,.gf-crackle,.gf-aura,.gf-bolt{animation:none!important;display:none!important}
   /* rainbow ::before animates filter:hue-rotate (expensive) → freeze to a static rainbow ring */
   .gf-rainbow::before{animation:none!important}
@@ -832,6 +891,9 @@ body.x2-active .toast-wrap{bottom:120px}
   .gf-ice::before{animation-timing-function:steps(120)!important}
   .gf-champion::before{animation-timing-function:steps(72)!important}
   .gf-thundergod::before{animation-timing-function:steps(43)!important}
+  .gf-lvlgolden::before{animation-timing-function:steps(77)!important}
+  .gf-lvlaura::before{animation-timing-function:steps(168)!important}
+  .gf-lvllegend::before{animation-timing-function:steps(120)!important}
   .gf-solaremperor .se-sweep{animation-timing-function:steps(132)!important}
   /* rainbow: spin the rainbow ring via transform (not costly hue-rotate) at 24fps */
   .gf-rainbow::before{animation:gVoidSpin 2.5s steps(60) infinite!important}
