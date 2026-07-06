@@ -49,7 +49,11 @@ function _levelUnclaimedRewards(player) {
 // Counts completed tournaments where this player appears in the Hall of Fame
 // champion_ids (see js/tournament.js dbCompleteTournament) — the only
 // authoritative all-tier source; super1000Titles only covers Super 1000.
+// Memoized for 60s per player so repeated profile renders don't re-fetch the
+// whole completed-tournaments list (tournament completions are rare events).
+let _tourWinsCache = { pid: null, at: 0, val: 0 };
 async function _getTournamentWinsCount(playerId) {
+  if (_tourWinsCache.pid === playerId && Date.now() - _tourWinsCache.at < 60000) return _tourWinsCache.val;
   try {
     const rows = typeof dbGetHOFTournaments === 'function' ? await dbGetHOFTournaments() : [];
     let count = 0;
@@ -59,6 +63,7 @@ async function _getTournamentWinsCount(playerId) {
       const hof = Array.isArray(groups) ? groups.find(g => g && g._hof) : null;
       if (hof && Array.isArray(hof.champion_ids) && hof.champion_ids.includes(playerId)) count++;
     }
+    _tourWinsCache = { pid: playerId, at: Date.now(), val: count };
     return count;
   } catch(e) { return 0; }
 }
@@ -211,7 +216,6 @@ renderProfile = async function () {
   const matches = (p.wins || 0) + (p.losses || 0);
   const winRate = matches > 0 ? Math.round((p.wins / matches) * 100) : 0;
   const curStreak = typeof getPlayerStreak === 'function' ? getPlayerStreak(p.id) : (p.consecutiveWins || 0);
-  const tournamentWins = await _getTournamentWinsCount(p.id);
 
   let box = document.getElementById('levelCard');
   if (!box) {
@@ -245,7 +249,7 @@ renderProfile = async function () {
       <div class="pstat"><div class="pstat-num" style="color:var(--neon)">${p.wins || 0}</div><div class="pstat-label">${t('wins')}</div></div>
       <div class="pstat"><div class="pstat-num" style="color:var(--red)">${p.losses || 0}</div><div class="pstat-label">${t('losses')}</div></div>
       <div class="pstat"><div class="pstat-num" style="color:${winRate >= 50 ? 'var(--neon)' : 'var(--red)'}">${winRate}%</div><div class="pstat-label">${t('win_rate')}</div></div>
-      <div class="pstat"><div class="pstat-num" style="color:var(--gold)">${tournamentWins}</div><div class="pstat-label">${t('tournament_wins')}</div></div>
+      <div class="pstat"><div class="pstat-num" style="color:var(--gold)" id="lvlTourWins">…</div><div class="pstat-label">${t('tournament_wins')}</div></div>
       <div class="pstat"><div class="pstat-num">${curStreak}</div><div class="pstat-label">${t('cur_streak')}</div></div>
       <div class="pstat"><div class="pstat-num" style="color:var(--gold)">${p.bestWinStreak || 0}</div><div class="pstat-label">${t('best_streak')}</div></div>
       <div class="pstat"><div class="pstat-num">${p.highestLevel || 1}</div><div class="pstat-label">${t('highest_level')}</div></div>
@@ -271,6 +275,12 @@ renderProfile = async function () {
     if (bar) bar.style.width = prog.pct + '%';
   });
   _loadHistoryPage(true);
+  // Tournament-wins tile fills asynchronously so the card paints instantly
+  // instead of blocking on the completed-tournaments fetch (memoized above).
+  _getTournamentWinsCount(p.id).then(n => {
+    const el = document.getElementById('lvlTourWins');
+    if (el) el.textContent = n;
+  }).catch(() => {});
 };
 
 // ── Level-up popup (lightweight modal + counter; no particle engine in V1) ─
@@ -286,7 +296,7 @@ function _ensureLevelUpModal() {
   div.innerHTML = `
     <div class="modal" onclick="event.stopPropagation()" style="text-align:center">
       <div class="modal-title">🎉 ${_lang === 'en' ? 'Level Up!' : 'เลเวลอัป!'}</div>
-      <div style="font-size:2.4rem;margin:6px 0">⭐</div>
+      <div class="lvl-up-star" style="font-size:2.4rem;margin:6px 0">⭐</div>
       <div style="font-size:1rem;color:var(--muted)" id="lvlUpName"></div>
       <div style="font-size:2rem;font-weight:800;color:var(--neon);margin:8px 0;text-shadow:0 0 20px var(--neon)" id="lvlUpLevel"></div>
       <div style="font-size:0.85rem;color:var(--muted)">+<span id="lvlUpExpCounter">0</span> EXP</div>

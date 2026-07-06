@@ -66,16 +66,20 @@ async function checkDCRewardsFor(pid, notify) {
         // Mission EXP — same caller-token-scoped grant as the coin RPC above,
         // so this only actually credits whichever player owns the current
         // session (mirrors dbGrantDailyReward's existing behavior).
+        let _missionExpGained = 0;
         if (typeof dbAwardMissionExp === 'function') {
           try {
             const expRes = await dbAwardMissionExp(q.id);
-            if (expRes && expRes.awarded && expRes.result && expRes.result.leveled && typeof queueLevelUp === 'function') {
-              queueLevelUp(dbPl ? dbPl.name : '', expRes.result, { q0: 50, q1: 100, q2: 150 }[q.id] || 0);
+            if (expRes && expRes.awarded) {
+              _missionExpGained = { q0: 50, q1: 100, q2: 150 }[q.id] || 0;
+              if (expRes.result && expRes.result.leveled && typeof queueLevelUp === 'function') {
+                queueLevelUp(dbPl ? dbPl.name : '', expRes.result, _missionExpGained);
+              }
             }
           } catch(e) {}
         }
         if (notify) {
-          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙', 'success');
+          toast('🎯 Daily Quest สำเร็จ! +'+q.coins+' 🪙' + (_missionExpGained ? ' +' + _missionExpGained + ' EXP' : ''), 'success');
           const pcEl = document.getElementById('profileCoinBalance');
           if (pcEl) pcEl.textContent = getEffectiveCoins(pid);
         }

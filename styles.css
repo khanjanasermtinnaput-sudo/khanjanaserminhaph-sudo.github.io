@@ -436,6 +436,11 @@ body.x2-active .toast-wrap{bottom:120px}
    Skipped entirely when data-style=lite (see the JS guard). */
 @keyframes lvlConfettiFall{0%{transform:translate(0,0) rotate(0deg);opacity:1}100%{transform:translate(var(--tx),var(--ty)) rotate(540deg);opacity:0}}
 .lvl-confetti{position:absolute;top:50%;width:7px;height:7px;border-radius:2px;pointer-events:none;z-index:5;animation:lvlConfettiFall var(--dur) ease-out forwards}
+/* Level-up modal star: soft golden pulse (reuses lvGoldGlow keyframe) */
+.lvl-up-star{display:inline-block;animation:lvGoldGlow 1.8s ease-in-out infinite;filter:drop-shadow(0 0 10px rgba(255,215,0,.6))}
+[data-style="lite"] .lvl-up-star{animation:none;filter:none}
+/* History range-filter buttons: visible selected state */
+.lvl-hist-filter.active{background:rgba(0,245,160,.15)!important;color:var(--neon)!important;border-color:rgba(0,245,160,.4)!important}
 
 /* ══════ ⚡ SECRET: THUNDER GOD (0.1%) ══════ */
 @keyframes tgSpin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}

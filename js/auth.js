@@ -114,10 +114,13 @@ function afterLogin() {
   // on every login since it silently no-ops if already granted today.
   if (typeof dbAwardDailyLogin === 'function') {
     dbAwardDailyLogin().then(res => {
-      if (res && res.awarded && res.result && res.result.leveled && typeof queueLevelUp === 'function') {
-        queueLevelUp(currentUser.name, res.result, 20);
+      if (res && res.awarded) {
+        try { toast('📅 Daily Login +20 EXP', 'success'); } catch(e) {}
+        if (res.result && res.result.leveled && typeof queueLevelUp === 'function') {
+          queueLevelUp(currentUser.name, res.result, 20);
+        }
+        if (typeof loadPlayers === 'function') loadPlayers().catch(() => {});
       }
-      if (typeof loadPlayers === 'function') loadPlayers().catch(() => {});
     }).catch(() => {});
   }
   // Load server-controlled feature flags so client cannot self-enable ELO x2 (CRIT-01)
