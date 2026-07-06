@@ -290,3 +290,156 @@ BEGIN
 
   RETURN v_txn_id;
 END $$;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- PHASE 1B STEP 6 — Gacha banners + pity system
+-- Applied via Supabase MCP apply_migration (migration name: inv_step6_gacha_banners_pity)
+--
+-- Extends the EXISTING gacha_pools/gacha_pool_items tables with banner
+-- shape (banner_type, time window, pity config, featured/guaranteed
+-- flags) rather than creating parallel tables — rpc_gacha_pull_v2 already
+-- references gacha_pools.id / gacha_pool_items.pool_id everywhere, and
+-- duplicating that as a separate "banners" table would just create a
+-- third source of truth for pool config.
+--
+-- Both existing pools ('coin','element') get pity_enabled=false and no
+-- time window, so today's actual drop rates and availability are
+-- UNCHANGED — pity is shipped as a dormant, opt-in mechanism an admin can
+-- turn on later per pool, not retrofitted onto live gameplay untested.
+-- user_gacha_statistics tracks total_rolls/current_pity/legendary_count/
+-- mythic_count unconditionally (harmless bookkeeping) for every pull.
+-- ═══════════════════════════════════════════════════════════════════════
+
+ALTER TABLE gacha_pools
+  ADD COLUMN banner_type  text NOT NULL DEFAULT 'standard'
+    CHECK (banner_type IN ('standard','limited','event','collaboration','beginner','premium','seasonal')),
+  ADD COLUMN title        text,
+  ADD COLUMN start_time   timestamptz,
+  ADD COLUMN end_time     timestamptz,
+  ADD COLUMN pity_enabled boolean NOT NULL DEFAULT false,
+  ADD COLUMN soft_pity    int,
+  ADD COLUMN hard_pity    int;
+
+ALTER TABLE gacha_pool_items
+  ADD COLUMN featured   boolean NOT NULL DEFAULT false,
+  ADD COLUMN guaranteed boolean NOT NULL DEFAULT false;
+
+CREATE TABLE user_gacha_statistics (
+  player_id       bigint NOT NULL REFERENCES players(id),
+  pool_id         text   NOT NULL REFERENCES gacha_pools(id),
+  total_rolls     int NOT NULL DEFAULT 0,
+  current_pity    int NOT NULL DEFAULT 0,
+  legendary_count int NOT NULL DEFAULT 0,
+  mythic_count    int NOT NULL DEFAULT 0,
+  last_roll_at    timestamptz,
+  PRIMARY KEY (player_id, pool_id)
+);
+
+ALTER TABLE user_gacha_statistics ENABLE ROW LEVEL SECURITY;
+CREATE POLICY user_gacha_statistics_read ON user_gacha_statistics FOR SELECT
+  USING (player_id = session_uid() OR is_admin_caller());
+GRANT ALL ON user_gacha_statistics TO anon, authenticated;
+
+-- rpc_gacha_pull_v2: add banner time-window check + pity, preserving all
+-- existing behavior byte-for-byte where pity_enabled/start_time/end_time
+-- are NULL/false (i.e. every pool that exists today).
+CREATE OR REPLACE FUNCTION public.rpc_gacha_pull_v2(p_pool text, p_count integer DEFAULT 1)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_uid bigint;
+  v_pool record;
+  v_cost int;
+  v_coins int;
+  v_total numeric;
+  v_roll numeric;
+  v_item text;
+  v_cat record;
+  v_was_owned boolean;
+  v_new_qty int;
+  v_results jsonb := '[]'::jsonb;
+  v_pity int;
+  v_will_reset boolean;
+  i int;
+BEGIN
+  v_uid := session_uid();
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF p_count NOT IN (1, 10) THEN RAISE EXCEPTION 'bad_count'; END IF;
+
+  SELECT * INTO v_pool FROM gacha_pools WHERE id = p_pool AND active;
+  IF NOT FOUND THEN RAISE EXCEPTION 'unknown_pool'; END IF;
+  IF v_pool.start_time IS NOT NULL AND now() < v_pool.start_time THEN RAISE EXCEPTION 'banner_not_started'; END IF;
+  IF v_pool.end_time IS NOT NULL AND now() > v_pool.end_time THEN RAISE EXCEPTION 'banner_ended'; END IF;
+
+  PERFORM set_config('bk.internal', '1', true);
+  PERFORM econ_rate_check(v_uid, 'gacha_' || p_pool, 120, interval '1 hour', p_count);
+
+  v_cost := CASE WHEN p_count = 10 THEN v_pool.cost_10 ELSE v_pool.cost END;
+
+  SELECT COALESCE(coins, 0) INTO v_coins FROM players WHERE id = v_uid FOR UPDATE;
+  IF NOT FOUND THEN RAISE EXCEPTION 'player_not_found'; END IF;
+  IF v_coins < v_cost THEN RAISE EXCEPTION 'insufficient_coins'; END IF;
+  UPDATE players SET coins = coins - v_cost WHERE id = v_uid;
+  INSERT INTO economy_ledger (player_id, verb, coins_delta, ref_type, meta)
+  VALUES (v_uid, 'gacha_pull', -v_cost, 'gacha', jsonb_build_object('pool', p_pool, 'count', p_count));
+
+  SELECT SUM(weight) INTO v_total FROM gacha_pool_items WHERE pool_id = p_pool;
+  IF v_total IS NULL OR v_total <= 0 THEN RAISE EXCEPTION 'empty_pool'; END IF;
+
+  SELECT current_pity INTO v_pity FROM user_gacha_statistics WHERE player_id = v_uid AND pool_id = p_pool FOR UPDATE;
+  v_pity := COALESCE(v_pity, 0);
+
+  FOR i IN 1..p_count LOOP
+    v_roll := econ_crypto_random() * v_total;
+    SELECT t.item_id INTO v_item FROM (
+      SELECT item_id, SUM(weight) OVER (ORDER BY item_id) AS cum
+      FROM gacha_pool_items WHERE pool_id = p_pool
+    ) t WHERE t.cum > v_roll ORDER BY t.cum LIMIT 1;
+    IF v_item IS NULL THEN
+      SELECT item_id INTO v_item FROM gacha_pool_items WHERE pool_id = p_pool ORDER BY item_id DESC LIMIT 1;
+    END IF;
+
+    v_will_reset := false;
+    IF v_pool.pity_enabled AND v_pool.hard_pity IS NOT NULL AND v_pity + 1 >= v_pool.hard_pity THEN
+      SELECT gpi.item_id INTO v_item FROM gacha_pool_items gpi
+        JOIN item_catalog ic ON ic.id = gpi.item_id
+        JOIN item_rarities r ON r.code = ic.rarity
+        WHERE gpi.pool_id = p_pool ORDER BY r.rank DESC, gpi.item_id LIMIT 1;
+      v_will_reset := true;
+    END IF;
+
+    v_was_owned := EXISTS (SELECT 1 FROM player_items WHERE player_id = v_uid AND item_id = v_item AND qty > 0);
+    v_new_qty := econ_grant_item(v_uid, v_item, 1, 'gacha_item', 'gacha', NULL,
+                                 jsonb_build_object('pool', p_pool, 'roll', round(v_roll, 4)));
+
+    SELECT * INTO v_cat FROM item_catalog WHERE id = v_item;
+    IF v_cat.category = 'emoji' THEN
+      UPDATE players SET gacha_emoji = v_cat.value WHERE id = v_uid;
+    END IF;
+
+    v_pity := CASE WHEN v_will_reset OR v_cat.rarity IN ('legendary','mythic') THEN 0 ELSE v_pity + 1 END;
+
+    INSERT INTO user_gacha_statistics (player_id, pool_id, total_rolls, current_pity, legendary_count, mythic_count, last_roll_at)
+    VALUES (v_uid, p_pool, 1, v_pity,
+            CASE WHEN v_cat.rarity = 'legendary' THEN 1 ELSE 0 END,
+            CASE WHEN v_cat.rarity = 'mythic' THEN 1 ELSE 0 END, now())
+    ON CONFLICT (player_id, pool_id) DO UPDATE SET
+      total_rolls = user_gacha_statistics.total_rolls + 1,
+      current_pity = v_pity,
+      legendary_count = user_gacha_statistics.legendary_count + CASE WHEN v_cat.rarity = 'legendary' THEN 1 ELSE 0 END,
+      mythic_count = user_gacha_statistics.mythic_count + CASE WHEN v_cat.rarity = 'mythic' THEN 1 ELSE 0 END,
+      last_roll_at = now();
+
+    v_results := v_results || jsonb_build_object(
+      'item_id', v_item, 'category', v_cat.category, 'value', v_cat.value,
+      'label', v_cat.label_th, 'label_en', v_cat.label_en, 'rarity', v_cat.rarity,
+      'icon', v_cat.icon, 'is_dup', v_was_owned, 'qty', v_new_qty, 'pity_reset', v_will_reset);
+  END LOOP;
+
+  RETURN jsonb_build_object(
+    'coins_remaining', (SELECT coins FROM players WHERE id = v_uid),
+    'results', v_results);
+END $function$;
