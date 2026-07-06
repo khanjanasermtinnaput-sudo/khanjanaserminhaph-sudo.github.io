@@ -443,3 +443,134 @@ BEGIN
     'coins_remaining', (SELECT coins FROM players WHERE id = v_uid),
     'results', v_results);
 END $function$;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- PHASE 1B STEP 7 — Notifications (real backing store + realtime)
+-- Applied via Supabase MCP apply_migration (migration name: inv_step7_notifications)
+--
+-- js/notifications.js today is entirely synthetic: it subscribes to
+-- Realtime INSERT events on `matches`/`pending_matches` directly and
+-- builds notification objects purely client-side, stored in localStorage
+-- (`nf_hist_<id>`) — there was no DB table at all. This creates the first
+-- real one and wires reward_grant() to populate it (the Reward Engine
+-- pipeline's "Create Notification" step). Rewiring the client to read
+-- from this table is a front-end task, not part of this database phase —
+-- left for a follow-up; the existing localStorage-based notification UI
+-- is untouched and keeps working exactly as it does today.
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE TABLE notifications (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  player_id   bigint NOT NULL REFERENCES players(id),
+  type        text NOT NULL CHECK (type IN
+                ('reward','inventory','tournament','system','shop','achievement',
+                 'quest','battle_pass','event','warning','admin')),
+  title       text NOT NULL,
+  message     text,
+  image       text,
+  action_url  text,
+  read        boolean NOT NULL DEFAULT false,
+  metadata    jsonb NOT NULL DEFAULT '{}'::jsonb,
+  expires_at  timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY notifications_read ON notifications FOR SELECT
+  USING (player_id = session_uid() OR is_admin_caller());
+-- Players may mark their own notifications read/unread, nothing else
+-- (title/message/etc. stay server-authoritative).
+CREATE POLICY notifications_mark_read ON notifications FOR UPDATE
+  USING (player_id = session_uid())
+  WITH CHECK (player_id = session_uid());
+GRANT ALL ON notifications TO anon, authenticated;
+
+CREATE INDEX notifications_player_created_idx ON notifications (player_id, read, created_at DESC);
+
+ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+
+-- Reusable notify() helper for any future system (trade completion,
+-- admin actions, etc.) to push a notification without duplicating this.
+CREATE OR REPLACE FUNCTION notify(
+  p_player bigint, p_type text, p_title text, p_message text DEFAULT NULL,
+  p_metadata jsonb DEFAULT '{}'::jsonb, p_action_url text DEFAULT NULL
+) RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_id bigint;
+BEGIN
+  INSERT INTO notifications (player_id, type, title, message, metadata, action_url)
+  VALUES (p_player, p_type, p_title, p_message, p_metadata, p_action_url)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END $$;
+
+-- Wire reward_grant() to notify on every successful grant.
+CREATE OR REPLACE FUNCTION reward_grant(
+  p_source_code text,
+  p_items jsonb DEFAULT '[]'::jsonb,
+  p_currency jsonb DEFAULT '[]'::jsonb,
+  p_metadata jsonb DEFAULT '{}'::jsonb,
+  p_idempotency_key text DEFAULT NULL,
+  p_ip_address text DEFAULT NULL,
+  p_device text DEFAULT NULL,
+  p_server_region text DEFAULT NULL
+) RETURNS uuid
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_player bigint; v_enabled boolean; v_existing uuid; v_source_name text;
+  v_total_items int; v_total_currency bigint; v_txn_id uuid;
+  c jsonb; it jsonb; v_cur_code text; v_amount bigint;
+  v_item_id text; v_qty int; v_rarity text; v_name text;
+BEGIN
+  v_player := session_uid();
+  IF v_player IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  SELECT enabled, name INTO v_enabled, v_source_name FROM reward_sources WHERE code = p_source_code;
+  IF NOT FOUND OR NOT v_enabled THEN RAISE EXCEPTION 'invalid_source:%', p_source_code; END IF;
+
+  IF p_idempotency_key IS NOT NULL THEN
+    SELECT id INTO v_existing FROM reward_transactions
+      WHERE idempotency_key = p_idempotency_key AND player_id = v_player;
+    IF FOUND THEN RETURN v_existing; END IF;
+  END IF;
+
+  PERFORM econ_rate_check(v_player, 'reward_grant:' || p_source_code, 60, interval '1 minute');
+
+  v_total_items := COALESCE((SELECT sum(COALESCE((x->>'qty')::int, 1)) FROM jsonb_array_elements(p_items) x), 0);
+  v_total_currency := COALESCE((SELECT sum((x->>'amount')::bigint) FROM jsonb_array_elements(p_currency) x), 0);
+
+  v_txn_id := gen_random_uuid();
+  INSERT INTO reward_transactions
+    (id, player_id, source_code, status, total_items, total_currency, metadata, ip_address, device, server_region, idempotency_key)
+  VALUES
+    (v_txn_id, v_player, p_source_code, 'Success', v_total_items, v_total_currency, p_metadata, p_ip_address, p_device, p_server_region, p_idempotency_key);
+
+  FOR c IN SELECT * FROM jsonb_array_elements(p_currency) LOOP
+    v_cur_code := c ->> 'currency_id';
+    v_amount := (c ->> 'amount')::bigint;
+    PERFORM econ_adjust_currency(v_player, v_cur_code, v_amount, p_source_code, 'reward_transaction', NULL,
+      jsonb_build_object('reward_transaction_id', v_txn_id));
+  END LOOP;
+
+  FOR it IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    v_item_id := it ->> 'item_id';
+    v_qty := COALESCE((it ->> 'qty')::int, 1);
+    PERFORM econ_grant_item(v_player, v_item_id, v_qty, p_source_code, 'reward_transaction', NULL,
+      jsonb_build_object('reward_transaction_id', v_txn_id));
+    UPDATE player_items SET is_new = true WHERE player_id = v_player AND item_id = v_item_id;
+    SELECT rarity, COALESCE(label_en, label_th) INTO v_rarity, v_name FROM item_catalog WHERE id = v_item_id;
+    INSERT INTO reward_items (reward_transaction_id, item_id, quantity, rarity_snapshot, item_name_snapshot)
+    VALUES (v_txn_id, v_item_id, v_qty, v_rarity, v_name);
+  END LOOP;
+
+  IF v_total_items > 0 OR v_total_currency > 0 THEN
+    PERFORM notify(v_player, 'reward', COALESCE(v_source_name, p_source_code) || ' Reward',
+      CASE WHEN v_total_items > 0 AND v_total_currency > 0
+             THEN format('+%s items, +%s currency', v_total_items, v_total_currency)
+           WHEN v_total_items > 0 THEN format('+%s items', v_total_items)
+           ELSE format('+%s currency', v_total_currency) END,
+      jsonb_build_object('reward_transaction_id', v_txn_id));
+  END IF;
+
+  RETURN v_txn_id;
+END $$;
