@@ -513,7 +513,8 @@ CREATE OR REPLACE FUNCTION reward_grant(
   p_idempotency_key text DEFAULT NULL,
   p_ip_address text DEFAULT NULL,
   p_device text DEFAULT NULL,
-  p_server_region text DEFAULT NULL
+  p_server_region text DEFAULT NULL,
+  p_target_player bigint DEFAULT NULL
 ) RETURNS uuid
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -524,6 +525,14 @@ DECLARE
 BEGIN
   v_player := session_uid();
   IF v_player IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  -- p_target_player lets an admin grant to someone else (e.g.
+  -- admin_grant_item); every self-service caller (gacha, shop, coupons,
+  -- daily login) omits it and grants to session_uid() as before.
+  IF p_target_player IS NOT NULL AND p_target_player <> v_player THEN
+    IF NOT is_admin_caller() THEN RAISE EXCEPTION 'not_authorized_for_target_player'; END IF;
+    v_player := p_target_player;
+  END IF;
 
   SELECT enabled, name INTO v_enabled, v_source_name FROM reward_sources WHERE code = p_source_code;
   IF NOT FOUND OR NOT v_enabled THEN RAISE EXCEPTION 'invalid_source:%', p_source_code; END IF;
