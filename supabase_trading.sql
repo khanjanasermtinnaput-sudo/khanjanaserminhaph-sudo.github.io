@@ -378,3 +378,209 @@ UPDATE mailbox SET title = COALESCE(message, 'Mail'), attachment_type = item_typ
   WHERE title IS NULL;
 -- mailbox already has RLS enabled with its own existing policies (used by
 -- rpc_mail_claim_item / dbClaimMail) — untouched here, only columns added.
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- PHASE 1B STEP 8b — Migrate fuse_items / market_* onto player_items+locks
+-- Applied via Supabase MCP apply_migration (migration name: inv_step8b_migrate_market_fusion)
+--
+-- The highest-risk step in this phase: fuse_items and market_list_item/
+-- market_buy/market_cancel are LIVE, working RPCs the real client calls
+-- today, and they currently mutate ONLY players.gacha_inventory (the
+-- blob) — never player_items. This rewrites them to operate on
+-- player_items + inventory_locks instead, replacing escrow-by-deletion
+-- (market_list_item removed the item from the blob) with escrow-by-lock
+-- (item stays in player_items, just becomes untouchable via inv_lock).
+--
+-- Verified before writing this: the one live active listing (id=12,
+-- seller 20, element:yinyang, 1500 coins) has a real player_items row
+-- (id=168) that was NEVER touched by the old blob-only escrow — backfilled
+-- below by linking the listing to it and applying a proper lock.
+--
+-- Signatures are UNCHANGED (market_list_item(item_k,item_v,price),
+-- market_buy(listing_id), market_cancel(listing_id), fuse_items(recipe_id))
+-- so js/market.js and js/fusion.js need zero client changes. Every
+-- validation the old code performed (ownership, insufficient_coins,
+-- already_owned, cannot_buy_own, not_available, missing_input,
+-- already_owns_output) is preserved; econ_clear_equip_traces (Step 8a)
+-- replaces the old inline blob-clearing of equipped scalars/equippedElement/
+-- equippedEffects. Coin movements now go through econ_adjust_coins for a
+-- proper ledger trail (strict improvement, same balances).
+-- ═══════════════════════════════════════════════════════════════════════
+
+ALTER TABLE market_listings
+  ADD COLUMN inventory_id     bigint REFERENCES player_items(id),
+  ADD COLUMN item_id          text REFERENCES item_catalog(id),
+  ADD COLUMN listed_at        timestamptz,
+  ADD COLUMN expires_at       timestamptz;
+UPDATE market_listings SET listed_at = created_at WHERE listed_at IS NULL;
+
+ALTER TABLE market_transactions
+  ADD COLUMN inventory_id     bigint REFERENCES player_items(id),
+  ADD COLUMN item_id          text REFERENCES item_catalog(id),
+  ADD COLUMN currency_id      text NOT NULL DEFAULT 'coin' REFERENCES currencies(code),
+  ADD COLUMN marketplace_fee  int NOT NULL DEFAULT 0,
+  ADD COLUMN seller_receive   int;
+UPDATE market_transactions SET seller_receive = price - tax WHERE seller_receive IS NULL;
+
+-- Backfill the one live active listing: link it to the real player_items
+-- row (which the old blob-only escrow never touched) and lock it.
+DO $$
+DECLARE v_l record; v_inv_id bigint; v_item_id text;
+BEGIN
+  FOR v_l IN SELECT * FROM market_listings WHERE status = 'active' AND inventory_id IS NULL LOOP
+    v_item_id := left(v_l.item_k, length(v_l.item_k) - 1) || ':' || v_l.item_v;
+    SELECT id INTO v_inv_id FROM player_items
+      WHERE player_id = v_l.seller_id AND item_id = v_item_id AND deleted_at IS NULL;
+    IF v_inv_id IS NOT NULL THEN
+      UPDATE market_listings SET inventory_id = v_inv_id, item_id = v_item_id WHERE id = v_l.id;
+      IF NOT EXISTS (SELECT 1 FROM inventory_locks WHERE inventory_id = v_inv_id AND released_at IS NULL) THEN
+        PERFORM inv_lock(v_inv_id, 'marketplace', 'market_listings', v_l.id);
+      END IF;
+    END IF;
+  END LOOP;
+END $$;
+
+CREATE OR REPLACE FUNCTION market_list_item(p_item_k text, p_item_v text, p_price integer) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_pid bigint; v_coins int; v_fee int := 1; v_id bigint; v_item_id text; v_inv_id bigint;
+BEGIN
+  v_pid := session_uid();
+  IF v_pid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+  IF p_price IS NULL OR p_price < 1 OR p_price > 1000000 THEN RAISE EXCEPTION 'bad_price'; END IF;
+  IF p_item_k NOT IN ('frames','names','emojis','elements','effects') THEN RAISE EXCEPTION 'bad_slot'; END IF;
+  v_item_id := left(p_item_k, length(p_item_k) - 1) || ':' || p_item_v;
+
+  SELECT coins INTO v_coins FROM players WHERE id = v_pid FOR UPDATE;
+  IF v_coins IS NULL THEN RAISE EXCEPTION 'player_not_found'; END IF;
+  IF v_coins < v_fee THEN RAISE EXCEPTION 'insufficient_coins'; END IF;
+
+  SELECT id INTO v_inv_id FROM player_items
+    WHERE player_id = v_pid AND item_id = v_item_id AND deleted_at IS NULL FOR UPDATE;
+  IF v_inv_id IS NULL THEN RAISE EXCEPTION 'not_owned'; END IF;
+  IF (SELECT is_locked FROM player_items WHERE id = v_inv_id) THEN RAISE EXCEPTION 'item_locked'; END IF;
+  IF NOT (SELECT COALESCE(tradeable, true) FROM item_catalog WHERE id = v_item_id) THEN RAISE EXCEPTION 'not_tradeable'; END IF;
+
+  PERFORM econ_clear_equip_traces(v_pid, v_item_id);
+  UPDATE player_items SET is_equipped = false, equip_slot = NULL WHERE id = v_inv_id;
+  PERFORM econ_adjust_coins(v_pid, -v_fee, 'market_list_fee', 'marketplace', NULL, '{}'::jsonb);
+
+  INSERT INTO market_listings (seller_id, item_k, item_v, price, inventory_id, item_id, status, listed_at)
+    VALUES (v_pid, p_item_k, p_item_v, p_price, v_inv_id, v_item_id, 'active', now()) RETURNING id INTO v_id;
+  PERFORM inv_lock(v_inv_id, 'marketplace', 'market_listings', v_id);
+
+  RETURN jsonb_build_object('ok', true, 'listing_id', v_id, 'fee', v_fee, 'coins_remaining', v_coins - v_fee);
+END; $$;
+
+CREATE OR REPLACE FUNCTION market_buy(p_listing_id bigint) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_pid bigint; v_l market_listings%ROWTYPE; v_coins int; v_tax int;
+BEGIN
+  v_pid := session_uid();
+  IF v_pid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  SELECT * INTO v_l FROM market_listings WHERE id = p_listing_id FOR UPDATE;
+  IF v_l.id IS NULL THEN RAISE EXCEPTION 'listing_not_found'; END IF;
+  IF v_l.status <> 'active' THEN RAISE EXCEPTION 'not_available'; END IF;
+  IF v_l.seller_id = v_pid THEN RAISE EXCEPTION 'cannot_buy_own'; END IF;
+  IF v_l.inventory_id IS NULL THEN RAISE EXCEPTION 'listing_not_migrated'; END IF;
+
+  SELECT coins INTO v_coins FROM players WHERE id = v_pid FOR UPDATE;
+  IF v_coins IS NULL THEN RAISE EXCEPTION 'player_not_found'; END IF;
+  IF v_coins < v_l.price THEN RAISE EXCEPTION 'insufficient_coins'; END IF;
+  IF EXISTS (SELECT 1 FROM player_items WHERE player_id = v_pid AND item_id = v_l.item_id AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'already_owned';
+  END IF;
+
+  v_tax := ceil(v_l.price * 0.05)::int;
+
+  PERFORM econ_adjust_coins(v_pid, -v_l.price, 'market_buy', 'marketplace', p_listing_id, '{}'::jsonb);
+  PERFORM econ_adjust_coins(v_l.seller_id, v_l.price - v_tax, 'market_sell', 'marketplace', p_listing_id, '{}'::jsonb);
+
+  PERFORM inv_unlock(v_l.inventory_id);
+  UPDATE player_items SET player_id = v_pid, is_new = true, source = 'marketplace', acquired_at = now()
+    WHERE id = v_l.inventory_id;
+
+  UPDATE market_listings SET status = 'sold', buyer_id = v_pid, sold_at = now() WHERE id = p_listing_id;
+  INSERT INTO market_transactions
+    (listing_id, seller_id, buyer_id, item_k, item_v, price, tax, fee, inventory_id, item_id, currency_id, marketplace_fee, seller_receive)
+    VALUES (p_listing_id, v_l.seller_id, v_pid, v_l.item_k, v_l.item_v, v_l.price, v_tax, 0,
+            v_l.inventory_id, v_l.item_id, 'coin', v_tax, v_l.price - v_tax);
+
+  PERFORM notify(v_l.seller_id, 'inventory', 'Item Sold', format('Sold for %s coins', v_l.price - v_tax),
+    jsonb_build_object('listing_id', p_listing_id));
+
+  RETURN jsonb_build_object('ok', true, 'item', jsonb_build_object('k', v_l.item_k, 'v', v_l.item_v),
+    'price', v_l.price, 'coins_remaining', v_coins - v_l.price);
+END; $$;
+
+CREATE OR REPLACE FUNCTION market_cancel(p_listing_id bigint) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_pid bigint; v_l market_listings%ROWTYPE;
+BEGIN
+  v_pid := session_uid();
+  IF v_pid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  SELECT * INTO v_l FROM market_listings WHERE id = p_listing_id FOR UPDATE;
+  IF v_l.id IS NULL THEN RAISE EXCEPTION 'listing_not_found'; END IF;
+  IF v_l.seller_id <> v_pid THEN RAISE EXCEPTION 'not_seller'; END IF;
+  IF v_l.status <> 'active' THEN RAISE EXCEPTION 'not_available'; END IF;
+
+  IF v_l.inventory_id IS NOT NULL THEN
+    PERFORM inv_unlock(v_l.inventory_id);
+  END IF;
+  UPDATE market_listings SET status = 'cancelled' WHERE id = p_listing_id;
+  RETURN jsonb_build_object('ok', true, 'returned', jsonb_build_object('k', v_l.item_k, 'v', v_l.item_v));
+END; $$;
+
+CREATE OR REPLACE FUNCTION fuse_items(p_recipe_id text) RETURNS jsonb
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_pid bigint; v_recipe fusion_recipes%ROWTYPE; v_coins int;
+  inp jsonb; v_item_id text; v_out_id text;
+BEGIN
+  v_pid := session_uid();
+  IF v_pid IS NULL THEN RAISE EXCEPTION 'not_authenticated'; END IF;
+
+  SELECT * INTO v_recipe FROM fusion_recipes WHERE id = p_recipe_id AND enabled = true;
+  IF v_recipe.id IS NULL THEN RAISE EXCEPTION 'recipe_not_found'; END IF;
+
+  SELECT coins INTO v_coins FROM players WHERE id = v_pid FOR UPDATE;
+  IF v_coins IS NULL THEN RAISE EXCEPTION 'player_not_found'; END IF;
+  IF v_coins < v_recipe.coin_cost THEN RAISE EXCEPTION 'insufficient_coins'; END IF;
+
+  v_out_id := left(v_recipe.output ->> 'k', length(v_recipe.output ->> 'k') - 1) || ':' || (v_recipe.output ->> 'v');
+  IF EXISTS (SELECT 1 FROM player_items WHERE player_id = v_pid AND item_id = v_out_id AND deleted_at IS NULL) THEN
+    RAISE EXCEPTION 'already_owns_output';
+  END IF;
+
+  FOR inp IN SELECT * FROM jsonb_array_elements(v_recipe.inputs) LOOP
+    v_item_id := left(inp ->> 'k', length(inp ->> 'k') - 1) || ':' || (inp ->> 'v');
+    IF NOT EXISTS (SELECT 1 FROM player_items
+                   WHERE player_id = v_pid AND item_id = v_item_id AND deleted_at IS NULL AND NOT is_locked) THEN
+      RAISE EXCEPTION 'missing_input:%', inp ->> 'v';
+    END IF;
+  END LOOP;
+
+  FOR inp IN SELECT * FROM jsonb_array_elements(v_recipe.inputs) LOOP
+    v_item_id := left(inp ->> 'k', length(inp ->> 'k') - 1) || ':' || (inp ->> 'v');
+    PERFORM econ_clear_equip_traces(v_pid, v_item_id);
+    -- hard delete: fusion inputs are genuinely consumed/destroyed (not an
+    -- accidental removal), matching the old code's exact semantics; the
+    -- ledger row below preserves what was consumed for history.
+    DELETE FROM player_items WHERE player_id = v_pid AND item_id = v_item_id;
+    INSERT INTO economy_ledger (player_id, verb, item_id, qty, coins_delta, ref_type, meta)
+      VALUES (v_pid, 'fusion_consume', v_item_id, -1, 0, 'fusion', jsonb_build_object('recipe', p_recipe_id));
+  END LOOP;
+
+  PERFORM econ_grant_item(v_pid, v_out_id, 1, 'fusion_output', 'fusion', NULL, jsonb_build_object('recipe', p_recipe_id));
+  PERFORM econ_adjust_coins(v_pid, -v_recipe.coin_cost, 'fusion_cost', 'fusion', NULL, jsonb_build_object('recipe', p_recipe_id));
+
+  INSERT INTO fusion_log (player_id, recipe_id, coins_spent, output_k, output_v)
+  VALUES (v_pid, p_recipe_id, v_recipe.coin_cost, v_recipe.output ->> 'k', v_recipe.output ->> 'v');
+
+  PERFORM notify(v_pid, 'inventory', 'Fusion Complete', format('Crafted %s', v_recipe.output ->> 'label'),
+    jsonb_build_object('recipe', p_recipe_id));
+
+  RETURN jsonb_build_object('ok', true, 'recipe', p_recipe_id,
+    'output', v_recipe.output, 'coins_remaining', v_coins - v_recipe.coin_cost);
+END; $$;
