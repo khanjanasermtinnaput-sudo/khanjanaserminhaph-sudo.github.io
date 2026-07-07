@@ -277,16 +277,13 @@ async function doGachaPull10() {
   if (btn10) btn10.disabled = true;
   if (btn1)  btn1.disabled  = true;
 
-  // ── Server-side 10-pull: each pull through Edge Function (CRIT-02) ──
-  const results = [];
-  for (let i = 0; i < 10; i++) {
-    try {
-      const serverResult = await dbGachaPull(currentUser.id);
-      results.push(_mapServerResult(serverResult));
-    } catch(e) {
-      if (e.message && e.message.includes('insufficient_coins')) break;
-      results.push({ type: 'empty', icon: '💨', color: 'var(--muted)', text: 'error' });
-    }
+  // ── Server-side 10-pull: ONE batched RPC call = ONE reward_transaction ──
+  let results = [];
+  try {
+    const serverResult = await dbGachaPullV2('coin', 10);
+    results = (serverResult.results || []).map(item => _mapServerResult({ item }));
+  } catch(e) {
+    results = [{ type: 'empty', icon: '💨', color: 'var(--muted)', text: 'error' }];
   }
   await loadPlayers();
 
@@ -332,13 +329,18 @@ function getEffectiveCoins(pid) {
 }
 
 // ── Map server result to UI display object ───────────────────
+// Consumes rpc_gacha_pull_v2's per-roll shape (item_id/category/value/
+// label/rarity/icon/is_dup/pity_reset) — the old {tier,item:{type,...}}
+// shape came from the retired gacha-pull Edge Function's own hardcoded
+// pools. Rarity/category combos below are exhaustive over the live `coin`
+// pool today (common=emoji, rare=frame, epic=frame|name, secret=frame|name|effect).
 function _mapServerResult(serverResult) {
-  const { tier, item } = serverResult;
+  const item = serverResult && serverResult.item;
   if (!item) return { type: 'empty', icon: '💨', color: 'var(--muted)', text: '💨 ไม่ได้ของ...' };
-  if (tier === 'secret') return { type: 'secret', icon: '⚡', color: '#00d4ff', text: `⚡ ${item.label}`, val: item.value, itemType: item.type };
-  if (tier === 'ultra')  return { type: 'ultra',  icon: '✨', color: '#c084fc', text: `✨ ULTRA RARE! ${item.label}`, val: item.value, col: item.type === 'gacha_frame' ? 'frame' : 'name', itemType: item.type };
-  if (tier === 'rare')   return { type: 'frame',  icon: '🖼️', color: '#a78bfa', text: item.label, val: item.value, itemType: item.type };
-  if (item.type === 'gacha_emoji') return { type: 'emoji', icon: item.value, color: 'var(--neon)', text: `${item.value} Emoji Avatar ได้แล้ว!`, emoji: item.value };
+  if (item.category === 'emoji') return { type: 'emoji', icon: item.value, color: 'var(--neon)', text: `${item.value} Emoji Avatar ได้แล้ว!`, emoji: item.value, itemType: 'gacha_emoji' };
+  if (item.rarity === 'secret')  return { type: 'secret', icon: '⚡', color: '#00d4ff', text: `⚡ ${item.label}`, val: item.value, itemType: 'gacha_' + item.category };
+  if (item.rarity === 'epic')    return { type: 'ultra',  icon: '✨', color: '#c084fc', text: `✨ ULTRA RARE! ${item.label}`, val: item.value, col: item.category === 'frame' ? 'frame' : 'name', itemType: 'gacha_' + item.category };
+  if (item.rarity === 'rare')    return { type: 'frame',  icon: '🖼️', color: '#a78bfa', text: item.label, val: item.value, itemType: 'gacha_' + item.category };
   return { type: 'empty', icon: '💨', color: 'var(--muted)', text: '💨 ไม่ได้ของ...' };
 }
 

@@ -110,17 +110,24 @@ async function setAppSettingAdmin(adminId, key, value) {
   _appSettings[key] = String(value);
 }
 
-// ── Server-side gacha pull (CRIT-02) ────────────────────────
-const SUPA_FUNCTIONS_URL = SUPA_URL.replace('/rest/v1', '') + '/functions/v1';
-async function dbGachaPull(playerId) {
-  const res = await fetch(SUPA_FUNCTIONS_URL + '/gacha-pull', {
+// ── Server-side gacha pull v2 (Phase 3) ─────────────────────
+// Routes straight through rpc_gacha_pull_v2 — crypto RNG, pity, dup
+// refunds and the grant itself (via reward_grant) all happen server-side,
+// resolved off session_uid() (never a client-supplied player id). This
+// replaces the old gacha-pull Edge Function, which re-implemented its own
+// auth check and RNG for no benefit once the RPC did the same job server-
+// side; the function is left deployed but unused rather than deleted.
+async function dbGachaPullV2(pool, count = 1) {
+  return await supaFetch('rpc/rpc_gacha_pull_v2', {
     method: 'POST',
-    headers: { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ player_id: playerId, token: currentToken })
+    body: JSON.stringify({ p_pool: pool, p_count: count })
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'gacha_pull_failed');
-  return data; // { tier, item: { type, value, label }, coins_remaining }
+}
+// Back-compat shim for doGachaPull's single-pull call site (js/gacha.js).
+// playerId is unused — kept so the call site needs no change.
+async function dbGachaPull(playerId) {
+  const r = await dbGachaPullV2('coin', 1);
+  return { item: (r.results || [])[0], coins_remaining: r.coins_remaining, reward_transaction_id: r.reward_transaction_id };
 }
 
 // ── Level / EXP system (server-authoritative; see supabase_level_system.sql) ──

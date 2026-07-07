@@ -495,13 +495,6 @@
     return `<div class="ge-name-block">${badge}${nameSpan}<span class="ge-rarity" style="color:${el.c.glow}">— ${el.rarityTh} · ${el.rate}% —</span></div>`;
   }
 
-  // ── Roll (fallback to earth if float rounding fails) ─────────────────────────
-  function _gachaRoll() {
-    let r = Math.random() * 100;
-    for (const el of GACHA_ELEMENTS) { r -= el.rate; if (r <= 0) return el; }
-    return GACHA_ELEMENTS[0];
-  }
-
   // ── SVG burst (SMIL one-shot, fill="freeze", cleared after 1.8s) ─────────────
   function _geBurst(el) {
     let svg = document.getElementById('geBurstSvg');
@@ -697,13 +690,6 @@
     const pl = (typeof db !== 'undefined') && db.players && db.players.find(x => x.id === currentUser.id);
     return pl ? (pl.coins || 0) : 0;
   }
-  async function _geSpendCoins(cost) {
-    if (typeof dbAddCoins === 'function') {
-      await dbAddCoins(currentUser.id, -cost);
-    } else {
-      if (typeof _setLsCoins === 'function') _setLsCoins(currentUser.id, _geEffectiveCoins() - cost);
-    }
-  }
   function _geUpdateCoinBal() {
     const el = document.getElementById('geCoinBal');
     if (!el) return;
@@ -792,14 +778,28 @@
 
     await new Promise(r => setTimeout(r, 300));
 
-    // Deduct coins
-    try { await _geSpendCoins(cost); } catch (e) {}
+    // Roll + grant — SERVER AUTHORITATIVE (Phase 3). Was a client-side
+    // Math.random() roll writing the inventory blob directly with no
+    // server round-trip; coin deduction is now atomic inside the RPC, so
+    // there is no separate _geSpendCoins() step (that would double-pay).
+    let serverResult;
+    try {
+      serverResult = await dbGachaPullV2('element', n);
+    } catch (e) {
+      if (b1)  { b1.disabled  = false; b1.textContent  = '⚡ PULL x1 (5🪙)'; }
+      if (b10) { b10.disabled = false; b10.textContent = '✦ PULL x10 (50🪙)'; }
+      gachaState.pulling = false;
+      if (typeof toast === 'function') toast('สุ่มไม่สำเร็จ: ' + (e.message || ''), 'error');
+      return;
+    }
+    if (typeof loadPlayers === 'function') { try { await loadPlayers(); } catch (e) {} }
+    const results = (serverResult.results || []).map(r => GACHA_ELEMENTS.find(e => e.id === r.value) || GACHA_ELEMENTS[0]);
 
-    // Roll
-    const results = [];
-    for (let i = 0; i < n; i++) results.push(_gachaRoll());
-
-    // Save inventory
+    // Mirror into the local blob/localStorage cache (server + the Phase 1B
+    // compat trigger already wrote gacha_inventory; this keeps _geGetData/
+    // _geGetInventory's localStorage-first reads in sync without waiting
+    // on a realtime round-trip). Auto-equip-first-pull stays a local write:
+    // it flows through econ_sync_equip_from_legacy same as before.
     const pid = currentUser.id;
     const inv = _geGetInventory(pid);
     results.forEach(el => { if (!inv.includes(el.id)) inv.push(el.id); });
