@@ -67,35 +67,34 @@ function initCrownSparkle(canvas, W, H) {
   return function() { if (rafId) { cancelAnimationFrame(rafId); rafId = null; } };
 }
 </script>
-<title>NET WORTH ONLINE — Financial Strategy Board Game</title>
+<title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260703a">
 <link rel="stylesheet" href="redesign.css?v=20260627c">
-<link rel="stylesheet" href="landing.css?v=20260708a">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Net Worth Online">
+<meta name="apple-mobile-web-app-title" content="BK Club">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="description" content="NET WORTH ONLINE — a financial strategy board game. Build wealth, invest wisely, and become financially free.">
+<meta name="description" content="ระบบจัดการแบดมินตันเพื่อน — ลีดเดอร์บอร์ด, สถิติ, ทัวร์นาเมนต์ และระบบจัดอันดับ ELO">
 <!-- Open Graph (LINE / Facebook link preview) -->
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://badminton-peach.vercel.app/">
-<meta property="og:site_name" content="NET WORTH ONLINE">
-<meta property="og:title" content="NET WORTH ONLINE">
-<meta property="og:description" content="A financial strategy board game. Build wealth, invest wisely, and become financially free.">
+<meta property="og:site_name" content="Badminton Club">
+<meta property="og:title" content="🏸 Badminton Club">
+<meta property="og:description" content="ระบบจัดการแบดมินตันเพื่อน — ลีดเดอร์บอร์ด, สถิติ, ทัวร์นาเมนต์ และระบบจัดอันดับ ELO">
 <meta property="og:image" content="https://badminton-peach.vercel.app/icon-512.png">
 <meta property="og:image:width" content="512">
 <meta property="og:image:height" content="512">
-<meta property="og:image:alt" content="NET WORTH ONLINE icon">
-<meta property="og:locale" content="en_US">
+<meta property="og:image:alt" content="Badminton Club icon">
+<meta property="og:locale" content="th_TH">
 <!-- Twitter / X card -->
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="NET WORTH ONLINE">
-<meta name="twitter:description" content="A financial strategy board game. Build wealth, invest wisely, and become financially free.">
+<meta name="twitter:title" content="🏸 Badminton Club">
+<meta name="twitter:description" content="ระบบจัดการแบดมินตันเพื่อน — ลีดเดอร์บอร์ด, สถิติ, ทัวร์นาเมนต์ และระบบจัดอันดับ ELO">
 <meta name="twitter:image" content="https://badminton-peach.vercel.app/icon-512.png">
-<meta name="twitter:image:alt" content="NET WORTH ONLINE icon">
+<meta name="twitter:image:alt" content="Badminton Club icon">
 </head>
 <body>
 
@@ -223,100 +222,66 @@ function initCrownSparkle(canvas, W, H) {
 
 <!-- SPLASH SCREEN -->
 <div id="splashScreen">
-  <div class="splash-logo nwo-mark" aria-hidden="true"><span>N</span></div>
-  <div class="splash-title">NET WORTH ONLINE</div>
-  <div class="splash-sub">Financial Strategy Board Game</div>
+  <div class="splash-logo">🏸</div>
+  <div class="splash-title">Badminton Club</div>
+  <div class="splash-sub">Liquid UI 2.0</div>
   <div class="splash-bar"></div>
 </div>
 
 <!-- CURSOR GLOW (Liquid UI 2.0) -->
 <div id="liqCg"></div>
 
-<div class="theme-controls nwo-controls" id="themeControls">
-  <button type="button" class="nwo-icon-btn" id="langToggleBtn" onclick="toggleLang()" title="Language" aria-label="Change language">🌐</button>
-
-  <div class="nwo-settings-wrap">
-    <button type="button" class="nwo-icon-btn" id="nwoSettingsBtn" onclick="nwoToggleSettings()" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false" aria-controls="nwoSettingsPanel">⚙️</button>
-    <div class="nwo-settings-panel" id="nwoSettingsPanel" role="menu" aria-label="Display settings" hidden>
-      <div class="nwo-settings-label">Display style</div>
-      <div class="style-toggle">
-        <button class="style-opt" id="styleGlass" onclick="setStyle('glass')" role="menuitem">Liquid UI 2.0</button>
-        <button class="style-opt" id="styleLite" onclick="setStyle('lite')" role="menuitem">⚡ Lite</button>
-      </div>
-    </div>
-  </div>
-
-  <label class="nwo-icon-btn daynight-switch" id="dnSwitchLabel" title="Toggle dark mode" aria-label="Toggle dark mode">
+<div class="theme-controls" id="themeControls">
+  <label class="daynight-switch" title="สลับกลางวัน/กลางคืน">
     <input type="checkbox" id="dayNightToggle" onchange="toggleDayNight()">
-    <span class="daynight-emoji" id="dnEmoji" aria-hidden="true">🌙</span>
+    <div class="daynight-track"></div>
+    <div class="daynight-thumb"><span class="daynight-emoji" id="dnEmoji">🌙</span></div>
   </label>
+  <div class="dn-sep"></div>
+  <div class="style-toggle">    <button class="style-opt" id="styleGlass" onclick="setStyle('glass')">Liquid UI 2.0</button>
+    <button class="style-opt" id="styleLite" onclick="setStyle('lite')">⚡ Lite</button>
+  </div>
+  <div class="dn-sep"></div>
+  <button class="style-opt" id="langToggleBtn" onclick="toggleLang()" style="padding:5px 12px;border-radius:50px;border:1px solid var(--glass-border);background:var(--btn-glass);font-size:0.75rem;cursor:pointer;font-weight:600">🌐 EN</button>
 </div>
 
 <!-- LOGIN -->
 <div id="loginSection" class="section active">
   <div class="login-wrap">
-    <!-- ambient background decor (subtle, non-interactive) -->
-    <div class="nwo-orb nwo-orb-1" aria-hidden="true"></div>
-    <div class="nwo-orb nwo-orb-2" aria-hidden="true"></div>
-    <div class="nwo-orb nwo-orb-3" aria-hidden="true"></div>
-    <div class="nwo-particles" id="nwoParticles" aria-hidden="true"></div>
-
     <div class="login-box">
       <div class="liq-sweep"></div>
+      <div class="login-logo">🏸</div>
+      <div class="login-title">Badminton Club</div>
+      <div class="login-sub" id="loginSubEl">ระบบจัดการแบดมินตันเพื่อน</div>
 
-      <div class="login-logo nwo-mark" aria-hidden="true"><span>N</span></div>
-      <div class="login-title nwo-title">NET WORTH ONLINE</div>
-      <div class="login-sub nwo-subtitle" id="loginSubEl">Financial Strategy Board Game</div>
-      <p class="nwo-tagline">Build wealth.<br>Invest wisely.<br>Become financially free.</p>
-
-      <!-- QUICK LOGIN CARD (Remember this device) -->
+      <!-- QUICK LOGIN CARD -->
       <div id="quickLoginCard" class="ql-card hidden">
         <div class="ql-av-wrap"><div class="ql-av" id="qlAv"></div></div>
-        <div class="ql-hi" id="qlHiEl">👋 Welcome Back</div>
+        <div class="ql-hi" id="qlHiEl">👋 สวัสดีกลับมา!</div>
         <div class="ql-name" id="qlName"></div>
-        <div class="ql-q" id="qlQEl">Continue with this account?</div>
+        <div class="ql-q" id="qlQEl">แอคเคาท์นี้ใช้ของคุณไหม?</div>
         <div class="ql-btns">
-          <button class="btn btn-primary" id="qlYesBtn" onclick="quickLogin()">Continue</button>
-          <button class="btn btn-ghost" id="qlNoBtn" style="font-size:0.82rem" onclick="rejectQuickLogin()">Switch Account</button>
+          <button class="btn btn-primary" id="qlYesBtn" onclick="quickLogin()">✅ ใช่, เข้าเลย!</button>
+          <button class="btn btn-ghost" id="qlNoBtn" style="font-size:0.82rem" onclick="rejectQuickLogin()">ไม่ใช่บัญชีฉัน</button>
         </div>
-        <div class="ql-sep" id="qlSepEl">or sign in with PIN</div>
+        <div class="ql-sep" id="qlSepEl">หรือเข้าด้วยรหัส</div>
       </div>
 
       <div class="tab-row" role="tablist" aria-label="Login or Register">
-        <button class="tab active" id="loginTabBtn" role="tab" aria-selected="true" aria-controls="loginForm" onclick="switchLoginTab('login')">Log In</button>
-        <button class="tab" id="regTabBtn" role="tab" aria-selected="false" aria-controls="regForm" onclick="switchLoginTab('register')">Create Account</button>
+        <button class="tab active" id="loginTabBtn" role="tab" aria-selected="true" aria-controls="loginForm" onclick="switchLoginTab('login')">เข้าสู่ระบบ</button>
+        <button class="tab" id="regTabBtn" role="tab" aria-selected="false" aria-controls="regForm" onclick="switchLoginTab('register')">สมัครสมาชิก</button>
       </div>
       <div id="loginForm">
-        <div class="form-group"><label id="loginNameLabel" for="loginName">Username</label><input class="inp" id="loginName" placeholder="Your username" autocomplete="username" maxlength="10" autofocus aria-label="Username"></div>
-        <div class="form-group"><label id="loginPinLabel" for="loginPin">PIN (4 digits)</label><input class="inp" id="loginPin" type="password" maxlength="4" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="current-password" aria-label="PIN, 4 digits"></div>
-        <label class="nwo-remember">
-          <input type="checkbox" id="rememberDevice" checked>
-          <span>Remember this device</span>
-        </label>
-        <button class="btn btn-primary nwo-submit" id="loginBtnEl" onclick="login()">
-          <span class="nwo-btn-label">Log In</span>
-          <span class="nwo-btn-spinner" aria-hidden="true"></span>
-        </button>
+        <div class="form-group"><label id="loginNameLabel">ชื่อผู้ใช้</label><input class="inp" id="loginName" placeholder="ชื่อจริงของคุณ" autocomplete="username" maxlength="50" aria-label="ชื่อผู้ใช้"></div>
+        <div class="form-group"><label id="loginPinLabel">PIN 4 หลัก</label><input class="inp" id="loginPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="current-password" aria-label="PIN 4 หลัก"></div>
+        <button class="btn btn-primary" id="loginBtnEl" onclick="login()">เข้าสู่ระบบ</button>
       </div>
       <div id="registerForm" class="hidden">
-        <div class="form-group"><label id="regNameLabel" for="regName">Username</label><input class="inp" id="regName" placeholder="Choose a username" autocomplete="username" maxlength="10" aria-label="Username"></div>
-        <div class="form-group"><label id="regPinLabel" for="regPin">PIN (4 digits)</label><input class="inp" id="regPin" type="password" maxlength="4" placeholder="••••" inputmode="numeric" pattern="[0-9]*" autocomplete="new-password" aria-label="PIN, 4 digits"></div>
-        <label class="nwo-remember">
-          <input type="checkbox" id="rememberDeviceReg" checked>
-          <span>Remember this device</span>
-        </label>
-        <button class="btn btn-primary nwo-submit" id="regBtnEl" onclick="register()">
-          <span class="nwo-btn-label">Create Account</span>
-          <span class="nwo-btn-spinner" aria-hidden="true"></span>
-        </button>
+        <div class="form-group"><label id="regNameLabel">ชื่อจริง</label><input class="inp" id="regName" placeholder="ชื่อที่ต้องการใช้" autocomplete="username" maxlength="50" aria-label="ชื่อจริง"></div>
+        <div class="form-group"><label id="regPinLabel">PIN 4 หลัก (ตั้งรหัส)</label><input class="inp" id="regPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="new-password" aria-label="PIN 4 หลัก"></div>
+        <button class="btn btn-primary" id="regBtnEl" onclick="register()">สมัครสมาชิก</button>
       </div>
-      <div class="text-muted mt-12" style="font-size:0.72rem">Your data is stored securely in Supabase</div>
-    </div>
-
-    <div class="nwo-footer">
-      <span>v1.0</span>
-      <span class="nwo-footer-sep">·</span>
-      <span>© 2026 NET WORTH ONLINE</span>
+      <div class="text-muted mt-12" style="font-size:0.72rem">ข้อมูลถูกเก็บใน Supabase</div>
     </div>
   </div>
 </div>
@@ -1140,7 +1105,6 @@ END $$;</pre>
 <script src="js/db.js?v=20260707a"></script>
 <script src="js/elo.js?v=20260610a"></script>
 <script src="js/auth.js?v=20260610b"></script>
-<script src="js/landing.js?v=20260708a"></script>
 <script src="js/leaderboard.js?v=20260625a"></script>
 <script src="js/profile.js?v=20260625a"></script>
 <script src="js/stats.js?v=20260610a"></script>

@@ -163,21 +163,21 @@ function toggleLang() {
 function applyLang() {
   const L = I18N[_lang]||I18N.th;
   const btn = document.getElementById('langToggleBtn');
-  if (btn) {
-    const nextLabel = _lang==='th' ? 'Switch to English' : 'สลับเป็นภาษาไทย';
-    btn.title = nextLabel;
-    btn.setAttribute('aria-label', nextLabel);
-  }
+  if (btn) btn.textContent = _lang==='th' ? '🌐 EN' : '🌐 ไทย';
   const nb = [['navLb','🏆 '+L.nav_lb],['navMatch','⚔️ '+L.nav_match],['navHist','📋 '+L.nav_hist],['navProfile','👤 '+L.nav_profile]];
   nb.forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
-  // NOTE: the login/landing page (#loginSection) is intentionally excluded from
-  // this map — it now carries fixed "NET WORTH ONLINE" English branding rather
-  // than translated copy, and loginBtnEl/regBtnEl hold structured
-  // label+spinner children that a textContent assignment would destroy.
   const map = {
     navHiLabel:L.hi, navLogoutBtn:L.logout,
+    loginSubEl:L.login_sub,
+    loginTabBtn:L.login_tab, regTabBtn:L.reg_tab,
+    loginBtnEl:L.login_btn, regBtnEl:L.reg_btn,
+    loginNameLabel:L.name_label, loginPinLabel:L.pin_label,
+    regNameLabel:L.reg_name_label, regPinLabel:L.reg_pin_label,
+    qlHiEl:L.ql_hi, qlQEl:L.ql_q, qlYesBtn:L.ql_yes, qlNoBtn:L.ql_no, qlSepEl:L.ql_sep,
     eloX2Banner:L.elo_x2,
   };
   for (const [id,txt] of Object.entries(map)) { const el=document.getElementById(id); if(el) el.textContent=txt; }
+  const phMap = { loginName:L.name_ph, regName:L.reg_name_ph };
+  for (const [id,ph] of Object.entries(phMap)) { const el=document.getElementById(id); if(el) el.placeholder=ph; }
 }
 // ───────────────────────────────────────────────────────────────
