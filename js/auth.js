@@ -1,37 +1,47 @@
 function isAdminUser() { return !!(currentUser && currentUser.isAdmin === 1); }
 function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getTime() : Date.now(); return { id: m.id, type: m.type, teamA: m.team_a, teamB: m.team_b, scoreA: m.score_a, scoreB: m.score_b, winTeam: m.win_team, pts: { gain: m.pts_gain, loss: m.pts_loss }, date: ts, mood: m.mood || null }; }
 
+function _setBtnLoading(btn, loading) {
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.classList.toggle('is-loading', loading);
+}
 async function login() {
   const name = document.getElementById('loginName').value.trim();
   const pin = document.getElementById('loginPin').value.trim();
-  if (!name || !pin) return toast('กรุณากรอกข้อมูลให้ครบ', 'error');
-  toast('กำลังเข้าสู่ระบบ...', 'info');
+  if (!name || !pin) return toast('Please fill in all fields', 'error');
+  const btn = document.getElementById('loginBtnEl');
+  _setBtnLoading(btn, true);
   try {
     const row = await dbLogin(name, pin);
     await loadPlayers();
     currentUser = db.players.find(p => p.id === row.id) || normalizePlayer(row);
-    saveDeviceUser(currentUser);
+    const remember = document.getElementById('rememberDevice');
+    if (!remember || remember.checked) saveDeviceUser(currentUser);
     await loadMatches();
     afterLogin();
-  } catch(e) { toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error'); }
+  } catch(e) { toast('Incorrect username or PIN', 'error'); }
+  finally { _setBtnLoading(btn, false); }
 }
 async function register() {
   const name = document.getElementById('regName').value.trim();
   const pin = document.getElementById('regPin').value.trim();
-  if (!name || pin.length !== 4) return toast('กรุณากรอกชื่อและ PIN 4 หลัก', 'error');
-  if (!/^\d{4}$/.test(pin)) return toast('PIN ต้องเป็นตัวเลข 4 หลัก', 'error');
-  toast('กำลังสมัคร...', 'info');
+  if (!name || pin.length !== 4) return toast('Please enter a username and 4-digit PIN', 'error');
+  if (!/^\d{4}$/.test(pin)) return toast('PIN must be 4 digits', 'error');
+  const btn = document.getElementById('regBtnEl');
+  _setBtnLoading(btn, true);
   try {
     const row = await dbRegister(name, pin);
     await loadPlayers(); await loadMatches();
     currentUser = db.players.find(p => p.id === row.id) || normalizePlayer(row);
-    saveDeviceUser(currentUser);
-    toast('สมัครสมาชิกสำเร็จ! ยินดีต้อนรับ 🏸', 'success');
+    const remember = document.getElementById('rememberDeviceReg');
+    if (!remember || remember.checked) saveDeviceUser(currentUser);
+    toast('Account created! Welcome 🎉', 'success');
     afterLogin();
   } catch(e) {
-    const msg = (e.message||'').includes('name_taken') ? 'ชื่อนี้ถูกใช้แล้ว' : 'เกิดข้อผิดพลาด: ' + e.message;
+    const msg = (e.message||'').includes('name_taken') ? 'Username already taken' : 'Error: ' + e.message;
     toast(msg, 'error');
-  }
+  } finally { _setBtnLoading(btn, false); }
 }
 // ── QUICK LOGIN (Trusted Device) ──
 function saveDeviceUser(player) {
@@ -63,7 +73,7 @@ async function quickLogin() {
   try { saved = JSON.parse(localStorage.getItem('badminton_saved_user') || 'null'); } catch(e) {}
   if (!saved || !saved.token) { rejectQuickLogin(); return; }
   const btn = document.getElementById('qlYesBtn');
-  btn.disabled = true; btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
+  btn.disabled = true; btn.textContent = 'Logging in…';
   try {
     const row = await dbWhoAmI(saved.token); // validates the stored session token server-side
     await loadPlayers();
@@ -72,9 +82,9 @@ async function quickLogin() {
     await loadMatches();
     afterLogin();
   } catch(e) {
-    toast('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่', 'error');
+    toast('Session expired, please log in again', 'error');
     localStorage.removeItem('badminton_saved_user');
-    btn.disabled = false; btn.textContent = '✅ ใช่, เข้าเลย!';
+    btn.disabled = false; btn.textContent = 'Continue';
     rejectQuickLogin();
   }
 }

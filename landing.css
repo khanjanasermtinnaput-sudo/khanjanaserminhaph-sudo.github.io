@@ -1,0 +1,366 @@
+/* ==========================================================================
+   NET WORTH ONLINE — landing/login page redesign
+   Scoped to #loginSection, #splashScreen, #themeControls only.
+   Reuses existing theme variables (--neon, --neon2, --bg, --text, --muted,
+   --glass-bg, --glass-border, --radius, --shadow) so it stays correct across
+   the dark/light and glass/lite theme combinations. Loaded after
+   styles.css + redesign.css so these rules win on equal specificity.
+   ========================================================================== */
+
+/* ── Logo mark (replaces the 🏸 emoji with a clean gradient badge) ── */
+#loginSection .nwo-mark,
+#splashScreen .nwo-mark {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  background: linear-gradient(145deg, var(--neon) 0%, var(--neon2) 100%);
+  box-shadow: 0 8px 28px rgba(0, 245, 160, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  animation: nwoMarkFloat 4s ease-in-out infinite;
+  font-size: 0;
+}
+#loginSection .nwo-mark span,
+#splashScreen .nwo-mark span {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #04140e;
+  line-height: 1;
+}
+@keyframes nwoMarkFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* ── Wordmark / subtitle / tagline ── */
+#loginSection .nwo-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.9rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+  background: linear-gradient(120deg, var(--text) 30%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+#loginSection .nwo-subtitle {
+  font-family: 'DM Sans', sans-serif;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 500;
+  margin-bottom: 14px;
+}
+#loginSection .nwo-tagline {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+  opacity: 0.85;
+  margin: 0 0 26px;
+}
+
+/* ── Card: widen, soften, deepen ──
+   .login-wrap is `display:flex` (row) in the base stylesheet, which put our
+   new .nwo-footer beside the card instead of below it — force a column so
+   the card and footer stack, both centered. */
+#loginSection .login-wrap {
+  flex-direction: column;
+}
+#loginSection .login-box {
+  max-width: 460px;
+  padding: 44px 34px;
+  border-radius: 28px;
+}
+@media (max-width: 480px) {
+  #loginSection .login-box { padding: 34px 22px; }
+  #loginSection .nwo-title { font-size: 1.5rem; }
+  #loginSection .nwo-subtitle { font-size: 0.8rem; }
+}
+
+/* ── Remember-this-device checkbox ── */
+#loginSection .nwo-remember {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 4px 0 18px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-align: left;
+}
+#loginSection .nwo-remember input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 5px;
+  border: 1px solid var(--glass-border);
+  background: var(--inp-bg);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: all 0.2s ease;
+}
+#loginSection .nwo-remember input[type="checkbox"]::after {
+  content: '';
+  width: 5px;
+  height: 9px;
+  border: solid #04140e;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.15s ease;
+}
+#loginSection .nwo-remember input[type="checkbox"]:checked {
+  background: linear-gradient(145deg, var(--neon) 0%, var(--neon2) 100%);
+  border-color: transparent;
+}
+#loginSection .nwo-remember input[type="checkbox"]:checked::after {
+  transform: rotate(45deg) scale(1);
+}
+
+/* ── Submit button: hover / press / loading / disabled ── */
+#loginSection .nwo-submit {
+  position: relative;
+  transition: transform 0.15s cubic-bezier(.25,.46,.45,.94), box-shadow 0.25s ease, filter 0.25s ease;
+}
+#loginSection .nwo-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 245, 160, 0.35);
+}
+#loginSection .nwo-submit:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+#loginSection .nwo-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  filter: saturate(0.6);
+}
+#loginSection .nwo-btn-spinner {
+  display: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  border-top-color: #04140e;
+  animation: nwoSpin 0.7s linear infinite;
+}
+#loginSection .nwo-submit.is-loading .nwo-btn-label { opacity: 0.55; }
+#loginSection .nwo-submit.is-loading .nwo-btn-spinner { display: inline-block; }
+@keyframes nwoSpin { to { transform: rotate(360deg); } }
+
+/* ── Entrance animation: staggered fade + slide + spring ──
+   Scoped only to elements that are always in the render tree from first
+   paint. .tab-row / #loginForm / #registerForm / #quickLoginCard are all
+   toggled via the `.hidden` class after load (tab switch, quick-login
+   reject) — animating them here would replay a ~0.3-0.9s fade-from-blank
+   every time a user switches tabs, which reads as a broken/empty form. */
+#loginSection .nwo-mark { animation: nwoMarkFloat 4s ease-in-out infinite, nwoIntro 0.6s cubic-bezier(.34,1.56,.64,1) both; }
+#loginSection .nwo-title { animation: nwoIntro 0.6s cubic-bezier(.34,1.56,.64,1) 0.08s both; }
+#loginSection .nwo-subtitle { animation: nwoIntro 0.6s cubic-bezier(.34,1.56,.64,1) 0.14s both; }
+#loginSection .nwo-tagline { animation: nwoIntro 0.6s cubic-bezier(.34,1.56,.64,1) 0.2s both; }
+@keyframes nwoIntro {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Top-right controls: Language / Settings / Dark Mode icon cluster ──
+   #themeControls carries legacy `.theme-controls` !important rules (pill
+   background + `transform: translateX(-50%)` for its old bottom-centered
+   position, incl. a [data-style="lite"] variant). ID-anchored selectors here
+   outrank those on specificity so the cluster stays a plain top-right row
+   of icon buttons in both glass and lite styles. */
+#themeControls.nwo-controls {
+  position: fixed !important;
+  top: 18px !important;
+  right: 18px !important;
+  bottom: auto !important;
+  left: auto !important;
+  transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 250;
+}
+.nwo-icon-btn {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px) saturate(1.6);
+  -webkit-backdrop-filter: blur(14px) saturate(1.6);
+  box-shadow: var(--shadow);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(.25,.46,.45,.94), border-color 0.2s ease, background 0.2s ease;
+  padding: 0;
+}
+.nwo-icon-btn:hover { transform: translateY(-2px); border-color: var(--neon); }
+.nwo-icon-btn:active { transform: translateY(0) scale(0.94); }
+
+.nwo-settings-wrap { position: relative; }
+.nwo-settings-panel {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  min-width: 176px;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(18px) saturate(1.8);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  animation: nwoIntro 0.18s ease both;
+}
+.nwo-settings-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+.nwo-settings-panel .style-toggle { width: 100%; }
+
+/* Dark-mode toggle restyled as a single icon button (keeps #dayNightToggle / #dnEmoji ids intact) */
+.daynight-switch.nwo-icon-btn {
+  position: relative;
+  overflow: hidden;
+}
+.daynight-switch.nwo-icon-btn input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.daynight-switch .daynight-emoji { pointer-events: none; }
+
+/* ── Focus-visible rings (accessibility) ── */
+#loginSection .inp:focus-visible,
+#loginSection .btn:focus-visible,
+#loginSection .tab:focus-visible,
+#loginSection .nwo-remember input:focus-visible,
+.nwo-icon-btn:focus-visible,
+.nwo-settings-panel .style-opt:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 2px;
+}
+
+/* ── Background decor: blur "orb" circles ── */
+.login-wrap { position: relative; overflow: hidden; }
+.nwo-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  animation: nwoOrbDrift 16s ease-in-out infinite alternate;
+}
+.nwo-orb-1 { width: 280px; height: 280px; top: -60px; left: -60px; background: radial-gradient(circle, var(--neon) 0%, transparent 70%); }
+.nwo-orb-2 { width: 320px; height: 320px; bottom: -100px; right: -80px; background: radial-gradient(circle, var(--neon2) 0%, transparent 70%); animation-duration: 20s; animation-delay: -4s; }
+.nwo-orb-3 { width: 200px; height: 200px; top: 40%; right: 8%; background: radial-gradient(circle, var(--gold) 0%, transparent 70%); opacity: 0.18; animation-duration: 22s; animation-delay: -9s; }
+@keyframes nwoOrbDrift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(24px, -18px) scale(1.08); }
+}
+
+/* ── Background decor: floating particles ── */
+.nwo-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+.nwo-particle {
+  position: absolute;
+  bottom: -10px;
+  width: var(--nwo-size, 3px);
+  height: var(--nwo-size, 3px);
+  border-radius: 50%;
+  background: var(--neon);
+  opacity: 0;
+  animation: nwoParticleRise var(--nwo-dur, 18s) linear infinite;
+  animation-delay: var(--nwo-delay, 0s);
+}
+@keyframes nwoParticleRise {
+  0% { transform: translate(0, 0); opacity: 0; }
+  10% { opacity: 0.5; }
+  90% { opacity: 0.3; }
+  100% { transform: translate(var(--nwo-drift, 0px), -110vh); opacity: 0; }
+}
+
+/* Everything above must stay decorative-only and content sits above it */
+#loginSection .login-box,
+.nwo-footer { position: relative; z-index: 2; }
+
+/* ── Footer: version + copyright ── */
+.nwo-footer {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.nwo-footer-sep { opacity: 0.5; }
+
+/* ── Reduced motion: kill decorative animation, keep instant state ── */
+@media (prefers-reduced-motion: reduce) {
+  #loginSection .nwo-mark,
+  #loginSection .nwo-title,
+  #loginSection .nwo-subtitle,
+  #loginSection .nwo-tagline,
+  .nwo-orb,
+  .nwo-particle,
+  .login-box {
+    animation: none !important;
+  }
+  .nwo-particles { display: none; }
+}
+
+/* ── Lite style: flat, no glow/blur/particles (matches existing [data-style="lite"] reset) ── */
+[data-style="lite"] .nwo-orb,
+[data-style="lite"] .nwo-particles {
+  display: none;
+}
+[data-style="lite"] #loginSection .nwo-mark {
+  box-shadow: none;
+  animation: none;
+}
+[data-style="lite"] #loginSection .nwo-title {
+  background: none;
+  -webkit-text-fill-color: var(--text);
+  color: var(--text);
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  #themeControls.nwo-controls { top: 12px !important; right: 12px !important; }
+  .nwo-icon-btn { width: 34px; height: 34px; font-size: 0.9rem; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  #loginSection .login-box { max-width: 420px; }
+}
