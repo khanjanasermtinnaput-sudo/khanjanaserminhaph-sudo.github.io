@@ -96,11 +96,11 @@ async function dbGetHOFTournaments() {
 // Replace dbCreateTournament's raw POST and the racy claimTournamentSlot ->
 // _patchTournamentConfig read-modify-write with SECURITY DEFINER RPCs
 // (session_uid()-scoped, row-locked). See supabase_tournament_registration.sql.
-async function dbTournamentCreate(name, tier, matchType, format, groups, maxParticipants, registrationDeadline) {
+async function dbTournamentCreate(name, tier, matchType, groups, maxParticipants, registrationDeadline) {
   return supaFetch('rpc/rpc_tournament_create', {
     method: 'POST',
     body: JSON.stringify({
-      p_name: name, p_tier: tier, p_match_type: matchType, p_format: format,
+      p_name: name, p_tier: tier, p_match_type: matchType,
       p_groups: groups, p_max_participants: maxParticipants ?? null, p_registration_deadline: registrationDeadline ?? null
     })
   });
@@ -1349,7 +1349,7 @@ async function createTournament() {
 
   try {
     toast('กำลังสร้าง...', 'info');
-    const created = await dbTournamentCreate(name, effectiveTier, matchType, 'round_robin_groups', groups);
+    const created = await dbTournamentCreate(name, effectiveTier, matchType, groups);
     // Custom tier has no row in tournament_reward_tiers — persist the chosen champion
     // coin amount into reward_overrides so rpc_tournament_grant_rewards picks it up
     // (runner-up/third/participant pct fall back to the RPC's hardcoded defaults).
