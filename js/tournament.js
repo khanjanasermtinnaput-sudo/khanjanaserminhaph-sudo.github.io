@@ -92,9 +92,56 @@ async function dbCompleteTournament(id, hofMeta) {
 async function dbGetHOFTournaments() {
   try { return await supaFetch('tournaments?status=eq.completed&order=created_at.desc&limit=50'); } catch(e) { return []; }
 }
-async function dbCreateTournament(name, tier, groups) {
-  const rows = await supaFetch('tournaments', { method: 'POST', body: JSON.stringify({ name, tier, groups: JSON.stringify(groups) }) });
-  return rows[0];
+// ── [Phase 3] Server-authoritative tournament create/register RPCs ──
+// Replace dbCreateTournament's raw POST and the racy claimTournamentSlot ->
+// _patchTournamentConfig read-modify-write with SECURITY DEFINER RPCs
+// (session_uid()-scoped, row-locked). See supabase_tournament_registration.sql.
+async function dbTournamentCreate(name, tier, matchType, format, groups, maxParticipants, registrationDeadline) {
+  return supaFetch('rpc/rpc_tournament_create', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_name: name, p_tier: tier, p_match_type: matchType, p_format: format,
+      p_groups: groups, p_max_participants: maxParticipants ?? null, p_registration_deadline: registrationDeadline ?? null
+    })
+  });
+}
+async function dbTournamentRegister(tournamentId, group, slotIdx, subIdx, partnerId) {
+  return supaFetch('rpc/rpc_tournament_register', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_tournament_id: tournamentId, p_group: group ?? null, p_slot_idx: slotIdx ?? null,
+      p_sub_idx: subIdx ?? null, p_partner_id: partnerId ?? null
+    })
+  });
+}
+async function dbTournamentUnregister(tournamentId) {
+  return supaFetch('rpc/rpc_tournament_unregister', { method: 'POST', body: JSON.stringify({ p_tournament_id: tournamentId }) });
+}
+// Thai-friendly text for the registration RPC error codes (economyErrCode pulls
+// the code out of the thrown PostgREST error body, same helper economy.js uses).
+const _TOUR_REG_ERR_TEXT = {
+  not_authenticated: 'กรุณาเข้าสู่ระบบก่อน',
+  not_authorized: 'เฉพาะแอดมินเท่านั้น',
+  tournament_not_found: 'ไม่พบ Tournament',
+  tournament_not_active: 'Tournament นี้ปิดไปแล้ว',
+  registration_not_configured: 'ยังไม่เปิดรับสมัคร',
+  registration_closed: 'ปิดรับสมัครแล้ว',
+  deadline_passed: 'หมดเขตรับสมัครแล้ว',
+  tournament_full: 'ผู้เข้าแข่งขันเต็มแล้ว',
+  already_registered: 'คุณสมัครไปแล้ว',
+  not_registered: 'คุณยังไม่ได้สมัคร',
+  slot_taken: 'ช่องนี้มีคนสมัครแล้ว',
+  invalid_partner: 'เลือกคู่หูไม่ถูกต้อง (ต้องไม่ใช่ตัวเอง และยังไม่มีคู่)',
+  invalid_slot: 'ช่องสมัครไม่ถูกต้อง',
+  invalid_group: 'สายไม่ถูกต้อง',
+  invalid_format: 'รูปแบบทัวร์นาเมนต์ไม่ถูกต้อง',
+  invalid_match_type: 'ประเภทการแข่งขันไม่ถูกต้อง',
+  invalid_name: 'กรุณากรอกชื่อทัวร์นาเมนต์',
+  invalid_max_participants: 'จำนวนผู้เข้าแข่งขันสูงสุดต้องอยู่ระหว่าง 2-32',
+};
+function _tourRegErrText(e) {
+  const code = economyErrCode(e);
+  return _TOUR_REG_ERR_TEXT[code] || code || 'ไม่สำเร็จ';
 }
 async function dbGetTournamentMatches(tournamentId) {
   try { return await supaFetch(`tournament_matches?tournament_id=eq.${tournamentId}&order=played_at.asc`); } catch(e) { return []; }
@@ -1844,7 +1891,7 @@ async function createTournament() {
 
   try {
     toast('กำลังสร้าง...', 'info');
-    const created = await dbCreateTournament(name, effectiveTier, groups);
+    const created = await dbTournamentCreate(name, effectiveTier, matchType, 'round_robin_groups', groups);
     // Custom tier has no entry in TOUR_COIN_REWARDS — persist the chosen reward so
     // declareChampion pays it out (reward manager reads this same store).
     if (isCustom && created?.id) {
@@ -1852,7 +1899,7 @@ async function createTournament() {
     }
     toast('สร้าง Tournament แล้ว! 🏆', 'success');
     renderTournamentSection();
-  } catch(e) { toast('สร้างไม่ได้: ' + e.message, 'error'); }
+  } catch(e) { toast('สร้างไม่ได้: ' + _tourRegErrText(e), 'error'); }
 }
 
 // ── Player self-registration ──────────────────────────────────────────────────
@@ -1900,26 +1947,20 @@ async function claimTournamentSlot(tournamentId, group, slotIdx, subIdx) {
     const targetVal = is2v2 ? slots[group]?.[slotIdx]?.[subIdx] : slots[group]?.[slotIdx];
 
     if (targetVal === currentUser.id) {
-      // Click own slot → unregister
-      if (is2v2) slots[group][slotIdx][subIdx] = null;
-      else slots[group][slotIdx] = null;
-      cfg.slots = slots;
-      await _patchTournamentConfig(tournamentId, cfg);
+      // Click own slot → unregister (server finds + clears it, atomically)
+      await dbTournamentUnregister(tournamentId);
       toast('ถอนสมัครแล้ว', 'success');
     } else if (targetVal !== null && targetVal !== undefined) {
       return toast('ช่องนี้มีคนสมัครแล้ว', 'error');
     } else if (mySlot) {
       return toast('คุณสมัครไปแล้ว กดที่ช่องของตัวเองเพื่อถอนสมัคร', 'error');
     } else {
-      if (is2v2) slots[group][slotIdx][subIdx] = currentUser.id;
-      else slots[group][slotIdx] = currentUser.id;
-      cfg.slots = slots;
-      await _patchTournamentConfig(tournamentId, cfg);
+      await dbTournamentRegister(tournamentId, group, slotIdx, is2v2 ? subIdx : null, null);
       toast('สมัครแล้ว ✅', 'success');
     }
     renderTournamentTab();
     if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
-  } catch(e) { toast('ไม่สำเร็จ: ' + e.message, 'error'); }
+  } catch(e) { toast('ไม่สำเร็จ: ' + _tourRegErrText(e), 'error'); }
 }
 
 function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
