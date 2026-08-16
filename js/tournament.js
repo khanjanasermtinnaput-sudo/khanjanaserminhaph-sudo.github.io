@@ -146,14 +146,24 @@ function _tourRegErrText(e) {
 async function dbGetTournamentMatches(tournamentId) {
   try { return await supaFetch(`tournament_matches?tournament_id=eq.${tournamentId}&order=played_at.asc`); } catch(e) { return []; }
 }
+// ── [Phase 7] Routed through rpc_tournament_submit_group_result /
+// rpc_tournament_delete instead of a raw client PostgREST write — same
+// names/signatures/no-meaningful-return-value contract as before, so every
+// existing call site (_refFinish, confirmCancelTournament, the HoF delete
+// flow) is unchanged. See supabase_tournament_lockdown.sql. ──
 async function dbAddTournamentMatch(tournamentId, groupLetter, playerA, playerB, scoreA, scoreB, winnerId) {
-  await supaFetch('tournament_matches', { method: 'POST', body: JSON.stringify({ tournament_id: tournamentId, group_letter: groupLetter, player_a: playerA, player_b: playerB, score_a: scoreA, score_b: scoreB, winner_id: winnerId }), prefer: 'return=minimal' });
+  await supaFetch('rpc/rpc_tournament_submit_group_result', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_tournament_id: tournamentId, p_group_letter: groupLetter, p_player_a: playerA, p_player_b: playerB,
+      p_score_a: scoreA, p_score_b: scoreB, p_winner_id: winnerId
+    })
+  });
 }
 
 // ── [NEW] Delete tournament + all its matches ──
 async function dbDeleteTournament(tournamentId) {
-  await supaFetch(`tournament_matches?tournament_id=eq.${tournamentId}`, { method: 'DELETE', prefer: 'return=minimal' });
-  await supaFetch(`tournaments?id=eq.${tournamentId}`, { method: 'DELETE', prefer: 'return=minimal' });
+  await supaFetch('rpc/rpc_tournament_delete', { method: 'POST', body: JSON.stringify({ p_tournament_id: tournamentId }) });
 }
 
 // ── Fetch a single tournament by ID ──
