@@ -566,504 +566,6 @@ async function awardTournamentAchievement(playerIds, achDef) {
   }
 }
 
-// ── Show "ประกาศแชมป์" confirmation modal (sync show → async populate) ──
-// Admin-only: this awards coins/ELO to OTHER players, which the players RLS
-// lockdown now enforces server-side too — gate here so it fails fast/visibly
-// instead of silently no-op'ing on the DB writes.
-function confirmDeclareChampion(tournamentId) {
-  if (!isAdminUser()) return;
-  document.getElementById('tChampModal')?.remove();
-
-  // Show modal immediately (synchronous) so user gets instant feedback
-  const modal = document.createElement('div');
-  modal.id = 'tChampModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.8);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)';
-  modal.innerHTML = `
-    <div id="tChampInner" style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:24px 20px;max-width:340px;width:90%;text-align:center;box-shadow:0 0 50px rgba(255,215,0,.12)">
-      <div style="font-size:1.5rem;margin-bottom:8px">⏳</div>
-      <div style="font-size:0.85rem;color:var(--muted)">กำลังโหลดข้อมูล...</div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-
-  // Async: load data and populate modal content
-  _populateChampModal(tournamentId, modal);
-}
-
-async function _populateChampModal(tournamentId, modal) {
-  try {
-    const stored = await _resolveTourData(tournamentId);
-    if (!stored) {
-      document.getElementById('tChampModal')?.remove();
-      alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')');
-      return;
-    }
-    const { groups, matchType, tier: tierName } = stored;
-    const realGroups = getTournamentGroups(groups);
-
-    let gfWinnerId = null;
-    try {
-      const tms = await dbGetTournamentMatches(tournamentId);
-      const gfMatch = tms.find(m => m.group_letter === 'GF');
-      if (gfMatch) gfWinnerId = gfMatch.winner_id;
-    } catch(e) {}
-
-    let winnerOpts = '';
-    if (matchType === '2v2') {
-      for (const grp of realGroups) {
-        if (!grp.teams) continue;
-        for (const team of grp.teams) {
-          const label = getTeamDisplayName(team, db.players);
-          winnerOpts += `<option value="${team.playerIds[0]}">${label} (Group ${grp.letter})</option>`;
-        }
-      }
-    } else {
-      for (const grp of realGroups) {
-        for (const pid of (grp.playerIds || [])) {
-          const pl = db.players.find(x => x.id === pid);
-          if (pl) winnerOpts += `<option value="${pl.id}">${esc(pl.name)} (Group ${grp.letter})</option>`;
-        }
-      }
-    }
-    if (!winnerOpts) winnerOpts = '<option value="">— ไม่มีผู้เล่น —</option>';
-
-    const coins = TOUR_COIN_REWARDS[tierName] || 100;
-    const tierColor = tierName === 'Super 1000' ? '#ffd700' : tierName === 'Super 500' ? '#c8c8c8' : '#cd7f32';
-    const gfBadge = gfWinnerId
-      ? `<div style="font-size:0.72rem;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:5px 10px;margin-bottom:10px;color:var(--gold)">🏆 ตรวจพบผล Grand Final — เลือกอัตโนมัติแล้ว</div>`
-      : '';
-
-    const inner = document.getElementById('tChampInner');
-    if (!inner) return;
-    inner.innerHTML = `
-      <div style="font-size:2rem;margin-bottom:6px">👑</div>
-      <div style="font-size:1rem;font-weight:700;margin-bottom:4px">ประกาศแชมป์</div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">
-        <span style="color:${tierColor};font-weight:700">${tierName}</span> · รางวัล
-        <span style="color:#ffd700;font-weight:700">+${coins} 🪙</span> ต่อคน
-      </div>
-      ${gfBadge}
-      <div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px;text-align:left">เลือกผู้ชนะ:</div>
-      <select class="inp" id="tChampWinnerSel" style="margin-bottom:14px;font-size:0.82rem">${winnerOpts}</select>
-      <div style="display:flex;gap:10px">
-        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.82rem"
-          onclick="document.getElementById('tChampModal').remove()">ปิด</button>
-        <button class="btn" style="flex:1;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-size:0.82rem"
-          onclick="executeDeclareChampion(${tournamentId})">👑 ยืนยัน</button>
-      </div>`;
-
-    if (gfWinnerId) {
-      const sel = document.getElementById('tChampWinnerSel');
-      if (sel) sel.value = String(gfWinnerId);
-    }
-  } catch(e) {
-    document.getElementById('tChampModal')?.remove();
-    alert('Error: ' + e.message);
-  }
-}
-
-// ── Execute champion declaration ──
-async function executeDeclareChampion(tournamentId) {
-  if (!isAdminUser()) return;
-  const sel = document.getElementById('tChampWinnerSel');
-  const winnerAnchorId = sel ? parseInt(sel.value) : NaN;
-  document.getElementById('tChampModal')?.remove();
-  if (!winnerAnchorId || isNaN(winnerAnchorId)) { alert('กรุณาเลือกผู้ชนะ'); return; }
-
-  let stored = _tourStore[tournamentId];
-  if (!stored) {
-    try { stored = await _resolveTourData(tournamentId); } catch(e) {}
-  }
-  if (!stored) { alert('ไม่พบข้อมูล Tournament (id=' + tournamentId + ')'); return; }
-  if (_declaringChampion) return toast('กำลังดำเนินการอยู่ รอสักครู่...', 'error');
-  _declaringChampion = true;
-  const { groups, matchType, tier: tierName } = stored;
-
-  let winnerPlayerIds = [];
-  if (matchType === '2v2') {
-    const team = getTeamByAnchor(groups, winnerAnchorId);
-    winnerPlayerIds = team?.playerIds || [winnerAnchorId];
-  } else {
-    winnerPlayerIds = [winnerAnchorId];
-  }
-
-  const savedRewards = getTournamentRewards(tournamentId) || {};
-  const coins = (savedRewards.baseCoins != null && savedRewards.baseCoins !== '')
-    ? Number(savedRewards.baseCoins)
-    : (TOUR_COIN_REWARDS[tierName] || 100);
-  const bonusCoins     = savedRewards.bonusCoins || 0;
-  const totalCoins     = coins + bonusCoins;
-  const eloPts         = savedRewards.eloPts != null ? Number(savedRewards.eloPts) : Number(savedRewards.bonusPts || 0);
-  const p1Pct          = savedRewards.p1Pct != null ? Number(savedRewards.p1Pct) : 100;
-  const p2Pct          = savedRewards.p2Pct != null ? Number(savedRewards.p2Pct) : 60;
-  const p3Pct          = savedRewards.p3Pct != null ? Number(savedRewards.p3Pct) : 30;
-  const participantPct = savedRewards.participantPct != null ? Number(savedRewards.participantPct) : 20;
-  const elo1 = eloPts > 0 ? Math.round(eloPts * p1Pct / 100) : 0;
-  const elo2 = eloPts > 0 ? Math.round(eloPts * p2Pct / 100) : 0;
-  const elo3 = eloPts > 0 ? Math.round(eloPts * p3Pct / 100) : 0;
-  const eloP = eloPts > 0 ? Math.round(eloPts * participantPct / 100) : 0;
-
-  toast('กำลังมอบรางวัล...', 'info');
-
-  // 1. Coins to winners (each step isolated — one failure won't abort the rest)
-  for (const pid of winnerPlayerIds) {
-    try { await dbAddCoins(pid, totalCoins); } catch(e) {}
-    try {
-      const pl = db.players.find(x => x.id === pid);
-      if (pl) await dbSendMail(pid, 'coins', String(totalCoins),
-        `🏆 ${tierName} Champion! +${bonusCoins > 0 ? coins + '+Bonus' + bonusCoins : totalCoins} 🪙`);
-    } catch(e) {}
-  }
-
-  // 2. ELO pts to winner (1st place)
-  if (elo1 > 0) {
-    for (const pid of winnerPlayerIds) {
-      try {
-        const pl = db.players.find(x => x.id === pid);
-        if (pl) { const np = (pl.pts||0)+elo1; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
-      } catch(e) {}
-    }
-  }
-
-  // 3. Achievements
-  const achKey = tierName === 'Super 1000' ? 'super1000' : tierName === 'Super 500' ? 'super500' : 'regular';
-  try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS[achKey]); } catch(e) {}
-  if (matchType === '2v2') {
-    try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.doubles); } catch(e) {}
-  }
-
-  // 4. GF achievement + runner-up reward (single fetch)
-  try {
-    const tms = await dbGetTournamentMatches(tournamentId);
-    if (tms.some(m => m.group_letter === 'GF')) {
-      try { await awardTournamentAchievement(winnerPlayerIds, TOUR_ACH_DEFS.grandfinal); } catch(e) {}
-    }
-    const gfMatch = tms.find(m => m.group_letter === 'GF');
-    if (gfMatch) {
-      const loserAnchor = gfMatch.winner_id === gfMatch.player_a ? gfMatch.player_b : gfMatch.player_a;
-      const loserIds = matchType === '2v2'
-        ? (getTeamByAnchor(groups, loserAnchor)?.playerIds || [loserAnchor])
-        : [loserAnchor];
-      const runnerCoins = Math.max(1, Math.floor(totalCoins / 2));
-      for (const pid of loserIds) {
-        try { await dbAddCoins(pid, runnerCoins); } catch(e) {}
-        try {
-          const pl = db.players.find(x => x.id === pid);
-          if (pl) await dbSendMail(pid, 'coins', String(runnerCoins),
-            `🥈 รองแชมป์ ${tierName}! +${runnerCoins} 🪙${elo2 > 0 ? ` +${elo2} ELO` : ''}`);
-        } catch(e) {}
-      }
-      // Runner-up ELO (2nd place)
-      if (elo2 > 0) {
-        for (const pid of loserIds) {
-          try {
-            const pl = db.players.find(x => x.id === pid);
-            if (pl) { const np = (pl.pts||0)+elo2; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
-          } catch(e) {}
-        }
-      }
-    }
-  } catch(e) {}
-
-  // 5. Super 1000 title counter
-  if (tierName === 'Super 1000') {
-    for (const pid of winnerPlayerIds) { try { await incrementS1000Titles(pid); } catch(e) {} }
-  }
-
-  const winnerNames = winnerPlayerIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
-
-  // 6. Mark tournament as completed (keep for Hall of Fame) instead of deleting
-  let thirdPlaceName = '';
-  try {
-    let runnerUpName = '';
-    let runnerUpIds = [];
-    try {
-      const _tms2 = await dbGetTournamentMatches(tournamentId);
-      const _gf2 = _tms2.find(m => m.group_letter === 'GF');
-      if (_gf2) {
-        const _ruAnchor = _gf2.winner_id === _gf2.player_a ? _gf2.player_b : _gf2.player_a;
-        runnerUpIds = matchType === '2v2' ? (getTeamByAnchor(groups, _ruAnchor)?.playerIds || [_ruAnchor]) : [_ruAnchor];
-        runnerUpName = runnerUpIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
-      }
-      // คำนวณอันดับ 3 จากคะแนนรอบกลุ่มสูงสุด (ยกเว้นแชมป์และรองแชมป์)
-      const excludeIds = new Set([...winnerPlayerIds, ...runnerUpIds]);
-      const allStandings = [];
-      for (const grp of getTournamentGroups(groups)) {
-        const standings = calculateGroupStandings(grp, _tms2, matchType);
-        for (const entry of standings) {
-          if (!excludeIds.has(entry.id)) allStandings.push(entry);
-        }
-      }
-      allStandings.sort((a, b) => b.points !== a.points ? b.points - a.points : b.wins - a.wins);
-      if (allStandings.length > 0) {
-        const thirdEntry = allStandings[0];
-        const thirdIds = matchType === '2v2' ? (getTeamByAnchor(groups, thirdEntry.id)?.playerIds || [thirdEntry.id]) : [thirdEntry.id];
-        thirdPlaceName = thirdIds.map(pid => db.players.find(x=>x.id===pid)?.name||'?').join(' & ');
-        const thirdCoins = Math.max(1, Math.floor(totalCoins / 4));
-        for (const pid of thirdIds) {
-          try { await dbAddCoins(pid, thirdCoins); } catch(e) {}
-          try {
-            const pl = db.players.find(x => x.id === pid);
-            if (pl) await dbSendMail(pid, 'coins', String(thirdCoins),
-              `🥉 อันดับ 3 ${tierName}! +${thirdCoins} 🪙${elo3 > 0 ? ` +${elo3} ELO` : ''}`);
-          } catch(e) {}
-        }
-        // 3rd place ELO
-        if (elo3 > 0) {
-          for (const pid of thirdIds) {
-            try {
-              const pl = db.players.find(x => x.id === pid);
-              if (pl) { const np = (pl.pts||0)+elo3; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
-            } catch(e) {}
-          }
-        }
-        // Other participants ELO (everyone who registered but not top 3)
-        if (eloP > 0) {
-          const allPIds = getAllParticipantIds(groups, matchType);
-          const topSet = new Set([...winnerPlayerIds, ...runnerUpIds, ...thirdIds]);
-          const otherIds = allPIds.filter(id => !topSet.has(id));
-          for (const pid of otherIds) {
-            try {
-              const pl = db.players.find(x => x.id === pid);
-              if (pl) { const np = (pl.pts||0)+eloP; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
-            } catch(e) {}
-          }
-        }
-      } else if (eloP > 0) {
-        // No 3rd place found — still give other participants ELO
-        const allPIds = getAllParticipantIds(groups, matchType);
-        const topSet = new Set([...winnerPlayerIds, ...runnerUpIds]);
-        const otherIds = allPIds.filter(id => !topSet.has(id));
-        for (const pid of otherIds) {
-          try {
-            const pl = db.players.find(x => x.id === pid);
-            if (pl) { const np = (pl.pts||0)+eloP; await dbUpdatePlayer(pid,{pts:np}); pl.pts=np; }
-          } catch(e) {}
-        }
-      }
-    } catch(e) {}
-    await dbCompleteTournament(tournamentId, {
-      champion_ids: winnerPlayerIds,
-      champion_name: winnerNames,
-      runner_up_name: runnerUpName,
-      third_place_name: thirdPlaceName,
-      tier: tierName,
-      match_type: matchType,
-      ended_at: new Date().toISOString(),
-    });
-    // Tournament EXP — server re-derives tier + champion_ids from the just-
-    // completed tournament row (never trusts client amounts). Result shape
-    // is {player_id, result} per champion — distinct from rpc_award_match_exp's
-    // {player_id, source, result}, so handled directly rather than via
-    // handleMatchExpResult (js/levels.js).
-    if (typeof dbAwardTournamentExp === 'function') {
-      try {
-        const expRes = await dbAwardTournamentExp(tournamentId);
-        if (expRes && expRes.awarded && Array.isArray(expRes.results)) {
-          for (const r of expRes.results) {
-            if (r.result && r.result.leveled && typeof queueLevelUp === 'function') {
-              const pl = db.players.find(x => x.id === r.player_id);
-              queueLevelUp(pl ? pl.name : '', r.result, expRes.amount || 0);
-            }
-          }
-        }
-      } catch(e) {}
-    }
-  } catch(e) {
-    try { await dbDeleteTournament(tournamentId); } catch(e2) {}
-  }
-  delete _tourStore[tournamentId];
-
-  // 7. Reload + refresh UI
-  try { await loadPlayers(); } catch(e) {}
-  // trigger achievement popup for winners (must run after loadPlayers so customAch is fresh)
-  if (typeof checkNewAchievements === 'function') {
-    for (const pid of winnerPlayerIds) { try { checkNewAchievements(pid); } catch(e) {} }
-  }
-  try { if (typeof renderLeaderboard === 'function') renderLeaderboard(); } catch(e) {}
-  if (document.getElementById('tournamentTabContent')) renderTournamentTab();
-
-  const ptsMsg = elo1 > 0 ? ` +${elo1} ELO` : '';
-  // 🎬 Cinematic champion announcement (reuse Solar Emperor ascension effect)
-  if (typeof showSolarEmperorAscension === 'function') {
-    try {
-      showSolarEmperorAscension(winnerNames, false, {
-        title: `${tierName} CHAMPION`,
-        sub: `🏆 แชมป์ ${stored.name || tierName}${elo1 > 0 ? ` · +${elo1} ELO` : ''} · +${totalCoins} 🪙`,
-        crown: '🏆'
-      });
-    } catch(e) {}
-  }
-  toast(`👑 ${winnerNames} ชนะ ${tierName}! +${totalCoins} 🪙${ptsMsg}`, 'success');
-  if (thirdPlaceName) setTimeout(() => toast(`🥉 อันดับ 3: ${thirdPlaceName}`, 'info'), 1500);
-
-  _declaringChampion = false;
-  renderTournamentSection();
-}
-
-// ── Helper: collect all participant player IDs from groups ──
-function getAllParticipantIds(groups, matchType) {
-  const ids = new Set();
-  for (const grp of getTournamentGroups(groups)) {
-    if (matchType === '2v2' && grp.teams) {
-      for (const team of grp.teams) {
-        for (const pid of (team.playerIds || [])) ids.add(pid);
-      }
-    } else {
-      for (const pid of (grp.playerIds || [])) ids.add(pid);
-    }
-  }
-  return [...ids];
-}
-
-// ════════════════════════════════════════════════════════════
-// TOURNAMENT REWARD MANAGER
-// ════════════════════════════════════════════════════════════
-
-function getTournamentRewards(tournamentId) {
-  try {
-    const raw = localStorage.getItem(`t_rewards_${tournamentId}`);
-    return raw ? JSON.parse(raw) : null;
-  } catch(e) { return null; }
-}
-
-function saveTournamentRewards(tournamentId, rewards) {
-  localStorage.setItem(`t_rewards_${tournamentId}`, JSON.stringify(rewards));
-}
-
-function openRewardManager(tournamentId, tierName) {
-  document.getElementById('tRewardModal')?.remove();
-  const saved = getTournamentRewards(tournamentId) || {};
-  const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
-  const baseCoins      = (saved.baseCoins != null && saved.baseCoins !== '') ? saved.baseCoins : tierCoins;
-  const bonusCoins     = saved.bonusCoins || 0;
-  const eloPts         = saved.eloPts != null ? saved.eloPts : (saved.bonusPts || 0);
-  const p1Pct          = saved.p1Pct != null ? saved.p1Pct : 100;
-  const p2Pct          = saved.p2Pct != null ? saved.p2Pct : 60;
-  const p3Pct          = saved.p3Pct != null ? saved.p3Pct : 30;
-  const participantPct = saved.participantPct != null ? saved.participantPct : 20;
-  const hasCup         = saved.hasCup     || false;
-  const hasMvp         = saved.hasMvp     || false;
-  const customNote     = saved.customNote || '';
-
-  const modal = document.createElement('div');
-  modal.id = 'tRewardModal';
-  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)';
-  modal.innerHTML = `
-    <div style="background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:18px;padding:22px 18px;max-width:380px;width:92%;box-shadow:0 0 60px rgba(255,215,0,.1);max-height:90vh;overflow-y:auto">
-      <div style="font-size:1rem;font-weight:700;margin-bottom:4px">🎁 จัดการรางวัล</div>
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:14px">Tournament · <span style="color:var(--gold)">${tierName}</span> · ค่าเริ่มต้น <span style="color:var(--gold);font-weight:700">${tierCoins} 🪙</span></div>
-
-      <div class="reward-mgr-row">
-        <div class="reward-mgr-label">🏆 เงินรางวัลแชมป์</div>
-        <input class="inp" type="number" id="rm_baseCoins" value="${baseCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
-        <span style="font-size:0.75rem;color:var(--muted)">🪙</span>
-      </div>
-      <div class="reward-mgr-row">
-        <div class="reward-mgr-label">💰 Bonus เหรียญ</div>
-        <input class="inp" type="number" id="rm_bonusCoins" value="${bonusCoins}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
-        <span style="font-size:0.75rem;color:var(--muted)">🪙</span>
-      </div>
-
-      <div style="border-top:1px solid rgba(255,255,255,.08);margin:10px 0;padding-top:10px">
-        <div style="font-size:0.74rem;font-weight:600;color:#a78bfa;margin-bottom:8px;letter-spacing:.3px">⭐ ELO Distribution</div>
-        <div class="reward-mgr-row">
-          <div class="reward-mgr-label">Base ELO</div>
-          <input class="inp" type="number" id="rm_eloPts" value="${eloPts}" min="0" style="flex:1;font-size:0.82rem;padding:6px 8px">
-          <span style="font-size:0.75rem;color:var(--muted)">pts</span>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px">
-          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
-            <span style="font-size:1rem">🥇</span>
-            <input class="inp" type="number" id="rm_p1Pct" value="${p1Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
-            <span style="color:var(--muted);font-size:0.75rem">%</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
-            <span style="font-size:1rem">🥈</span>
-            <input class="inp" type="number" id="rm_p2Pct" value="${p2Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
-            <span style="color:var(--muted);font-size:0.75rem">%</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
-            <span style="font-size:1rem">🥉</span>
-            <input class="inp" type="number" id="rm_p3Pct" value="${p3Pct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
-            <span style="color:var(--muted);font-size:0.75rem">%</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:5px;font-size:0.8rem">
-            <span style="font-size:1rem">👥</span>
-            <input class="inp" type="number" id="rm_participantPct" value="${participantPct}" min="0" max="999" style="width:54px;font-size:0.8rem;padding:5px 6px;text-align:center">
-            <span style="color:var(--muted);font-size:0.75rem">%</span>
-          </div>
-        </div>
-        <div style="font-size:0.65rem;color:var(--muted);margin-top:5px">🥇ที่1 / 🥈ที่2 / 🥉ที่3 / 👥ผู้เข้าร่วม — % ของ Base ELO</div>
-      </div>
-
-      <div class="reward-mgr-row">
-        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer">
-          <input type="checkbox" id="rm_hasCup" ${hasCup ? 'checked' : ''}> 🏆 ถ้วยรางวัล
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer;margin-left:16px">
-          <input type="checkbox" id="rm_hasMvp" ${hasMvp ? 'checked' : ''}> 🌟 MVP Award
-        </label>
-      </div>
-      <div class="reward-mgr-row" style="flex-direction:column;align-items:flex-start">
-        <div class="reward-mgr-label" style="width:auto;margin-bottom:4px">📝 Custom Note</div>
-        <input class="inp" type="text" id="rm_customNote" value="${customNote.replace(/"/g,'&quot;')}" placeholder="เช่น เสื้อทีม, สปอนเซอร์..." style="width:100%;font-size:0.8rem">
-      </div>
-
-      <div style="display:flex;gap:8px;margin-top:14px">
-        <button class="btn" style="flex:1;background:rgba(255,255,255,.06);border:1px solid var(--glass-border);font-size:0.8rem"
-          onclick="document.getElementById('tRewardModal').remove()">ปิด</button>
-        <button class="btn btn-primary" style="flex:1;font-size:0.8rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700"
-          onclick="_saveRewardsFromModal(${tournamentId})">💾 บันทึก</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-}
-
-function _saveRewardsFromModal(tournamentId) {
-  const _pct = (id, def) => { const v = parseInt(document.getElementById(id)?.value); return isNaN(v) ? def : v; };
-  const rewards = {
-    baseCoins:      parseInt(document.getElementById('rm_baseCoins')?.value)  || 0,
-    bonusCoins:     parseInt(document.getElementById('rm_bonusCoins')?.value) || 0,
-    eloPts:         parseInt(document.getElementById('rm_eloPts')?.value)     || 0,
-    p1Pct:          _pct('rm_p1Pct', 100),
-    p2Pct:          _pct('rm_p2Pct', 60),
-    p3Pct:          _pct('rm_p3Pct', 30),
-    participantPct: _pct('rm_participantPct', 20),
-    hasCup:         document.getElementById('rm_hasCup')?.checked  || false,
-    hasMvp:         document.getElementById('rm_hasMvp')?.checked  || false,
-    customNote:     (document.getElementById('rm_customNote')?.value || '').trim(),
-  };
-  saveTournamentRewards(tournamentId, rewards);
-  document.getElementById('tRewardModal')?.remove();
-  toast('บันทึกรางวัลแล้ว ✅', 'success');
-  if (document.getElementById('tournamentAdminSection')) renderTournamentSection();
-  if (document.getElementById('tournamentTabContent')) renderTournamentTab();
-}
-
-function renderRewardCards(tournamentId, tierName) {
-  const saved = getTournamentRewards(tournamentId);
-  if (!saved) return '';
-  const tierCoins = TOUR_COIN_REWARDS[tierName] || 100;
-  const baseCoins = (saved.baseCoins != null && saved.baseCoins !== '') ? Number(saved.baseCoins) : tierCoins;
-  const totalCoins = baseCoins + (saved.bonusCoins || 0);
-  let cards = '';
-  cards += `<div class="reward-card"><div class="reward-icon">🪙</div><div class="reward-info"><div class="reward-title">${totalCoins.toLocaleString()} เหรียญ</div><div class="reward-desc">แชมป์ ${baseCoins}${saved.bonusCoins ? ` + Bonus ${saved.bonusCoins}` : ''} · รอง ${Math.max(1,Math.floor(totalCoins/2))} · 3rd ${Math.max(1,Math.floor(totalCoins/4))}</div></div></div>`;
-  const _eloPts = saved.eloPts != null ? Number(saved.eloPts) : Number(saved.bonusPts || 0);
-  if (_eloPts > 0) {
-    const _p1 = saved.p1Pct != null ? Number(saved.p1Pct) : 100;
-    const _p2 = saved.p2Pct != null ? Number(saved.p2Pct) : 60;
-    const _p3 = saved.p3Pct != null ? Number(saved.p3Pct) : 30;
-    const _pp = saved.participantPct != null ? Number(saved.participantPct) : 20;
-    cards += `<div class="reward-card"><div class="reward-icon">⭐</div><div class="reward-info"><div class="reward-title">ELO: +${Math.round(_eloPts*_p1/100)} / +${Math.round(_eloPts*_p2/100)} / +${Math.round(_eloPts*_p3/100)} / +${Math.round(_eloPts*_pp/100)}</div><div class="reward-desc">🥇${_p1}% · 🥈${_p2}% · 🥉${_p3}% · 👥${_pp}% ของ Base ${_eloPts} pts</div></div></div>`;
-  }
-  if (saved.hasCup) cards += `<div class="reward-card"><div class="reward-icon">🏆</div><div class="reward-info"><div class="reward-title">ถ้วยรางวัล</div><div class="reward-desc">Trophy สำหรับแชมป์</div></div></div>`;
-  if (saved.hasMvp) cards += `<div class="reward-card"><div class="reward-icon">🌟</div><div class="reward-info"><div class="reward-title">MVP Award</div><div class="reward-desc">Most Valuable Player of the Tournament</div></div></div>`;
-  if (saved.customNote) cards += `<div class="reward-card"><div class="reward-icon">📝</div><div class="reward-info"><div class="reward-title">Special Prize</div><div class="reward-desc">${saved.customNote}</div></div></div>`;
-  return cards ? `<div style="margin-top:10px">${cards}</div>` : '';
-}
-
 // ── 2v2 team builder ──────────────────────────────────────────────────────────
 let _t2v2TeamCount = 0;
 
@@ -1086,14 +588,25 @@ function _updateTournamentCreateForm() {
   if (isRegMode) { _updateRegTotal(); _updateRoundTypes(); }
 }
 
-// Auto-derived round types from group count (Group → SF → GF). Shown in the designer.
+// Knockout round-name lookup by bracket size — mirrors
+// rpc_tournament_generate_knockout's server-side "case v_rounds ... end"
+// table exactly, so this preview stays accurate for any group count.
+const KO_ROUND_NAME_TABLE = {
+  1: ['F'], 2: ['SF','F'], 3: ['QF','SF','F'], 4: ['R16','QF','SF','F'], 5: ['R32','R16','QF','SF','F']
+};
+const KO_ROUND_NAME_TH = { F: 'ชิงชนะเลิศ (F)', SF: 'รอบรอง (SF)', QF: 'รอบก่อนรอง (QF)', R16: 'รอบ 16 (R16)', R32: 'รอบ 32 (R32)' };
+function _koRoundNamesForGroupCount(ng) {
+  if (ng < 2) return [];
+  let size = 1; while (size < ng) size *= 2;
+  let rounds = 0, s = size; while (s > 1) { s /= 2; rounds++; }
+  return KO_ROUND_NAME_TABLE[rounds] || ['F'];
+}
+// Auto-derived round types from group count (Group → Knockout rounds). Shown in the designer.
 function _updateRoundTypes() {
   const el = document.getElementById('tourRoundTypes');
   if (!el) return;
   const ng = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
-  const rounds = ['รอบกลุ่ม (Group)'];
-  if (ng >= 3) rounds.push('รอบรอง (SF)');
-  if (ng >= 2) rounds.push('ชิงชนะเลิศ (GF)');
+  const rounds = ['รอบกลุ่ม (Group)', ..._koRoundNamesForGroupCount(ng).map(r => KO_ROUND_NAME_TH[r] || r)];
   el.innerHTML = `🧭 รอบแข่ง: ` + rounds.map(r => `<span class="t-round-chip">${r}</span>`).join(' <span style="color:var(--muted)">→</span> ');
 }
 
@@ -1502,6 +1015,10 @@ async function renderTournamentSection() {
             <option value="2" selected>2 กลุ่ม</option>
             <option value="3">3 กลุ่ม</option>
             <option value="4">4 กลุ่ม</option>
+            <option value="5">5 กลุ่ม</option>
+            <option value="6">6 กลุ่ม</option>
+            <option value="7">7 กลุ่ม</option>
+            <option value="8">8 กลุ่ม</option>
           </select>
         </div>
         <div style="flex:1;min-width:110px">
@@ -1544,10 +1061,6 @@ async function renderTournamentSection() {
     if (activeTournaments.length) {
       html += `<div class="divider"></div><div style="font-size:0.83rem;font-weight:600;margin-bottom:8px">🏆 Tournaments</div>`;
       for (const t of activeTournaments) {
-        // Single Elimination tournaments have a different _config shape (flat
-        // entrants, no group-lettered slots) — rendered separately by
-        // js/tournament-bracket.js, which appends its own section after this one.
-        if (t.format === 'single_elimination') continue;
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
@@ -1583,139 +1096,34 @@ async function renderTournamentSection() {
                 <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px"></div>
               </div>
             </div>
-            <div style="margin-bottom:10px"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>
             ${cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, true)}
             <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
               ${cfg.drawPreview
                 ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
                    <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
                 : `<button class="btn btn-sm t-draw-btn" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
-              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
-              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
             </div>
           </div>`;
         } else {
-          // ── Bracket in progress ──
-          const champBtn = `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>`;
-          const rewardBtn = `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>`;
+          // ── Bracket in progress — renderTournamentBracket renders group
+          // tables + the generalized knockout section (generate/view/record),
+          // rewards are granted separately via the tournamentRewardsList panel
+          // once the tournament auto-completes ──
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
               ${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}
               <span style="font-size:0.68rem;color:var(--muted)">[${t.tier}]</span>
             </div>
-            ${renderRewardCards(t.id, t.tier)}
             ${await renderTournamentBracket(t, groups)}
-            <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button>
-              <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
-            </div>
           </div>`;
         }
       }
     }
   } catch(e) {}
+  html += `<div class="divider"></div><div id="tournamentRewardsList"></div>`;
   container.innerHTML = html;
-}
-
-// ── Knockout bracket tree (visual) ────────────────────────────────────────────
-// Orient a recorded match's scores/winner flags to given left/right entry ids
-function _bkSplit(m, leftId, rightId) {
-  const ls = m.player_a === leftId ? m.score_a : m.score_b;
-  const rs = m.player_a === leftId ? m.score_b : m.score_a;
-  return { ls, rs, lWin: m.winner_id === leftId, rWin: m.winner_id === rightId };
-}
-
-// One match-node card. left/right are entry objects ({id,label}) or null (TBD).
-function _bkCard(tournament, tMatches, stageId, left, right, matchType, readOnly, isGF) {
-  const cls = isGF ? 't-bk-m gf' : 't-bk-m';
-  const m = tMatches.find(x => x.group_letter === stageId);
-
-  if (m) {
-    const lId = left ? left.id : m.player_a;
-    const rId = right ? right.id : m.player_b;
-    const lLabel = left ? left.label : (db.players.find(p => p.id === m.player_a)?.name || '?');
-    const rLabel = right ? right.label : (db.players.find(p => p.id === m.player_b)?.name || '?');
-    const { ls, rs, lWin, rWin } = _bkSplit(m, lId, rId);
-    const gold = isGF ? ' gold' : '';
-    const mark = isGF ? '👑' : '✓';
-    const row = (label, sc, win) =>
-      `<div class="t-bk-row ${win ? 'win' + gold : 'lose'}"><span class="t-bk-nm">${esc(label)}</span>${win ? `<span class="t-bk-tick">${mark}</span>` : ''}<span class="t-bk-sc">${sc}</span></div>`;
-    return `<div class="${cls}">${row(lLabel, ls, lWin)}${row(rLabel, rs, rWin)}</div>`;
-  }
-
-  if (left && right) {
-    if (readOnly)
-      return `<div class="${cls}"><div class="t-bk-row"><span class="t-bk-nm">${esc(left.label)}</span></div><div class="t-bk-vs">VS</div><div class="t-bk-row"><span class="t-bk-nm">${esc(right.label)}</span></div></div>`;
-    return `<div class="${cls} live">
-      <div class="t-bk-row"><span class="t-bk-nm">${esc(left.label)}</span><span class="t-bk-sc">–</span></div>
-      <div class="t-bk-vs">VS</div>
-      <div class="t-bk-row"><span class="t-bk-nm">${esc(right.label)}</span><span class="t-bk-sc">–</span></div>
-      <button class="t-bk-ref" onclick="openReferee(${tournament.id},'${stageId}',${left.id},${right.id},'${matchType}')">🎬 นับคะแนน (Referee)</button>
-    </div>`;
-  }
-  return `<div class="${cls}"><div class="t-bk-wait">⏳ รอผลรอบก่อนหน้า…</div></div>`;
-}
-
-// Single-competitor chip (group-winner feeder / bye)
-function _bkChip(entry, sub) {
-  const name = entry ? entry.label : '—';
-  return `<div class="t-bk-m t-bk-chip"><div class="t-bk-row"><span class="t-bk-nm">${esc(name)}</span>${sub ? `<span class="t-bk-byetag">${sub}</span>` : ''}</div></div>`;
-}
-
-// Champion node
-function _bkChampion(winner) {
-  const name = winner ? winner.label : (_lang === 'en' ? 'TBD' : 'รอผล');
-  return `<div class="t-bk-champ"><div class="t-bk-champ-em">🏆</div><div class="t-bk-champ-cap">Champion</div><div class="t-bk-champ-nm">${esc(name)}</div></div>`;
-}
-
-// A labelled cell = round label + slot holding the card (siblings, so the slot
-// centres the card and the connectors line up with each slot)
-function _bkCell(label, cardHtml, gf) {
-  return `<div class="t-bk-rl${gf ? ' gf' : ''}">${label}</div><div class="t-bk-slot">${cardHtml}</div>`;
-}
-
-// Connector columns — percentage-positioned so they scale with any height
-const _BK_MERGE = `<div class="t-bk-conn"><i class="t-bk-h" style="left:0;top:25%;width:50%"></i><i class="t-bk-h" style="left:0;top:75%;width:50%"></i><i class="t-bk-v" style="left:calc(50% - 1px);top:25%;height:50%"></i><i class="t-bk-h" style="left:50%;top:50%;width:50%"></i></div>`;
-const _BK_PASS  = `<div class="t-bk-conn"><i class="t-bk-h" style="left:0;top:50%;width:100%"></i></div>`;
-
-function _buildKnockoutSection(tournament, tMatches, winners, matchType, readOnly) {
-  if (winners.length < 2) return '';
-  const T = tournament, M = tMatches, mt = matchType, ro = readOnly;
-  const _mw = (sid, a, b) => { const m = M.find(x => x.group_letter === sid); return m ? (m.winner_id === a?.id ? a : b) : null; };
-  const champLabel = _lang === 'en' ? '👑 Champ' : '👑 แชมป์';
-
-  let firstRound = '', secondRound = '', champWinner = null;
-
-  if (winners.length === 2) {
-    const a = winners[0], b = winners[1];
-    champWinner = _mw('GF', a, b);
-    const fLabel = _lang === 'en' ? 'Group Winners' : 'ผู้ชนะกลุ่ม';
-    firstRound  = `<div class="t-bk-round narrow">${_bkCell(fLabel, _bkChip(a), false)}${_bkCell('&nbsp;', _bkChip(b), false)}</div>`;
-    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', a, b, mt, ro, true), true)}</div>`;
-  } else if (winners.length === 3) {
-    const a = winners[0], b = winners[1], bye = winners[2];
-    const sfW = _mw('SF', a, b);
-    champWinner = _mw('GF', sfW, bye);
-    const byeLabel = _lang === 'en' ? '🎟️ Bye' : '🎟️ ผ่านบาย';
-    const byeSub   = _lang === 'en' ? 'bye' : 'บายเข้ารอบ';
-    firstRound  = `<div class="t-bk-round">${_bkCell('⚔️ Semi Final', _bkCard(T, M, 'SF', a, b, mt, ro, false), false)}${_bkCell(byeLabel, _bkChip(bye, byeSub), false)}</div>`;
-    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', sfW, bye, mt, ro, true), true)}</div>`;
-  } else { // 4 groups
-    const w1 = _mw('SF1', winners[0], winners[1]);
-    const w2 = _mw('SF2', winners[2], winners[3]);
-    champWinner = _mw('GF', w1, w2);
-    firstRound  = `<div class="t-bk-round">${_bkCell('⚔️ Semi Final 1', _bkCard(T, M, 'SF1', winners[0], winners[1], mt, ro, false), false)}${_bkCell('⚔️ Semi Final 2', _bkCard(T, M, 'SF2', winners[2], winners[3], mt, ro, false), false)}</div>`;
-    secondRound = `<div class="t-bk-round">${_bkCell('🏆 Grand Final', _bkCard(T, M, 'GF', w1, w2, mt, ro, true), true)}</div>`;
-  }
-
-  const champRound = `<div class="t-bk-round champ">${_bkCell(champLabel, _bkChampion(champWinner), false)}</div>`;
-  const title = _lang === 'en' ? '🏆 Knockout Bracket' : '🏆 รอบน็อคเอาท์ (สาย)';
-
-  return `<div class="t-bk-wrap">
-    <div class="t-bk-heading">${title}</div>
-    <div class="t-bk-scroll"><div class="t-bk">${firstRound}${_BK_MERGE}${secondRound}${_BK_PASS}${champRound}</div></div>
-  </div>`;
+  try { koRenderRewardsPending(); } catch(e) {}
 }
 
 // ── renderTournamentBracket (v3: multi-group knockout + readOnly mode) ──────
@@ -1825,20 +1233,56 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
     </div>`;
   }
 
-  // ── Knockout stage (2→GF, 3→SF+GF, 4→SF1+SF2+GF) or single-group champion ──
+  // ── Knockout stage: a real generated bracket (any group count) or
+  // single-group champion — replaces the old hardcoded 2/3/4-group tail ──
+  const koMatches = tMatches.filter(m => m.round_index !== null && m.round_index !== undefined);
+  const groupComplete = grp => {
+    const size = grp.teams ? grp.teams.length : (grp.playerIds || []).length;
+    if (size < 2) return false;
+    const needed = size * (size - 1) / 2;
+    const done = tMatches.filter(m => m.group_letter === grp.letter && m.status === 'completed' && (m.round_index === null || m.round_index === undefined)).length;
+    return done >= needed;
+  };
+
   if (realGroups.length >= 2) {
-    const groupWinners = realGroups.map(grp => {
-      const hasMatch = tMatches.some(m => m.group_letter === grp.letter);
-      if (!hasMatch) return null;
-      return calculateGroupStandings(grp, tMatches, matchType)[0] || null;
-    }).filter(Boolean);
-    if (groupWinners.length >= 2) {
-      html += _buildKnockoutSection(tournament, tMatches, groupWinners, matchType, readOnly);
+    if (koMatches.length > 0) {
+      _koViewCache[tournament.id] = { matches: koMatches, groups, tier: tournament.tier, name: tournament.name };
+      const champion = koMatches.find(m => m.round_name === 'F' && m.status === 'completed');
+      const doneCount = koMatches.filter(m => m.status === 'completed' || m.status === 'bye').length;
+      html += `<div class="t-bk-wrap"><div class="t-bk-heading">🏆 รอบน็อคเอาท์ (สาย)</div>
+        <div style="text-align:center;padding:12px">
+          ${champion
+            ? `<div class="champ-decided-banner"><div class="champ-decided-label">🏆 Champion</div><div class="champ-decided-name">👑 ${esc(_koMatchPlayerLabel(groups, db.players, champion.winner_id))}</div></div>`
+            : `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">การแข่งขันกำลังดำเนินอยู่ — ${doneCount}/${koMatches.length} แมตช์เสร็จแล้ว</div>`}
+          <button class="btn btn-primary btn-sm" style="width:auto" onclick="koOpenBracketFullscreen(${tournament.id})">🏆 ดูสาย Bracket แบบเต็มจอ</button>
+        </div>
+      </div>`;
+    } else if (!readOnly) {
+      const allComplete = realGroups.every(groupComplete);
+      html += `<div class="t-bk-wrap"><div class="t-bk-heading">🏆 รอบน็อคเอาท์ (สาย)</div>`;
+      if (allComplete) {
+        html += `<div style="text-align:center;padding:12px">
+          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">ทุกกลุ่มแข่งครบแล้ว พร้อมจับสาย Knockout</div>
+          <button class="btn btn-primary btn-sm" style="width:auto" onclick="koGenerateKnockout(${tournament.id})">🎲 สร้างสาย Knockout</button>
+        </div>`;
+      } else {
+        html += `<div style="text-align:center;padding:12px;font-size:0.78rem;color:var(--muted)">รอทุกกลุ่มแข่งขันให้ครบก่อนถึงจะจับสาย Knockout ได้</div>`;
+      }
+      html += `</div>`;
     }
   } else if (realGroups.length === 1) {
-    const st = calculateGroupStandings(realGroups[0], tMatches, matchType);
-    if (st[0] && st[0].wins > 0) {
-      html += `<div class="champ-decided-banner"><div class="champ-decided-label">🏆 Champion decided by Group Ranking</div><div class="champ-decided-name">👑 ${st[0].label}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${st[0].wins}W · ${st[0].losses}L · ${st[0].points} pts</div></div>`;
+    const grp = realGroups[0];
+    const hof = groups.find(g => g._hof);
+    if (hof) {
+      html += `<div class="champ-decided-banner"><div class="champ-decided-label">🏆 Champion decided by Group Ranking</div><div class="champ-decided-name">👑 ${esc(hof.champion_name)}</div></div>`;
+    } else {
+      const st = calculateGroupStandings(grp, tMatches, matchType);
+      if (st[0] && st[0].wins > 0) {
+        html += `<div class="champ-decided-banner"><div class="champ-decided-label">🏆 Champion decided by Group Ranking</div><div class="champ-decided-name">👑 ${st[0].label}</div><div style="font-size:0.72rem;color:var(--muted);margin-top:3px">${st[0].wins}W · ${st[0].losses}L · ${st[0].points} pts</div></div>`;
+        if (!readOnly && isAdminUser() && groupComplete(grp)) {
+          html += `<div style="text-align:center;margin-top:8px"><button class="btn btn-primary btn-sm" style="width:auto" onclick="koCompleteSingleGroup(${tournament.id}, ${st[0].id})">👑 ยืนยันแชมป์</button></div>`;
+        }
+      }
     }
   }
 
@@ -1906,10 +1350,17 @@ async function createTournament() {
   try {
     toast('กำลังสร้าง...', 'info');
     const created = await dbTournamentCreate(name, effectiveTier, matchType, 'round_robin_groups', groups);
-    // Custom tier has no entry in TOUR_COIN_REWARDS — persist the chosen reward so
-    // declareChampion pays it out (reward manager reads this same store).
+    // Custom tier has no row in tournament_reward_tiers — persist the chosen champion
+    // coin amount into reward_overrides so rpc_tournament_grant_rewards picks it up
+    // (runner-up/third/participant pct fall back to the RPC's hardcoded defaults).
     if (isCustom && created?.id) {
-      try { saveTournamentRewards(created.id, { baseCoins: customCoins, bonusCoins: 0, bonusPts: 0 }); } catch(e) {}
+      try {
+        await supaFetch(`tournaments?id=eq.${created.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ reward_overrides: JSON.stringify({ champion_coins: customCoins }) }),
+          prefer: 'return=minimal'
+        });
+      } catch(e) {}
     }
     toast('สร้าง Tournament แล้ว! 🏆', 'success');
     renderTournamentSection();
@@ -2159,168 +1610,6 @@ function _renderDrawPreview(cfg) {
   </div>`;
 }
 
-// ── Dedicated 3-column bracket modal (Semi Finals → Grand Final → Champion) ──
-// Connector columns (CSS borders, no SVG) — percentage-positioned so they scale.
-const _BRM_MERGE = `<div class="brm-conn"><i class="h" style="left:0;top:25%;width:50%"></i><i class="h" style="left:0;top:75%;width:50%"></i><i class="v" style="left:calc(50% - 1px);top:25%;height:50%"></i><i class="h" style="left:50%;top:50%;width:50%"></i></div>`;
-const _BRM_PASS  = `<div class="brm-conn"><i class="h" style="left:0;top:50%;width:100%"></i></div>`;
-
-// Team-aware label for a raw competitor id (anchor for 2v2)
-function _brmLabelForId(id, matchType, groups) {
-  if (id == null) return '—';
-  if (matchType === '2v2') {
-    const team = getTeamByAnchor(groups, id);
-    if (team) return getTeamDisplayName(team, db.players);
-  }
-  return db.players.find(p => p.id === id)?.name || `#${id}`;
-}
-
-// One player/team row. state: 'win' | 'pending' | 'normal'. isGF swaps ✓→👑 + gold.
-function _brmRow(label, score, state, isGF) {
-  if (state === 'pending') return `<div class="brm-row pending"><span class="brm-nm">รอผล</span><span class="brm-sc">—</span></div>`;
-  if (state === 'win') {
-    const mark = isGF ? `<span class="brm-crown">👑</span>` : `<span class="brm-tick">✓</span>`;
-    return `<div class="brm-row win${isGF ? ' gfwin' : ''}"><span class="brm-nm">${label}</span>${mark}<span class="brm-sc">${score}</span></div>`;
-  }
-  return `<div class="brm-row"><span class="brm-nm">${label}</span><span class="brm-sc">${score}</span></div>`;
-}
-
-// One knockout match box. left/right are entry objects ({id,label}) or null (TBD).
-function _brmMatchBox(t, tMatches, stageId, left, right, matchType, groups, isAdmin, headerLabel, isGF) {
-  const m = tMatches.find(x => x.group_letter === stageId);
-  const boxCls = isGF ? 'brm-box gf' : 'brm-box';
-  let rows = '';
-  if (m) {
-    const lId = left ? left.id : m.player_a;
-    const rId = right ? right.id : m.player_b;
-    const lLabel = left ? left.label : _brmLabelForId(m.player_a, matchType, groups);
-    const rLabel = right ? right.label : _brmLabelForId(m.player_b, matchType, groups);
-    const ls = m.player_a === lId ? m.score_a : m.score_b;
-    const rs = m.player_a === lId ? m.score_b : m.score_a;
-    rows = _brmRow(lLabel, ls, m.winner_id === lId ? 'win' : 'normal', isGF)
-         + _brmRow(rLabel, rs, m.winner_id === rId ? 'win' : 'normal', isGF);
-  } else {
-    rows = _brmRow(left ? left.label : '', '—', left ? 'normal' : 'pending', isGF)
-         + _brmRow(right ? right.label : '', '—', right ? 'normal' : 'pending', isGF);
-    // Grand Final, admin, both entries known, not yet recorded → Referee scorer
-    if (isGF && isAdmin && left && right) {
-      rows += `<button class="brm-ref" onclick="openReferee(${t.id},'${stageId}',${left.id},${right.id},'${matchType}')">🎯 นับคะแนน (Referee)</button>`;
-    }
-  }
-  return `<div class="${boxCls}"><div class="brm-box-h">${headerLabel}</div>${rows}</div>`;
-}
-
-// Single-competitor feeder chip (group winner / bye)
-function _brmChip(entry, sub) {
-  return `<div class="brm-chip">${entry ? entry.label : 'รอผล'}${sub ? `<span class="brm-sub2">${sub}</span>` : ''}</div>`;
-}
-
-// Champion card
-function _brmChampion(entry) {
-  const pending = !entry;
-  return `<div class="brm-champ${pending ? ' pending' : ''}">
-    <div class="brm-champ-tr">🏆</div>
-    <div class="brm-champ-cap">CHAMPION</div>
-    <div class="brm-champ-nm">${entry ? entry.label : 'รอผล'}</div>
-  </div>`;
-}
-
-// Build the 3-column bracket body from live Supabase data
-function _renderBracketModalBody(t, groups, tMatches, isAdmin) {
-  const matchType = getTournamentMatchType(groups);
-  const realGroups = getTournamentGroups(groups);
-  const cfg = getTournamentConfig(groups);
-  const started = realGroups.length > 0;
-  let nGroups = started ? realGroups.length : (cfg?.numGroups || 2);
-  if (nGroups > 4) nGroups = 4;
-
-  // Group winner = current leader, but only once that group has a recorded match
-  const winners = [];
-  for (let i = 0; i < nGroups; i++) {
-    const grp = realGroups[i];
-    if (!grp) { winners.push(null); continue; }
-    const has = tMatches.some(m => m.group_letter === grp.letter);
-    const st = calculateGroupStandings(grp, tMatches, matchType);
-    winners.push(has && st[0] ? st[0] : null);
-  }
-
-  // Map a recorded stage match's winner onto one of its two entries
-  const mw = (sid, a, b) => {
-    const m = tMatches.find(x => x.group_letter === sid);
-    if (!m) return null;
-    if (a && m.winner_id === a.id) return a;
-    if (b && m.winner_id === b.id) return b;
-    return { id: m.winner_id, label: _brmLabelForId(m.winner_id, matchType, groups) };
-  };
-
-  // Single group → champion decided by group ranking (no knockout)
-  if (nGroups <= 1) {
-    let champ = null;
-    if (realGroups[0]) {
-      const st = calculateGroupStandings(realGroups[0], tMatches, matchType);
-      if (st[0] && st[0].wins > 0) champ = st[0];
-    }
-    return `<div class="brm-wrap"><div class="brm-scroll"><div class="brm-grid" style="justify-content:center">
-      <div class="brm-col champ"><div class="brm-col-label">Champion</div>${_brmChampion(champ)}</div>
-    </div></div><div class="brm-note">แชมป์ตัดสินจากอันดับในกลุ่ม</div></div>`;
-  }
-
-  let semiHtml = '', gfLeft = null, gfRight = null;
-  if (nGroups === 2) {
-    gfLeft = winners[0]; gfRight = winners[1];
-    semiHtml = `${_brmChip(winners[0], 'ผู้ชนะกลุ่ม A')}${_brmChip(winners[1], 'ผู้ชนะกลุ่ม B')}`;
-  } else if (nGroups === 3) {
-    gfLeft = mw('SF', winners[0], winners[1]); gfRight = winners[2];
-    semiHtml = `${_brmMatchBox(t, tMatches, 'SF', winners[0], winners[1], matchType, groups, isAdmin, 'Semi Final', false)}${_brmChip(winners[2], '🎟️ บายเข้ารอบ')}`;
-  } else { // 4 groups → SF1 + SF2
-    gfLeft = mw('SF1', winners[0], winners[1]); gfRight = mw('SF2', winners[2], winners[3]);
-    semiHtml = `${_brmMatchBox(t, tMatches, 'SF1', winners[0], winners[1], matchType, groups, isAdmin, 'Semi Final 1', false)}${_brmMatchBox(t, tMatches, 'SF2', winners[2], winners[3], matchType, groups, isAdmin, 'Semi Final 2', false)}`;
-  }
-
-  const gfBox = _brmMatchBox(t, tMatches, 'GF', gfLeft, gfRight, matchType, groups, isAdmin, 'Grand Final', true);
-  const champ = mw('GF', gfLeft, gfRight);
-
-  return `<div class="brm-wrap"><div class="brm-scroll"><div class="brm-grid">
-    <div class="brm-col semi"><div class="brm-col-label">Semi Finals</div>${semiHtml}</div>
-    ${_BRM_MERGE}
-    <div class="brm-col final"><div class="brm-col-label">Grand Final</div>${gfBox}</div>
-    ${_BRM_PASS}
-    <div class="brm-col champ"><div class="brm-col-label">Champion</div>${_brmChampion(champ)}</div>
-  </div></div></div>`;
-}
-
-// All users: open the bracket in a full-screen modal (role-aware — admin gets GF Referee)
-async function openBracketModal(tournamentId) {
-  document.getElementById('tBracketModal')?.remove();
-  const modal = document.createElement('div');
-  modal.id = 'tBracketModal';
-  modal.className = 'brm-bg';
-  modal.innerHTML = `
-    <div class="brm-modal">
-      <div class="brm-head">
-        <div class="brm-title">🏆 ตารางการแข่งขัน</div>
-        <button class="brm-x" onclick="document.getElementById('tBracketModal').remove()">✕</button>
-      </div>
-      <div id="tBracketModalBody" class="brm-body">
-        <div style="text-align:center;color:#888;padding:30px">⏳ กำลังโหลด...</div>
-      </div>
-    </div>`;
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
-  try {
-    const t = await dbGetTournamentById(tournamentId);
-    let groups = []; try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
-    _tourStore[t.id] = { groups, matchType: getTournamentMatchType(groups), tier: t.tier, name: t.name };
-    const tMatches = await dbGetTournamentMatches(t.id);
-    const isAdmin = isAdminUser();
-    const tierCls = t.tier === 'Super 1000' ? 's1000' : t.tier === 'Super 500' ? 's500' : t.tier === 'Regular' ? 'reg' : 'custom';
-    const sub = `<div class="brm-sub"><span class="brm-tname">${esc(t.name)}</span><span class="brm-tier ${tierCls}">${t.tier}</span></div>`;
-    const body = document.getElementById('tBracketModalBody');
-    if (body) body.innerHTML = sub + _renderBracketModalBody(t, groups, tMatches, isAdmin);
-  } catch(e) {
-    const body = document.getElementById('tBracketModalBody');
-    if (body) body.innerHTML = `<div style="color:var(--red);text-align:center;padding:22px">โหลดไม่ได้: ${e.message}</div>`;
-  }
-}
 
 // ── Tournament Tab (public view for all users) ────────────────────────────────
 async function renderTournamentTab() {
@@ -2345,9 +1634,6 @@ async function renderTournamentTab() {
       </div>`;
     } else {
       for (const t of visible) {
-        // Single Elimination tournaments are rendered by js/tournament-bracket.js
-        // (different _config shape — flat entrants, no group-lettered slots).
-        if (t.format === 'single_elimination') continue;
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
@@ -2384,7 +1670,6 @@ async function renderTournamentTab() {
               <div style="height:100%;width:${pct}%;background:var(--neon);border-radius:3px;transition:width .3s"></div>
             </div>
           </div>`;
-          html += `<div style="margin:6px 0 10px"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>`;
           if (!currentUser) {
             html += `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px">เข้าสู่ระบบเพื่อสมัครแข่ง</div>`;
           }
@@ -2396,27 +1681,19 @@ async function renderTournamentTab() {
                 ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
                    <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
                 : `<button class="btn btn-sm t-draw-btn" style="width:auto${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
-              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 จัดการรางวัล</button>
-              <button class="btn btn-sm" style="width:auto;font-size:0.72rem;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>
             </div>`;
           }
 
         } else {
-          // ── BRACKET PHASE ───────────────────────────────────────────────────
+          // ── BRACKET PHASE — renderTournamentBracket renders group tables +
+          // the generalized knockout section (generate/view/record); rewards
+          // are granted via the tournamentRewardsList panel once auto-completed ──
           if (isAdmin) {
-            const champBtn = `<button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,215,0,.15);border:1px solid rgba(255,215,0,.5);color:#ffd700" onclick="confirmDeclareChampion(${t.id})">👑 ประกาศแชมป์</button>`;
-            const rewardBtn = `<button class="btn btn-sm" style="padding:3px 10px;font-size:0.72rem;width:auto;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-right:6px" onclick="openRewardManager(${t.id},'${t.tier}')">🎁 รางวัล</button>`;
             html += `<button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕</button>`;
             html += `<div class="tournament-group-title" style="padding-right:60px">${tierBadge} ${esc(t.name)} ${renderModeBadge(matchType)}<span style="font-size:0.68rem;color:var(--muted);margin-left:4px">[${t.tier}]</span></div>`;
-            html += renderRewardCards(t.id, t.tier);
             html += await renderTournamentBracket(t, groups, false);
-            html += `<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--glass-border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button>
-              <div style="display:flex;align-items:center">${rewardBtn}${champBtn}</div>
-            </div>`;
           } else {
             html += header;
-            html += `<div style="margin:8px 0"><button class="t-viewbracket-btn" onclick="openBracketModal(${t.id})">🏆 ดูตารางการแข่งขัน</button></div>`;
             html += await renderTournamentBracket(t, groups, true);
           }
         }
