@@ -1305,3 +1305,43 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .aof-shame-tap{margin-top:20px;display:inline-block;padding:8px 22px;border-radius:50px;border:1px solid rgba(255,255,255,0.25);background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.7);font-size:0.8rem;font-family:inherit;cursor:pointer}
 .aof-shame-tap:hover{background:rgba(255,255,255,0.15);color:#fff}
 @keyframes shameIn{from{transform:scale(2.2);opacity:0}60%{opacity:1}to{transform:scale(1);opacity:1}}
+
+/* ── [Phase 6] Single Elimination full-screen spectator bracket viewer ── */
+.brmx-overlay{position:fixed;inset:0;z-index:10500;background:var(--bg);display:flex;flex-direction:column}
+.brmx-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;background:var(--nav-bg);backdrop-filter:blur(12px) saturate(2);-webkit-backdrop-filter:blur(12px) saturate(2);border-bottom:1px solid var(--glass-border);flex-shrink:0}
+.brmx-title{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:1.05rem;color:var(--neon);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brmx-close{flex-shrink:0;width:44px;height:44px;min-width:44px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--text);font-size:1.2rem;cursor:pointer}
+.brmx-close:hover{border-color:var(--border-active);color:var(--neon)}
+.brmx-chips{display:flex;gap:6px;padding:8px 16px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--glass-border);scrollbar-width:none}
+.brmx-chips::-webkit-scrollbar{display:none}
+.brmx-chip{flex-shrink:0;padding:6px 14px;min-height:32px;border-radius:50px;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:0.76rem;font-family:inherit;cursor:pointer;white-space:nowrap}
+.brmx-chip:hover{color:var(--neon);border-color:var(--border-active)}
+.brmx-body{flex:1;overflow:auto;padding:20px 16px}
+.brmx-rounds{display:flex;gap:40px;min-height:100%;width:max-content}
+.brmx-round{display:flex;flex-direction:column;min-width:210px}
+.brmx-roundlabel{position:sticky;top:0;background:var(--bg);font-size:0.78rem;font-weight:700;color:var(--neon2);text-align:center;padding:2px 0 12px;z-index:2}
+.brmx-pairs{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:26px}
+.brmx-pair{position:relative;display:flex;flex-direction:column;gap:14px}
+.brmx-round:not(.brmx-lastround) .brmx-pair{padding-right:18px}
+.brmx-round:not(.brmx-lastround) .brmx-pair.brmx-haspartner{border-right:2px solid var(--glass-border);border-top-right-radius:8px;border-bottom-right-radius:8px}
+.brmx-round:not(.brmx-lastround) .brmx-pair::after{content:'';position:absolute;top:50%;right:-18px;width:18px;height:2px;background:var(--glass-border)}
+.brmx-match{position:relative;background:var(--card);border:1px solid var(--glass-border);border-radius:10px;padding:8px 10px;min-height:56px}
+.brmx-row{display:flex;align-items:center;gap:6px;font-size:0.8rem;padding:2px 0;min-height:24px}
+.brmx-row.win{color:var(--neon);font-weight:700}
+.brmx-tick{color:var(--neon);flex-shrink:0}
+.brmx-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.brmx-score{font-family:'Rajdhani',sans-serif;font-weight:700;flex-shrink:0}
+.brmx-note{font-size:0.66rem;color:var(--muted);margin-top:3px}
+.brmx-refbtn{margin-top:6px;width:100%;min-height:32px;padding:5px;border-radius:8px;border:1px solid rgba(0,245,160,.4);background:rgba(0,245,160,.1);color:var(--neon);font-size:0.72rem;font-family:inherit;cursor:pointer}
+.brmx-champcol{align-items:center;justify-content:center;text-align:center;min-width:160px}
+.brmx-champ-box{background:var(--card);border:1px solid rgba(255,215,0,.4);border-radius:14px;padding:16px 12px;box-shadow:0 0 30px rgba(255,215,0,.1)}
+.brmx-champ-medal{font-size:2rem;margin-bottom:4px}
+.brmx-champ-name{font-family:'Rajdhani',sans-serif;font-size:1.2rem;font-weight:700;color:var(--gold);overflow:hidden;text-overflow:ellipsis}
+@media(max-width:640px){
+  .brmx-body{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+  .brmx-rounds{gap:8px}
+  .brmx-round{min-width:88vw;scroll-snap-align:start;padding:0 4px}
+  .brmx-round:not(.brmx-lastround) .brmx-pair::after{display:none}
+  .brmx-round:not(.brmx-lastround) .brmx-pair.brmx-haspartner{border-right:none}
+  .brmx-round:not(.brmx-lastround) .brmx-pair{padding-right:0}
+}

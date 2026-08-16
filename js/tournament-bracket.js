@@ -83,7 +83,9 @@ async function _seRefFinish() {
     await dbTournamentSubmitResult(tournamentId, matchId, games, winnerSide, `se-${matchId}-${Date.now()}`);
     _seRefClose();
     toast('บันทึกผลแล้ว ✅', 'success');
-    _seRefreshAll();
+    const wasFullscreen = !!document.getElementById('brmxOverlay');
+    await _seRefreshAll();
+    if (wasFullscreen) seOpenBracketFullscreen(tournamentId);
   } catch (e) { toast('บันทึกไม่ได้: ' + _tourRegErrText(e), 'error'); }
 }
 function _seRefRenderSide(side, btnDisabled) {
@@ -153,6 +155,95 @@ function _renderSeRefModal() {
       ${actionBtn}
     </div>`;
   document.body.appendChild(modal);
+}
+
+// ── [Phase 6] Full-screen BWF-style spectator bracket viewer ────────────────
+// Connectors: matches are grouped into sibling pairs (round N's match i and
+// i+1 always feed round N+1's match floor(i/2), by construction of
+// rpc_tournament_generate_bracket) and each pair is wrapped in a bracket-
+// shaped border (.brmx-pair) with a short stub pointing at the next round —
+// geometrically correct regardless of content height, no pixel math needed.
+function _seChunkPairs(matches) {
+  const pairs = [];
+  for (let i = 0; i < matches.length; i += 2) pairs.push(matches.slice(i, i + 2));
+  return pairs;
+}
+function _brmxMatchCardHTML(m, cfg, players, tournamentId, tier, isAdmin) {
+  const winsNeeded = tier === 'Super 1000' ? 2 : 1;
+  const nameA = _seMatchPlayerLabel(cfg, players, m.player_a) || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
+  const nameB = _seMatchPlayerLabel(cfg, players, m.player_b) || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
+  const aWin = m.winner_id != null && m.winner_id === m.player_a;
+  const bWin = m.winner_id != null && m.winner_id === m.player_b;
+  const canRef = isAdmin && m.status === 'ready';
+  return `<div class="brmx-match">
+    <div class="brmx-row${aWin ? ' win' : ''}">${aWin ? '<span class="brmx-tick">✓</span>' : ''}<span class="brmx-name">${nameA}</span>${m.status === 'completed' ? `<span class="brmx-score">${m.score_a ?? 0}</span>` : ''}</div>
+    <div class="brmx-row${bWin ? ' win' : ''}">${bWin ? '<span class="brmx-tick">✓</span>' : ''}<span class="brmx-name">${nameB}</span>${m.status === 'completed' ? `<span class="brmx-score">${m.score_b ?? 0}</span>` : ''}</div>
+    ${m.is_bye ? '<div class="brmx-note">BYE — ผ่านเข้ารอบอัตโนมัติ</div>' : ''}
+    ${canRef ? `<button class="brmx-refbtn" onclick="seOpenReferee(${tournamentId},${m.id},${m.player_a},${m.player_b},'${nameA.replace(/'/g, "\\'")}','${nameB.replace(/'/g, "\\'")}',${winsNeeded})">🎬 บันทึกผล</button>` : ''}
+  </div>`;
+}
+function openBracketFullscreen(tournamentId, tournamentName, matches, cfg, tier, isAdmin) {
+  document.getElementById('brmxOverlay')?.remove();
+  const rounds = {};
+  matches.forEach(m => { (rounds[m.round_index] = rounds[m.round_index] || []).push(m); });
+  const roundIdxs = Object.keys(rounds).map(Number).sort((a, b) => a - b);
+  const lastIdx = roundIdxs[roundIdxs.length - 1];
+  const champion = matches.find(m => m.round_name === 'F' && m.status === 'completed');
+
+  const roundsHTML = roundIdxs.map(ri => {
+    const roundMatches = rounds[ri].sort((a, b) => (a.bracket_slot || '').localeCompare(b.bracket_slot || '', undefined, { numeric: true }));
+    const label = roundMatches[0].round_name || `Round ${ri + 1}`;
+    const pairs = _seChunkPairs(roundMatches);
+    const pairsHTML = pairs.map(pair => `<div class="brmx-pair${pair.length === 2 ? ' brmx-haspartner' : ''}">${pair.map(m => _brmxMatchCardHTML(m, cfg, db.players, tournamentId, tier, isAdmin)).join('')}</div>`).join('');
+    return `<div class="brmx-round${ri === lastIdx && !champion ? ' brmx-lastround' : ''}" id="brmxRound${ri}">
+      <div class="brmx-roundlabel">${esc(label)}</div>
+      <div class="brmx-pairs">${pairsHTML}</div>
+    </div>`;
+  }).join('');
+
+  const champHTML = champion ? `<div class="brmx-round brmx-champcol brmx-lastround">
+    <div class="brmx-roundlabel">Champion</div>
+    <div class="brmx-champ-box"><div class="brmx-champ-medal">🏆</div><div class="brmx-champ-name">${_seMatchPlayerLabel(cfg, db.players, champion.winner_id)}</div></div>
+  </div>` : '';
+
+  const chipsHTML = roundIdxs.map(ri => `<button class="brmx-chip" onclick="_brmxScrollTo(${ri})">${esc(rounds[ri][0].round_name || `R${ri + 1}`)}</button>`).join('')
+    + (champion ? `<button class="brmx-chip" onclick="document.getElementById('brmxBody').scrollTo({left:99999,behavior:'smooth'})">🏆</button>` : '');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'brmxOverlay';
+  overlay.className = 'brmx-overlay';
+  overlay.innerHTML = `
+    <div class="brmx-header">
+      <div class="brmx-title">🥊 ${esc(tournamentName)}</div>
+      <button class="brmx-close" aria-label="ปิด" onclick="closeBracketFullscreen()">✕</button>
+    </div>
+    <div class="brmx-chips">${chipsHTML}</div>
+    <div class="brmx-body" id="brmxBody">
+      <div class="brmx-rounds">${roundsHTML}${champHTML}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+  document.addEventListener('keydown', _brmxEscHandler);
+  overlay.querySelector('.brmx-close').focus();
+}
+function _brmxScrollTo(ri) {
+  document.getElementById('brmxRound' + ri)?.scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+}
+function _brmxEscHandler(e) { if (e.key === 'Escape') closeBracketFullscreen(); }
+function closeBracketFullscreen() {
+  document.getElementById('brmxOverlay')?.remove();
+  document.body.style.overflow = '';
+  document.removeEventListener('keydown', _brmxEscHandler);
+}
+
+// Trigger from a plain onclick="" attribute (can't pass live arrays/objects
+// through an inline handler) — reads the matches/cfg _seRenderList already
+// fetched for this render pass instead of re-querying the DB again.
+const _seViewCache = {};
+function seOpenBracketFullscreen(tournamentId) {
+  const cached = _seViewCache[tournamentId];
+  if (!cached) return toast('ยังไม่มีข้อมูลสาย กรุณาลองใหม่', 'error');
+  openBracketFullscreen(tournamentId, cached.name, cached.matches, cached.cfg, cached.tier, isAdminUser());
 }
 
 // ── Entrant / match player display helpers ──────────────────────────────────
@@ -232,6 +323,7 @@ async function _seRenderList(containerId, isAdmin) {
     let matches = [];
     try { matches = await dbGetTournamentMatches(t.id); } catch (e) {}
     const hasBracket = matches.length > 0;
+    if (hasBracket) _seViewCache[t.id] = { matches, cfg, tier: t.tier, name: t.name };
 
     if (isAdmin) {
       html += `<button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>`;
@@ -268,6 +360,7 @@ async function _seRenderList(containerId, isAdmin) {
         html += `<div style="font-size:0.76rem;color:var(--muted)">ต้องมีผู้สมัครอย่างน้อย 2 คน/ทีม</div>`;
       }
     } else {
+      html += `<button class="t-viewbracket-btn" onclick="seOpenBracketFullscreen(${t.id})">🏆 ดูสาย Bracket แบบเต็มจอ</button>`;
       html += _seRenderMatchListHTML(matches, cfg, db.players, t.id, t.tier, isAdmin);
     }
     html += `</div>`;
@@ -275,9 +368,9 @@ async function _seRenderList(containerId, isAdmin) {
   container.innerHTML = html;
 }
 
-function _seRefreshAll() {
-  if (document.getElementById('seAdminList')) _seRenderList('seAdminList', true);
-  if (document.getElementById('seTabList')) _seRenderList('seTabList', false);
+async function _seRefreshAll() {
+  if (document.getElementById('seAdminList')) await _seRenderList('seAdminList', true);
+  if (document.getElementById('seTabList')) await _seRenderList('seTabList', false);
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────
