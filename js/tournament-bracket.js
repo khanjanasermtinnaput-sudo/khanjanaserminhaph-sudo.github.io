@@ -28,6 +28,12 @@ async function dbTournamentSubmitResult(tournamentId, matchId, games, winnerSide
     })
   });
 }
+async function dbTournamentGrantRewards(tournamentId) {
+  return supaFetch('rpc/rpc_tournament_grant_rewards', {
+    method: 'POST',
+    body: JSON.stringify({ p_tournament_id: tournamentId })
+  });
+}
 
 // ── [Phase 5] Live referee (adapted from tournament.js's _ref* state machine —
 // kept fully separate/global-state-isolated so the round-robin referee flow,
@@ -330,6 +336,41 @@ async function seGenerateBracket(tournamentId) {
   } catch (e) { toast('จับสายไม่ได้: ' + _tourRegErrText(e), 'error'); }
 }
 
+async function seGrantRewards(tournamentId, btnEl) {
+  if (!isAdminUser()) return;
+  if (btnEl) btnEl.disabled = true;
+  try {
+    const rows = await dbTournamentGrantRewards(tournamentId);
+    const newlyGranted = (rows || []).filter(r => !r.already_granted);
+    toast(newlyGranted.length ? `แจกรางวัลแล้ว ✅ (${newlyGranted.length} คน)` : 'แจกรางวัลไปแล้วก่อนหน้านี้', 'success');
+    _seRenderRewardsPending();
+  } catch (e) { toast('แจกรางวัลไม่ได้: ' + _tourRegErrText(e), 'error'); }
+  finally { if (btnEl) btnEl.disabled = false; }
+}
+
+// ── Admin panel: recently-completed Single Elimination tournaments awaiting reward payout ──
+async function _seRenderRewardsPending() {
+  const container = document.getElementById('seRewardsList');
+  if (!container || !isAdminUser()) return;
+  let completed;
+  try { completed = await dbGetHOFTournaments(); } catch (e) { return; }
+  const seCompleted = (completed || []).filter(t => t.format === 'single_elimination').slice(0, 10);
+  if (!seCompleted.length) { container.innerHTML = ''; return; }
+
+  let html = `<div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin:10px 0 6px">🎁 แจกรางวัลทัวร์นาเมนต์ที่จบแล้ว</div>`;
+  for (const t of seCompleted) {
+    let groups = [];
+    try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch (e) {}
+    const hof = groups.find(g => g._hof);
+    const champName = hof?.champion_name ? esc(hof.champion_name) : '—';
+    html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--glass-border);border-radius:10px;padding:8px 12px;margin-bottom:6px;font-size:0.78rem">
+      <div>🏆 ${esc(t.name)} <span style="color:var(--gold)">${champName}</span></div>
+      <button class="btn btn-sm" style="width:auto;font-size:0.7rem" onclick="seGrantRewards(${t.id}, this)">🎁 แจกรางวัล</button>
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
 // ── Wire into the existing admin/public render entrypoints without touching
 //    tournament.js's own round_robin_groups rendering logic ──
 const _seOrigRenderTournamentSection = renderTournamentSection;
@@ -366,10 +407,12 @@ renderTournamentSection = async function () {
         </div>
         <button class="btn btn-primary btn-sm" style="width:auto" onclick="seCreateTournament()">🥊 สร้าง Single Elimination</button>
       </div>
-      <div id="seAdminList"></div>`;
+      <div id="seAdminList"></div>
+      <div id="seRewardsList"></div>`;
     container.appendChild(card);
   }
   _seRenderList('seAdminList', true);
+  _seRenderRewardsPending();
 };
 
 const _seOrigRenderTournamentTab = renderTournamentTab;
