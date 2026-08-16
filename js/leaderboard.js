@@ -122,9 +122,12 @@ function getPlayerLBBadges(p) {
     allAchs.push({ id: a.id, icon: a.icon || '🏆', title: a.title, frame: a.frame || 'gold' });
     seenIds.add(a.id);
   });
-  return allAchs.filter(a => pinnedAchs.includes(a.id)).map(a =>
-    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3">${esc(a.icon||'🏆')} ${esc(a.title)}</span>`
-  ).join('');
+  const pinned = allAchs.filter(a => pinnedAchs.includes(a.id));
+  const shown = pinned.slice(0, 3);
+  const extra = pinned.length - shown.length;
+  return shown.map(a =>
+    `<span class="cach-badge cach-frame-${a.frame||'gold'}" style="font-size:0.6rem;padding:2px 7px;line-height:1.3;white-space:nowrap;flex-shrink:0">${esc(a.icon||'🏆')} ${esc(a.title)}</span>`
+  ).join('') + (extra > 0 ? `<span class="cach-badge" style="font-size:0.6rem;padding:2px 7px;line-height:1.3;white-space:nowrap;flex-shrink:0">+${extra}</span>` : '');
 }
 
 function lbRenderBoard(data, animate = true) {
@@ -160,9 +163,9 @@ function lbRenderBoard(data, animate = true) {
           ${rank.id==='king'&&_resolveFrameKey(p.gachaFrame)!=='solaremperor'?`<img src="${typeof CROWN_SRC!=='undefined'?CROWN_SRC:'assets/crown.png'}" alt="" style="position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:32px;height:32px;object-fit:contain;z-index:5;animation:crownSparkleGlow 2.8s ease-in-out infinite,kingCrownFloat 3s ease-in-out infinite;pointer-events:none">`:''}
           ${_presenceAvatarDot}
         </div>
-        <div>
+        <div class="lb-rinfo">
           <div class="lb-rn${rank.id==='king'?' lb-rn-king':''} ${getGachaNameClass(p)}">${esc(p.name)}${isMe ? ` <span style="color:var(--neon);font-size:0.7rem">${t('me')}</span>` : ''}${getPresenceInlineHTML(p)}</div>
-          <div class="lb-rh" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${getPlayerLBBadges(p)}</div>
+          <div class="lb-rh">${getPlayerLBBadges(p)}</div>
         </div>
       </div>
       <div class="lb-rst"><span class="lb-pts-val">${p.pts.toLocaleString()}</span><small>${t('pts_col')}</small></div>
