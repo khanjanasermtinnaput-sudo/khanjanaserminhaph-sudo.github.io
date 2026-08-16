@@ -195,8 +195,8 @@ function _koChunkPairs(matches) {
 }
 function _brmxMatchCardHTML(m, groups, players, tournamentId, tier, isAdmin) {
   const winsNeeded = tier === 'Super 1000' ? 2 : 1;
-  const nameA = _koMatchPlayerLabel(groups, players, m.player_a) || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
-  const nameB = _koMatchPlayerLabel(groups, players, m.player_b) || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
+  const nameA = _koMatchPlayerLabel(groups, players, m.player_a) || m.placeholderA || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
+  const nameB = _koMatchPlayerLabel(groups, players, m.player_b) || m.placeholderB || (m.status === 'pending' ? 'รอผู้ชนะ' : '—');
   const aWin = m.winner_id != null && m.winner_id === m.player_a;
   const bWin = m.winner_id != null && m.winner_id === m.player_b;
   const canRef = isAdmin && m.status === 'ready';
@@ -209,7 +209,7 @@ function _brmxMatchCardHTML(m, groups, players, tournamentId, tier, isAdmin) {
     ${canCorrect ? `<button class="brmx-refbtn" style="background:rgba(255,165,0,.1);border-color:rgba(255,165,0,.4);color:#ffb347" onclick="koOpenCorrectResult(${tournamentId},${m.id},'${nameA.replace(/'/g, "\\'")}','${nameB.replace(/'/g, "\\'")}',${winsNeeded})">✏️ แก้ไขผล</button>` : ''}
   </div>`;
 }
-function openBracketFullscreen(tournamentId, tournamentName, matches, groups, tier, isAdmin) {
+function openBracketFullscreen(tournamentId, tournamentName, matches, groups, tier, isAdmin, isPreview = false) {
   document.getElementById('brmxOverlay')?.remove();
   const rounds = {};
   matches.forEach(m => { (rounds[m.round_index] = rounds[m.round_index] || []).push(m); });
@@ -241,7 +241,7 @@ function openBracketFullscreen(tournamentId, tournamentName, matches, groups, ti
   overlay.className = 'brmx-overlay';
   overlay.innerHTML = `
     <div class="brmx-header">
-      <div class="brmx-title">🏆 ${esc(tournamentName)}</div>
+      <div class="brmx-title">🏆 ${esc(tournamentName)}${isPreview ? ' <span style="font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.4);color:#ffb347;margin-left:8px;vertical-align:middle">👁️ พรีวิว — ยังไม่ยืนยัน</span>' : ''}</div>
       <button class="brmx-close" aria-label="ปิด" onclick="closeBracketFullscreen()">✕</button>
     </div>
     <div class="brmx-chips">${chipsHTML}</div>
@@ -272,6 +272,16 @@ function koOpenBracketFullscreen(tournamentId) {
   const cached = _koViewCache[tournamentId];
   if (!cached) return toast('ยังไม่มีข้อมูลสาย กรุณาลองใหม่', 'error');
   openBracketFullscreen(tournamentId, cached.name, cached.matches, cached.groups, cached.tier, isAdminUser());
+}
+// Same pattern as _koViewCache, but for the client-only preview shape
+// (_koBuildPreviewMatches in tournament.js) — kept in a separate cache so a
+// tournament that already has a real generated bracket never gets its cache
+// clobbered by a stale preview from an earlier render pass, or vice versa.
+const _koPreviewCache = {};
+function koOpenBracketPreview(tournamentId) {
+  const cached = _koPreviewCache[tournamentId];
+  if (!cached) return toast('ยังไม่มีข้อมูลสาย กรุณาลองใหม่', 'error');
+  openBracketFullscreen(tournamentId, cached.name, cached.matches, cached.groups, cached.tier, false, true);
 }
 
 // ── Correction modal: admin safety net now that champion declaration is

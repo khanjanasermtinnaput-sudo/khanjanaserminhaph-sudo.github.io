@@ -610,6 +610,64 @@ function _updateRoundTypes() {
   el.innerHTML = `🧭 รอบแข่ง: ` + rounds.map(r => `<span class="t-round-chip">${r}</span>`).join(' <span style="color:var(--muted)">→</span> ');
 }
 
+// Client-side-only preview of the knockout bracket SHAPE, viewable any time
+// (registration open, or group stage in progress) — not the real generated
+// bracket (rpc_tournament_generate_knockout hasn't run yet, so there's no
+// row to fetch). Leaf slots show "ผู้ชนะกลุ่ม X" placeholders, filling in a
+// real name once that group already has a standings leader with a win; every
+// later round is a plain "TBD" box. Fed into the same full-screen viewer via
+// openBracketFullscreen(..., isPreview=true) — synthetic negative ids so they
+// can never collide with real tournament_matches rows.
+function _koBuildPreviewMatches(numGroups, realGroups, tMatches, matchType) {
+  if (numGroups < 2) return [];
+  let size = 1; while (size < numGroups) size *= 2;
+  const roundNames = _koRoundNamesForGroupCount(numGroups);
+  const leaders = realGroups.map(grp => {
+    const hasMatch = tMatches.some(m => m.group_letter === grp.letter && (m.round_index == null));
+    if (!hasMatch) return null;
+    const st = calculateGroupStandings(grp, tMatches, matchType);
+    return (st[0] && st[0].wins > 0) ? st[0] : null;
+  });
+
+  const matches = [];
+  let idc = -1;
+  const leafCount = size / 2;
+  let prevIds = [];
+  for (let i = 0; i < leafCount; i++) {
+    const idxA = i * 2, idxB = i * 2 + 1;
+    const grpA = realGroups[idxA], grpB = realGroups[idxB];
+    const letterA = grpA ? grpA.letter : String.fromCharCode(65 + idxA);
+    const letterB = grpB ? grpB.letter : String.fromCharCode(65 + idxB);
+    const leaderA = idxA < numGroups ? leaders[idxA] : null;
+    const leaderB = idxB < numGroups ? leaders[idxB] : null;
+    const id = idc--;
+    matches.push({
+      id, round_index: 0, round_name: roundNames[0], bracket_slot: 'PK0-' + i,
+      player_a: leaderA ? leaderA.id : null, player_b: leaderB ? leaderB.id : null,
+      placeholderA: idxA < numGroups ? `ผู้ชนะกลุ่ม ${letterA}` : 'ว่าง',
+      placeholderB: idxB < numGroups ? `ผู้ชนะกลุ่ม ${letterB}` : 'ว่าง',
+      winner_id: null, status: 'pending', is_bye: false, score_a: null, score_b: null
+    });
+    prevIds.push(id);
+  }
+  let count = leafCount;
+  for (let r = 1; r < roundNames.length; r++) {
+    count = count / 2;
+    const curIds = [];
+    for (let i = 0; i < count; i++) {
+      const id = idc--;
+      matches.push({
+        id, round_index: r, round_name: roundNames[r], bracket_slot: 'PK' + r + '-' + i,
+        player_a: null, player_b: null, placeholderA: 'TBD', placeholderB: 'TBD',
+        winner_id: null, status: 'pending', is_bye: false, score_a: null, score_b: null
+      });
+      curIds.push(id);
+    }
+    prevIds = curIds;
+  }
+  return matches;
+}
+
 function _updateRegTotal() {
   const mode = document.getElementById('tournamentMatchType')?.value || '1v1';
   const ng = parseInt(document.getElementById('tourNumGroups')?.value) || 2;
@@ -1081,6 +1139,7 @@ async function renderTournamentSection() {
           const unitLabel = is2v2Reg ? 'ทีม' : 'คน';
           const perLabel = is2v2Reg ? `${cfg.teamsPerGroup} ทีม/กลุ่ม` : `${cfg.playersPerGroup} คน/กลุ่ม`;
           const canStart = filled >= 2;
+          _koPreviewCache[t.id] = { matches: _koBuildPreviewMatches(cfg.numGroups, [], [], matchType), groups, tier: t.tier, name: t.name };
           html += `<div class="tournament-group" style="margin-bottom:16px;position:relative">
             <button class="t-cancel-btn" style="position:absolute;top:10px;right:10px" onclick="confirmCancelTournament(${t.id},'${safeName}')">✕ ยกเลิก</button>
             <div class="tournament-group-title" style="padding-right:90px">
@@ -1102,6 +1161,7 @@ async function renderTournamentSection() {
                 ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
                    <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
                 : `<button class="btn btn-sm t-draw-btn" style="width:auto;${!canStart?'opacity:.5;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
+              <button class="btn btn-sm" style="width:auto" onclick="koOpenBracketPreview(${t.id})">👁️ ดูสาย (พรีวิว)</button>
             </div>
           </div>`;
         } else {
@@ -1257,18 +1317,23 @@ async function renderTournamentBracket(tournament, groups, readOnly = false) {
           <button class="btn btn-primary btn-sm" style="width:auto" onclick="koOpenBracketFullscreen(${tournament.id})">🏆 ดูสาย Bracket แบบเต็มจอ</button>
         </div>
       </div>`;
-    } else if (!readOnly) {
+    } else {
       const allComplete = realGroups.every(groupComplete);
-      html += `<div class="t-bk-wrap"><div class="t-bk-heading">🏆 รอบน็อคเอาท์ (สาย)</div>`;
-      if (allComplete) {
-        html += `<div style="text-align:center;padding:12px">
-          <div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">ทุกกลุ่มแข่งครบแล้ว พร้อมจับสาย Knockout</div>
-          <button class="btn btn-primary btn-sm" style="width:auto" onclick="koGenerateKnockout(${tournament.id})">🎲 สร้างสาย Knockout</button>
-        </div>`;
-      } else {
-        html += `<div style="text-align:center;padding:12px;font-size:0.78rem;color:var(--muted)">รอทุกกลุ่มแข่งขันให้ครบก่อนถึงจะจับสาย Knockout ได้</div>`;
+      const numGroups = realGroups.length;
+      _koPreviewCache[tournament.id] = { matches: _koBuildPreviewMatches(numGroups, realGroups, tMatches, matchType), groups, tier: tournament.tier, name: tournament.name };
+      html += `<div class="t-bk-wrap"><div class="t-bk-heading">🏆 รอบน็อคเอาท์ (สาย)</div>
+        <div style="text-align:center;padding:12px">`;
+      if (!readOnly) {
+        if (allComplete) {
+          html += `<div style="font-size:0.8rem;color:var(--muted);margin-bottom:10px">ทุกกลุ่มแข่งครบแล้ว พร้อมจับสาย Knockout</div>
+          <button class="btn btn-primary btn-sm" style="width:auto;margin-bottom:8px" onclick="koGenerateKnockout(${tournament.id})">🎲 สร้างสาย Knockout</button><br>`;
+        } else {
+          html += `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">รอทุกกลุ่มแข่งขันให้ครบก่อนถึงจะจับสาย Knockout ได้</div>`;
+        }
       }
-      html += `</div>`;
+      html += `<button class="btn btn-sm" style="width:auto" onclick="koOpenBracketPreview(${tournament.id})">👁️ ดูสาย (พรีวิว)</button>
+        </div>
+      </div>`;
     }
   } else if (realGroups.length === 1) {
     const grp = realGroups[0];
@@ -1674,15 +1739,17 @@ async function renderTournamentTab() {
             html += `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px">เข้าสู่ระบบเพื่อสมัครแข่ง</div>`;
           }
           html += cfg.drawPreview ? _renderDrawPreview(cfg) : _renderRegSlotTable(cfg, t.id, isAdmin);
+          _koPreviewCache[t.id] = { matches: _koBuildPreviewMatches(cfg.numGroups, [], [], matchType), groups, tier: t.tier, name: t.name };
+          html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">`;
           if (isAdmin) {
             const canStart = filled >= 2;
-            html += `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-              ${cfg.drawPreview
-                ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
-                   <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
-                : `<button class="btn btn-sm t-draw-btn" style="width:auto${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`}
-            </div>`;
+            html += cfg.drawPreview
+              ? `<button class="btn btn-sm t-draw-confirm" style="width:auto" onclick="confirmDraw(${t.id})">✅ ยืนยันสาย (Lock)</button>
+                 <button class="btn btn-sm t-draw-redraw" style="width:auto" onclick="runDraw(${t.id})">🎲 สุ่มใหม่</button>`
+              : `<button class="btn btn-sm t-draw-btn" style="width:auto${!canStart?';opacity:.45;pointer-events:none':''}" ${!canStart?'disabled':''} onclick="runDraw(${t.id})">🎲 สุ่มคู่แข่ง (${filled} ${unitLabel})</button>`;
           }
+          html += `<button class="btn btn-sm" style="width:auto" onclick="koOpenBracketPreview(${t.id})">👁️ ดูสาย (พรีวิว)</button>
+          </div>`;
 
         } else {
           // ── BRACKET PHASE — renderTournamentBracket renders group tables +
