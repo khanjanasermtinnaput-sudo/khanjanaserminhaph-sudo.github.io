@@ -1,21 +1,152 @@
-// ── Single Elimination tournament format (Phase 4) ──────────────────────────
-// Additive companion to tournament.js: adds create/register/generate-bracket
-// UI for the new "single_elimination" format (up to 32 entrants/teams, real
-// bracket tree via rpc_tournament_generate_bracket) without touching the
-// existing round_robin_groups creation/registration/knockout code at all.
-// The full BWF-style spectator bracket viewer (Phase 6) will replace
-// _seRenderMatchListHTML's plain round list below with a proper connected
-// tree — this phase focuses on correct data flow (create → register →
-// generate → see who plays whom), reusing tournament.js's own DB helpers
-// (dbTournamentCreate/Register/Unregister, dbGetTournaments,
-// dbGetTournamentMatches, getTournamentConfig/getTournamentMatchType,
-// isAdminUser/currentUser/esc/toast) rather than duplicating them.
+// ── Single Elimination tournament format (Phases 4-5) ────────────────────────
+// Additive companion to tournament.js: adds create/register/generate-bracket/
+// record-result UI for the new "single_elimination" format (up to 32
+// entrants/teams, real bracket tree + atomic auto-advancing result submission
+// via rpc_tournament_generate_bracket / rpc_tournament_submit_result) without
+// touching the existing round_robin_groups creation/registration/knockout/
+// Referee code at all. The full BWF-style spectator bracket viewer (a later
+// phase) will replace _seRenderMatchListHTML's plain round list below with a
+// proper connected tree — this phase focuses on correct data flow (create →
+// register → generate → record results → auto-advance → champion), reusing
+// tournament.js's own DB helpers (dbTournamentCreate/Register/Unregister,
+// dbGetTournaments, dbGetTournamentMatches, getTournamentConfig/
+// getTournamentMatchType, isAdminUser/currentUser/esc/toast) rather than
+// duplicating them.
 
 async function dbTournamentGenerateBracket(tournamentId) {
   return supaFetch('rpc/rpc_tournament_generate_bracket', {
     method: 'POST',
     body: JSON.stringify({ p_tournament_id: tournamentId })
   });
+}
+async function dbTournamentSubmitResult(tournamentId, matchId, games, winnerSide, idempotencyKey) {
+  return supaFetch('rpc/rpc_tournament_submit_result', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_tournament_id: tournamentId, p_match_id: matchId, p_games: games,
+      p_winner_side: winnerSide ?? null, p_idempotency_key: idempotencyKey ?? null
+    })
+  });
+}
+
+// ── [Phase 5] Live referee (adapted from tournament.js's _ref* state machine —
+// kept fully separate/global-state-isolated so the round-robin referee flow,
+// which posts to dbAddTournamentMatch, is never touched). Winner is always
+// recomputed server-side from the submitted games by rpc_tournament_submit_result;
+// this UI only decides WHEN a match looks finished client-side for UX. ──
+let _seRefState = null;
+
+function _seRefGameOver(a, b) {
+  const hi = Math.max(a, b), lo = Math.min(a, b);
+  if (hi >= 30) return true;
+  if (hi >= 21 && hi - lo >= 2) return true;
+  return false;
+}
+function seOpenReferee(tournamentId, matchId, idA, idB, labelA, labelB, winsNeeded) {
+  if (!idA || !idB || idA === idB) return toast('แมตช์นี้ยังไม่มีผู้เล่นครบ', 'error');
+  _seRefState = { tournamentId, matchId, idA, idB, labelA, labelB, winsNeeded, games: [], curA: 0, curB: 0 };
+  _renderSeRefModal();
+}
+function _seRefPoint(side, delta) {
+  if (!_seRefState) return;
+  if (side === 'a') _seRefState.curA = Math.max(0, _seRefState.curA + delta);
+  else _seRefState.curB = Math.max(0, _seRefState.curB + delta);
+  _renderSeRefModal();
+}
+function _seRefCommitGame() {
+  if (!_seRefState) return;
+  if (!_seRefGameOver(_seRefState.curA, _seRefState.curB)) return;
+  _seRefState.games.push({ a: _seRefState.curA, b: _seRefState.curB });
+  _seRefState.curA = 0; _seRefState.curB = 0;
+  _renderSeRefModal();
+}
+function _seRefGamesWon() {
+  let wA = 0, wB = 0;
+  for (const g of _seRefState.games) { if (g.a > g.b) wA++; else if (g.b > g.a) wB++; }
+  return { wA, wB };
+}
+function _seRefClose() { _seRefState = null; document.getElementById('seRefModal')?.remove(); }
+async function _seRefFinish() {
+  if (!_seRefState) return;
+  const need = _seRefState.winsNeeded || 1;
+  const { wA, wB } = _seRefGamesWon();
+  if (wA < need && wB < need) return toast(`ยังไม่จบแมตช์ (ต้องชนะ ${need} เกม)`, 'error');
+  const winnerSide = wA > wB ? 'a' : 'b';
+  const { tournamentId, matchId, games } = _seRefState;
+  try {
+    await dbTournamentSubmitResult(tournamentId, matchId, games, winnerSide, `se-${matchId}-${Date.now()}`);
+    _seRefClose();
+    toast('บันทึกผลแล้ว ✅', 'success');
+    _seRefreshAll();
+  } catch (e) { toast('บันทึกไม่ได้: ' + _tourRegErrText(e), 'error'); }
+}
+function _seRefRenderSide(side, btnDisabled) {
+  const r = _seRefState;
+  const cur = side === 'a' ? r.curA : r.curB;
+  const label = side === 'a' ? r.labelA : r.labelB;
+  const won = _seRefGamesWon();
+  const gamesWon = side === 'a' ? won.wA : won.wB;
+  const color = side === 'a' ? 'var(--neon)' : 'var(--neon2)';
+  const dis = btnDisabled ? 'disabled' : '';
+  const cur2 = btnDisabled ? 'not-allowed' : 'pointer';
+  const op = btnDisabled ? '0.38' : '1';
+  return `<div style="flex:1;text-align:center;padding:8px">
+    <div style="font-size:0.78rem;font-weight:700;color:${color};margin-bottom:4px;min-height:2.2em;display:flex;align-items:center;justify-content:center">${label}</div>
+    <div style="font-size:0.6rem;color:var(--muted);margin-bottom:6px">ชนะ ${gamesWon} เกม</div>
+    <div style="font-family:'Rajdhani',sans-serif;font-size:4rem;font-weight:700;line-height:1;color:${color}">${cur}</div>
+    <div style="display:flex;gap:6px;justify-content:center;margin-top:10px">
+      <button onclick="_seRefPoint('${side}',-1)" ${dis} style="width:42px;height:42px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);font-size:1.2rem;cursor:${cur2};opacity:${op}">−</button>
+      <button onclick="_seRefPoint('${side}',1)" ${dis} style="width:56px;height:56px;border-radius:50%;border:1px solid ${color};background:${color}22;color:${color};font-size:1.6rem;font-weight:700;cursor:${cur2};opacity:${op}">+</button>
+    </div>
+  </div>`;
+}
+function _renderSeRefModal() {
+  document.getElementById('seRefModal')?.remove();
+  const r = _seRefState;
+  if (!r) return;
+  const need = r.winsNeeded || 1;
+  const gameNo = r.games.length + 1;
+  const over = _seRefGameOver(r.curA, r.curB);
+  const { wA, wB } = _seRefGamesWon();
+  const matchDone = wA >= need || wB >= need;
+  const gameWinnerLabel = r.curA > r.curB ? r.labelA : r.labelB;
+  const bestOfLabel = need === 2 ? 'Best of 3' : 'เกมเดียว';
+
+  const gamesLog = r.games.map((g, i) =>
+    `<span style="font-size:0.68rem;padding:2px 8px;border-radius:12px;background:var(--card);border:1px solid var(--glass-border);color:var(--muted)">เกม ${i + 1}: ${g.a}-${g.b}</span>`
+  ).join('');
+
+  let actionBtn = '';
+  if (matchDone) {
+    const champLabel = wA > wB ? r.labelA : r.labelB;
+    actionBtn = `<button class="btn btn-primary" style="width:100%;background:rgba(255,215,0,.18);border:1px solid rgba(255,215,0,.5);color:#ffd700;font-weight:700" onclick="_seRefFinish()">💾 บันทึกผล · 🏆 ${champLabel} (${wA}-${wB})</button>`;
+  } else if (over) {
+    const winnerSideWins = (r.curA > r.curB ? wA : wB) + 1;
+    const willFinish = winnerSideWins >= need;
+    const nextLabel = willFinish ? '🏆 จบแมตช์' : '→ เกมต่อไป';
+    actionBtn = `<button class="btn btn-primary" style="width:100%" onclick="_seRefCommitGame()">✅ จบเกม ${gameNo} (${gameWinnerLabel} ${r.curA}-${r.curB}) ${nextLabel}</button>`;
+  } else {
+    actionBtn = `<div style="text-align:center;font-size:0.7rem;color:var(--muted);padding:8px">กำลังแข่งเกมที่ ${gameNo} · ถึง 21 แต้ม (ห่าง 2) เกมจะจบอัตโนมัติ</div>`;
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'seRefModal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:14px';
+  modal.innerHTML = `
+    <div style="background:var(--card);border:1px solid rgba(0,245,160,.3);border-radius:20px;padding:18px 16px;max-width:420px;width:100%;box-shadow:0 0 60px rgba(0,245,160,.12)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:0.95rem;font-weight:700">🎬 Referee · เกมที่ ${gameNo} <span style="font-size:0.66rem;font-weight:500;color:var(--muted)">(${bestOfLabel})</span></div>
+        <button onclick="_seRefClose()" style="width:30px;height:30px;border-radius:50%;border:1px solid var(--glass-border);background:var(--btn-glass);color:var(--muted);cursor:pointer">✕</button>
+      </div>
+      ${gamesLog ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">${gamesLog}</div>` : ''}
+      <div style="display:flex;align-items:stretch;border:1px solid var(--glass-border);border-radius:14px;background:rgba(255,255,255,0.02);margin-bottom:12px">
+        ${_seRefRenderSide('a', over || matchDone)}
+        <div style="width:1px;background:var(--glass-border)"></div>
+        ${_seRefRenderSide('b', over || matchDone)}
+      </div>
+      ${actionBtn}
+    </div>`;
+  document.body.appendChild(modal);
 }
 
 // ── Entrant / match player display helpers ──────────────────────────────────
@@ -40,7 +171,8 @@ function _seMatchPlayerLabel(cfg, players, playerId) {
   return p ? esc(p.name) : `#${playerId}`;
 }
 
-function _seRenderMatchListHTML(matches, cfg, players) {
+function _seRenderMatchListHTML(matches, cfg, players, tournamentId, tier, isAdmin) {
+  const winsNeeded = tier === 'Super 1000' ? 2 : 1;
   const rounds = {};
   matches.forEach(m => { (rounds[m.round_index] = rounds[m.round_index] || []).push(m); });
   const roundIdxs = Object.keys(rounds).map(Number).sort((a, b) => a - b);
@@ -56,10 +188,12 @@ function _seRenderMatchListHTML(matches, cfg, players) {
         const aWin = m.winner_id != null && m.winner_id === m.player_a;
         const bWin = m.winner_id != null && m.winner_id === m.player_b;
         const scoreTxt = m.status === 'completed' ? ` (${m.score_a ?? 0}-${m.score_b ?? 0})` : '';
+        const canRef = isAdmin && m.status === 'ready';
         html += `<div style="border:1px solid var(--glass-border);border-radius:10px;padding:6px 10px;margin-bottom:5px;font-size:0.78rem">
           <div style="${aWin ? 'color:var(--neon);font-weight:700' : ''}">${aWin ? '✓ ' : ''}${nameA}</div>
           <div style="${bWin ? 'color:var(--neon);font-weight:700' : ''}">${bWin ? '✓ ' : ''}${nameB}${scoreTxt}</div>
           ${m.is_bye ? '<div style="font-size:0.68rem;color:var(--muted)">BYE — ผ่านเข้ารอบอัตโนมัติ</div>' : ''}
+          ${canRef ? `<button class="btn btn-primary btn-sm" style="width:auto;margin-top:6px;font-size:0.7rem" onclick="seOpenReferee(${tournamentId},${m.id},${m.player_a},${m.player_b},'${esc(nameA).replace(/'/g, "\\'")}','${esc(nameB).replace(/'/g, "\\'")}',${winsNeeded})">🎬 บันทึกผล</button>` : ''}
         </div>`;
       });
     html += `</div>`;
@@ -128,7 +262,7 @@ async function _seRenderList(containerId, isAdmin) {
         html += `<div style="font-size:0.76rem;color:var(--muted)">ต้องมีผู้สมัครอย่างน้อย 2 คน/ทีม</div>`;
       }
     } else {
-      html += _seRenderMatchListHTML(matches, cfg, db.players);
+      html += _seRenderMatchListHTML(matches, cfg, db.players, t.id, t.tier, isAdmin);
     }
     html += `</div>`;
   }
