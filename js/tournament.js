@@ -1534,6 +1534,10 @@ async function renderTournamentSection() {
     if (activeTournaments.length) {
       html += `<div class="divider"></div><div style="font-size:0.83rem;font-weight:600;margin-bottom:8px">🏆 Tournaments</div>`;
       for (const t of activeTournaments) {
+        // Single Elimination tournaments have a different _config shape (flat
+        // entrants, no group-lettered slots) — rendered separately by
+        // js/tournament-bracket.js, which appends its own section after this one.
+        if (t.format === 'single_elimination') continue;
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
@@ -2331,6 +2335,9 @@ async function renderTournamentTab() {
       </div>`;
     } else {
       for (const t of visible) {
+        // Single Elimination tournaments are rendered by js/tournament-bracket.js
+        // (different _config shape — flat entrants, no group-lettered slots).
+        if (t.format === 'single_elimination') continue;
         let groups = [];
         try { groups = typeof t.groups === 'string' ? JSON.parse(t.groups) : (t.groups || []); } catch(e) {}
         const matchType = getTournamentMatchType(groups);
