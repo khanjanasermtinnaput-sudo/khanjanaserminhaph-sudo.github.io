@@ -88,11 +88,7 @@ function lbRenderDoubleBoard(pairs) {
   const isLite = document.documentElement.getAttribute('data-style') === 'lite';
 
   const half = (p) => {
-    const av = getAvatar(p.id, p.name);
     return `<div class="lb-rplyr-half">
-      <div style="position:relative;flex-shrink:0;isolation:isolate">
-        <div class="lb-rav ${getGachaFrameClass(p)}" style="width:32px;height:32px;background:${av.bg};color:${av.fg};${av.fs?'font-size:'+av.fs:''};position:relative;isolation:isolate">${getGachaFrameInner(p)}${av.content}</div>
-      </div>
       <div class="lb-rn-pair ${getGachaNameClass(p)}">${esc(p.name)}</div>
     </div>`;
   };

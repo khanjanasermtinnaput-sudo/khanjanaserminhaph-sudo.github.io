@@ -1302,7 +1302,7 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
 .lb-rplyr-pair{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
 .lb-rplyr-half{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 0}
 .lb-rplyr-sep{color:var(--muted);font-size:0.8rem;flex-shrink:0}
-.lb-rn-pair{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:block;font-size:0.78rem;font-weight:700}
+.lb-rn-pair{white-space:normal;overflow-wrap:break-word;min-width:0;display:block;font-size:0.78rem;font-weight:700;line-height:1.2}
 .lb-rpartner{font-size:0.66rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-top:1px}
 
 @media(max-width:620px){
