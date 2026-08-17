@@ -257,17 +257,22 @@ calcElo = function(a,b,c,d,e,f) {
 };
 
 // ── 2. Match Timer ───────────────────────────────
+// startedAt is a real timestamp (currentMatch.startedAt, set in selectPlayMode
+// in leaderboard.js) — elapsed is always recomputed as Date.now() - startedAt
+// each tick, never a naive incrementing counter, so a resumed match (page
+// reload restoring currentMatch.startedAt) continues from the correct time
+// instead of resetting to 0.
 let _timerIv = null, _timerStart = 0;
 
-function startMatchTimer() {
+function startMatchTimer(startedAt) {
   clearInterval(_timerIv);
-  _timerStart = Date.now();
+  _timerStart = startedAt || Date.now();
   const el = document.getElementById('matchTimerDisplay');
-  if (el) { el.style.display = ''; el.textContent = '00:00'; }
+  if (el) { el.style.display = ''; el.textContent = formatDurationClock(Math.floor((Date.now() - _timerStart) / 1000)); }
   _timerIv = setInterval(() => {
     const s = Math.floor((Date.now() - _timerStart) / 1000);
     const el2 = document.getElementById('matchTimerDisplay');
-    if (el2) el2.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+    if (el2) el2.textContent = formatDurationClock(s);
   }, 1000);
 }
 
@@ -278,7 +283,7 @@ function stopMatchTimer() {
 }
 
 const _selectModeBase = selectPlayMode;
-selectPlayMode = function(m) { _selectModeBase(m); startMatchTimer(); };
+selectPlayMode = function(m) { _selectModeBase(m); startMatchTimer(currentMatch && currentMatch.startedAt); };
 
 const _cancelMatchBase = cancelMatch;
 cancelMatch = function() { stopMatchTimer(); _cancelMatchBase(); };

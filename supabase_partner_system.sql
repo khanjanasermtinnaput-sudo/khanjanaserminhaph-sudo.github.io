@@ -276,3 +276,27 @@ JOIN public.players p2 ON p2.id = pp.player_id_high
 LEFT JOIN public.pair_stats ps
   ON ps.player_id_low = pp.player_id_low AND ps.player_id_high = pp.player_id_high;
 GRANT SELECT ON public.v_official_pairs TO anon, authenticated;
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- 9. Doubles Ranking (all pairs) — unlike v_official_pairs above, this is
+--    NOT routed through the disjoint player_partners matching. It lists
+--    EVERY unique pair that has ever played together (one row per pair_stats
+--    row), so a player who has played with several different partners shows
+--    up in multiple ranked rows instead of only their single best pairing.
+--    pair_stats already has RLS SELECT USING (true), so this view is safe to
+--    expose the same way v_official_pairs is above.
+-- ─────────────────────────────────────────────────────────────────────────
+CREATE OR REPLACE VIEW public.v_pair_rankings AS
+SELECT
+  ps.player_id_low, ps.player_id_high,
+  p1.name AS name_low, p2.name AS name_high,
+  ROUND((p1.pts + p2.pts) / 2.0) AS double_rank_score,
+  ps.matches_together, ps.wins_together, ps.losses_together,
+  CASE WHEN ps.matches_together > 0
+       THEN ROUND(ps.wins_together::numeric / ps.matches_together * 100, 1)
+       ELSE 0 END AS win_rate_pct,
+  ps.last_played_at
+FROM public.pair_stats ps
+JOIN public.players p1 ON p1.id = ps.player_id_low
+JOIN public.players p2 ON p2.id = ps.player_id_high;
+GRANT SELECT ON public.v_pair_rankings TO anon, authenticated;

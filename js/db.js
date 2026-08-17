@@ -306,13 +306,17 @@ async function dbDeletePlayer(id) { await supaFetch('players?id=eq.' + id, { met
 async function dbAddPending(match) {
   const row = { type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss, submitted_by: match.submittedBy };
   if (match.mood) row.mood = match.mood;
+  if (match.startedAt) row.started_at = new Date(match.startedAt).toISOString();
+  if (match.endedAt) row.ended_at = new Date(match.endedAt).toISOString();
+  if (match.durationSeconds != null) row.duration_seconds = match.durationSeconds;
   const post = () => supaFetch("pending_matches", { method: "POST", body: JSON.stringify(row), prefer: "return=minimal" });
   try {
     await post();
   } catch(e) {
-    // คอลัมน์ mood ยังไม่ถูกสร้าง → บันทึกแบบไม่มี mood แทน (ดู SQL ในหน้า Admin)
-    if (row.mood && e.message && (e.message.includes('PGRST204') || e.message.includes('mood'))) {
-      delete row.mood;
+    // คอลัมน์ mood/started_at/ended_at/duration_seconds ยังไม่ถูกสร้าง →
+    // บันทึกแบบไม่มีคอลัมน์เหล่านั้นแทน (ดู SQL ในหน้า Admin)
+    if ((row.mood || row.started_at || row.ended_at || row.duration_seconds != null) && e.message && (e.message.includes('PGRST204') || e.message.includes('mood') || e.message.includes('started_at') || e.message.includes('ended_at') || e.message.includes('duration_seconds'))) {
+      delete row.mood; delete row.started_at; delete row.ended_at; delete row.duration_seconds;
       await post();
       return;
     }
@@ -360,13 +364,17 @@ async function dbDeleteMatchesByPlayer(playerId) {
 async function dbAddMatch(match) {
   const row = { type: match.type, team_a: match.teamA, team_b: match.teamB, score_a: match.scoreA, score_b: match.scoreB, win_team: match.winTeam, pts_gain: match.pts.gain, pts_loss: match.pts.loss };
   if (match.mood) row.mood = match.mood;
+  if (match.startedAt) row.started_at = new Date(match.startedAt).toISOString();
+  if (match.endedAt) row.ended_at = new Date(match.endedAt).toISOString();
+  if (match.durationSeconds != null) row.duration_seconds = match.durationSeconds;
   try {
     const res = await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=representation' });
     return Array.isArray(res) && res[0] ? res[0].id : null;
   } catch(e) {
-    // คอลัมน์ mood ยังไม่ถูกสร้าง → บันทึกแบบไม่มี mood แทน (ดู SQL ในหน้า Admin)
-    if (row.mood && e.message && (e.message.includes('PGRST204') || e.message.includes('mood'))) {
-      delete row.mood;
+    // คอลัมน์ mood/started_at/ended_at/duration_seconds ยังไม่ถูกสร้าง →
+    // บันทึกแบบไม่มีคอลัมน์เหล่านั้นแทน (ดู SQL ในหน้า Admin)
+    if ((row.mood || row.started_at || row.ended_at || row.duration_seconds != null) && e.message && (e.message.includes('PGRST204') || e.message.includes('mood') || e.message.includes('started_at') || e.message.includes('ended_at') || e.message.includes('duration_seconds'))) {
+      delete row.mood; delete row.started_at; delete row.ended_at; delete row.duration_seconds;
       const res = await supaFetch('matches', { method: 'POST', body: JSON.stringify(row), prefer: 'return=representation' });
       return Array.isArray(res) && res[0] ? res[0].id : null;
     } else throw e;

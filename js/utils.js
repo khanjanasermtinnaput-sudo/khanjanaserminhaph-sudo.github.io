@@ -256,6 +256,19 @@ function formatTeamNames(team, sep) {
     return cls ? `<span class="${cls}">${safe}</span>` : safe;
   }).join(sep);
 }
+// Referee Mode live timer: MM:SS under 1 hour, HH:MM:SS at/over 1 hour.
+function formatDurationClock(totalSeconds) {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  const mm = String(m).padStart(2, '0'), ss = String(sec).padStart(2, '0');
+  return h > 0 ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
+}
+// Match History duration badge: "42 นาที" under 60 min, "1 ชม. 12 นาที" at/over 60 min.
+function formatDurationThai(totalSeconds) {
+  const totalMin = Math.round(totalSeconds / 60);
+  if (totalMin < 60) return `${totalMin} นาที`;
+  return `${Math.floor(totalMin / 60)} ชม. ${totalMin % 60} นาที`;
+}
 // Show 3% pull reveal overlay (called after admin assigns frame/name)
 const GACHA_THEME = {
   void:  { label:'🌑 VOID ABYSS',     name:'Void Corruption',   color:'#cc88ff', color2:'#aa44ff', color3:'#7700bb', bg:'linear-gradient(135deg,#1a0030,#0c0018)',          border:'#9900dd', glow:'rgba(150,0,220,0.6)', glow2:'rgba(100,0,180,0.3)' },

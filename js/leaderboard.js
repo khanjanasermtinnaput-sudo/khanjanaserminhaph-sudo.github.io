@@ -268,6 +268,10 @@ function renderMatchSetup() {
 function renderPlayerGrid() {
   const sel = window._matchSel || (window._matchSel = { mode: 'singles', A: [], B: [] });
   const isDoubles = sel.mode === 'doubles';
+  if (isDoubles) {
+    const searchEl = document.getElementById('pairPickerSearch');
+    renderPairPicker(searchEl ? searchEl.value : '');
+  }
   const allSelected = [...sel.A, ...sel.B];
   const slotEl = document.getElementById(isDoubles ? 'doublesSlots' : 'singlesSlots');
   if (slotEl) {
@@ -333,6 +337,34 @@ function clearSlot(label) {
   window._matchSel = sel;
   renderPlayerGrid();
 }
+// เลือกคู่ที่เคยเล่นด้วยกันมาแล้วในคลิกเดียว (จาก db.pairRankings / pair_stats)
+// — ไม่ได้แทนที่การแตะเลือกทีละคน ใช้ทำงานคู่กัน
+function renderPairPicker(q) {
+  const wrap = document.getElementById('pairPickerList');
+  if (!wrap) return;
+  const sel = window._matchSel || { A: [], B: [] };
+  const term = (q || '').trim().toLowerCase();
+  const used = new Set([...sel.A, ...sel.B]);
+  const rows = (db.pairRankings || []).filter(r =>
+    !term || r.name_low.toLowerCase().includes(term) || r.name_high.toLowerCase().includes(term));
+  wrap.innerHTML = rows.map(r => {
+    const conflict = used.has(r.player_id_low) || used.has(r.player_id_high);
+    return `<div class="player-card${conflict ? ' disabled' : ''}" onclick="${conflict ? '' : `pickPair(${r.player_id_low},${r.player_id_high})`}">
+      <div class="pc-info"><div class="pc-name">${esc(r.name_low)} / ${esc(r.name_high)}</div>
+      <div class="pc-pts">${r.matches_together} matches</div></div>
+    </div>`;
+  }).join('') || `<div class="text-muted" style="grid-column:span 2;padding:8px;text-align:center;font-size:0.78rem">ยังไม่มีคู่ที่เคยเล่นด้วยกัน</div>`;
+}
+function pickPair(id1, id2) {
+  const sel = window._matchSel || (window._matchSel = { mode: 'doubles', A: [], B: [] });
+  const used = new Set([...sel.A, ...sel.B]);
+  if (used.has(id1) || used.has(id2)) return toast('ผู้เล่นถูกเลือกไปแล้ว', 'error');
+  if (sel.A.length === 0) sel.A = [id1, id2];
+  else if (sel.B.length === 0) sel.B = [id1, id2];
+  else return toast('เลือกครบทุก slot แล้ว', 'error');
+  window._matchSel = sel;
+  renderPlayerGrid();
+}
 function startSingles() {
   const sel = window._matchSel || { A: [], B: [] };
   if (!sel.A[0] || !sel.B[0]) return toast('เลือกผู้เล่นทั้งสองฝั่ง', 'error');
@@ -384,7 +416,15 @@ function showMatchPlaying() {
   document.getElementById('matchPlaying').classList.remove('hidden');
 }
 
+const ACTIVE_REF_MATCH_KEY = 'badminton_active_ref_match';
+
 function selectPlayMode(mode) {
+  // ระบุ playMode + เวลาเริ่ม — ใช้เฉพาะ Referee Mode สำหรับบันทึกระยะเวลาแข่งขัน
+  // (currentMatch ถูกสร้างไว้แล้วจาก startSingles()/startDoubles() ก่อนหน้านี้)
+  if (currentMatch && !currentMatch.startedAt) {
+    currentMatch.playMode = mode;
+    currentMatch.startedAt = Date.now();
+  }
   document.getElementById('modePicker').classList.add('hidden');
   if (mode === 'classic') {
     npOpen();
@@ -397,7 +437,43 @@ function selectPlayMode(mode) {
     // ซ่อน nav และ theme bar เพื่อเต็มจอจริงๆ
     document.getElementById('mainNav').style.display = 'none';
     document.getElementById('themeControls').style.display = 'none';
+    _persistActiveRefMatch();
   }
+}
+
+// เก็บสถานะแมตช์ Referee Mode ที่กำลังเล่นอยู่ไว้ใน localStorage เพื่อให้
+// รีเฟรชหน้าแล้วนับเวลาต่อได้ (ไม่รีเซ็ตเป็น 0) — ใช้เฉพาะ Referee Mode
+function _persistActiveRefMatch() {
+  if (!currentMatch || currentMatch.playMode !== 'referee') return;
+  try {
+    localStorage.setItem(ACTIVE_REF_MATCH_KEY, JSON.stringify({
+      type: currentMatch.type,
+      teamAIds: currentMatch.teamA.map(p => p.id),
+      teamBIds: currentMatch.teamB.map(p => p.id),
+      scoreA: currentMatch.scoreA,
+      scoreB: currentMatch.scoreB,
+      startedAt: currentMatch.startedAt
+    }));
+  } catch(e) {}
+}
+function _clearActiveRefMatch() {
+  try { localStorage.removeItem(ACTIVE_REF_MATCH_KEY); } catch(e) {}
+}
+// เรียกครั้งเดียวหลัง login/session restore: ถ้ามีแมตช์ Referee Mode ที่ยัง
+// เล่นค้างอยู่ (จากก่อนรีเฟรชหน้า) ให้กู้คืน currentMatch + เปิด overlay ต่อ
+// โดยตัวจับเวลานับต่อจาก startedAt เดิม ไม่รีเซ็ตเป็น 0
+function resumeActiveMatchIfAny() {
+  let saved;
+  try { saved = JSON.parse(localStorage.getItem(ACTIVE_REF_MATCH_KEY) || 'null'); } catch(e) { saved = null; }
+  if (!saved || !saved.startedAt || !Array.isArray(saved.teamAIds) || !Array.isArray(saved.teamBIds)) { _clearActiveRefMatch(); return; }
+  const teamA = saved.teamAIds.map(id => db.players.find(p => p.id === id)).filter(Boolean);
+  const teamB = saved.teamBIds.map(id => db.players.find(p => p.id === id)).filter(Boolean);
+  if (teamA.length !== saved.teamAIds.length || teamB.length !== saved.teamBIds.length) { _clearActiveRefMatch(); return; }
+  currentMatch = { type: saved.type, teamA, teamB, scoreA: saved.scoreA || 0, scoreB: saved.scoreB || 0, playMode: 'referee', startedAt: saved.startedAt };
+  window._matchSel = { mode: saved.type, A: teamA.map(p => p.id), B: teamB.map(p => p.id) };
+  showMatchPlaying();
+  selectPlayMode('referee');
+  toast('⏱ กู้คืนแมตช์ Referee ที่ค้างอยู่', 'info');
 }
 
 function refAddScore(team, eventOrDelta, _unused) {
@@ -421,6 +497,7 @@ function refAddScore(team, eventOrDelta, _unused) {
     btn.appendChild(ripple);
     setTimeout(() => ripple.remove(), 500);
   }
+  _persistActiveRefMatch();
   if (delta > 0) checkBWFWin();
 }
 
@@ -456,11 +533,13 @@ function changeScore(team, delta) {
   currentMatch[key] = delta > 0 ? Math.min(30, next) : next; // cap 30
   document.getElementById('score' + team).textContent = currentMatch[key];
   document.getElementById('refHalfScore' + team).textContent = currentMatch[key];
+  _persistActiveRefMatch();
   if (delta > 0) checkBWFWin();
 }
 
 function cancelMatch() {
   currentMatch = null;
+  _clearActiveRefMatch();
   npClose();
   // ปิด fullscreen overlay
   document.getElementById('refOverlay').style.display = 'none';
@@ -706,6 +785,14 @@ async function saveMatch() {
     }
   }
 
+  // Referee Mode เท่านั้น: คำนวณระยะเวลาแข่งขันจริงจาก startedAt (timestamp)
+  // ไม่ใช้ตัวนับ interval เป็น source of truth
+  let _durFields = {};
+  if (currentMatch.playMode === 'referee' && currentMatch.startedAt) {
+    const endedAt = Date.now();
+    _durFields = { startedAt: currentMatch.startedAt, endedAt, durationSeconds: Math.round((endedAt - currentMatch.startedAt) / 1000) };
+  }
+
   toast('กำลังบันทึก...', 'info');
   try {
     if (isAdminUser()) {
@@ -722,10 +809,11 @@ async function saveMatch() {
           await dbUpdatePlayer(p.id, { pts: Math.max(0, pl.pts - actualLoss), losses: pl.losses + 1 });
         }
       }
-      _lastSavedMatchId = await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
+      _lastSavedMatchId = await dbAddMatch({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null), ..._durFields });
       await loadAll();
       closeModal('finishModal');
       currentMatch = null;
+      _clearActiveRefMatch();
       closeRefOverlay();
       document.getElementById('matchPlaying').classList.add('hidden');
       document.getElementById('modePicker').classList.remove('hidden');
@@ -740,10 +828,11 @@ async function saveMatch() {
       }, 500);
     } else {
       // ผู้เล่นทั่วไป → ส่งรอ Admin ยืนยันก่อน ยังไม่บันทึกคะแนน
-      await dbAddPending({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, submittedBy: currentUser.id, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null) });
+      await dbAddPending({ type: currentMatch.type, teamA: currentMatch.teamA.map(p=>({id:p.id,name:p.name})), teamB: currentMatch.teamB.map(p=>({id:p.id,name:p.name})), scoreA: sA, scoreB: sB, winTeam, pts: { gain, loss }, submittedBy: currentUser.id, mood: (typeof _selectedMood !== 'undefined' ? _selectedMood : null), ..._durFields });
       await loadAll();
       closeModal('finishModal');
       currentMatch = null;
+      _clearActiveRefMatch();
       closeRefOverlay();
       document.getElementById('matchPlaying').classList.add('hidden');
       document.getElementById('modePicker').classList.remove('hidden');
@@ -791,6 +880,7 @@ async function renderHistory() {
       const _md = m.date ? new Date(m.date) : null;
       const date = (_md && !isNaN(_md)) ? _md.toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'}) : '';
       const typeLabel = m.type === 'doubles' ? '👥 Doubles' : '👤 Singles';
+      const durTag = m.durationSeconds ? ` <span style="font-size:0.72rem;color:var(--muted)" title="เวลาแข่งขัน">⏱ ${formatDurationThai(m.durationSeconds)}</span>` : '';
       const moodTag = m.mood ? ` <span style="font-size:0.95rem" title="บรรยากาศแมตช์">${esc(m.mood)}</span>` : '';
       // Highlight if filtered player won/lost
       let resultHint = '';
@@ -804,7 +894,7 @@ async function renderHistory() {
         : '';
       return `<div class="hist-item">
         <div class="hist-header">
-          <div style="font-size:0.82rem;font-weight:600">${typeLabel}${moodTag}${resultHint}</div>
+          <div style="font-size:0.82rem;font-weight:600">${typeLabel}${durTag}${moodTag}${resultHint}</div>
           <div style="display:flex;align-items:center;gap:6px"><div class="hist-date">${date}</div>${undoBtn}</div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
@@ -907,7 +997,7 @@ async function renderProfile() {
     document.getElementById('myHistList').innerHTML = myMatches.map(m => {
       const inA = m.teamA.some(x=>x.id===p.id), isWin = (inA && m.winTeam==='A') || (!inA && m.winTeam==='B');
       const opp = inA ? m.teamB : m.teamA, date = new Date(m.date).toLocaleString('th-TH',{dateStyle:'short',timeStyle:'short'});
-      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${parseInt(m.scoreA)||0}-${parseInt(m.scoreB)||0} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts${m.mood ? ' · ' + esc(m.mood) : ''}</div></div>`;
+      return `<div class="hist-item"><div class="hist-header"><span class="hist-result ${isWin?'win':'lose'}">${isWin?t('win_label'):t('lose_label')}</span><span class="hist-date">${date}</span></div><div class="hist-detail">vs ${formatTeamNames(opp)} · ${parseInt(m.scoreA)||0}-${parseInt(m.scoreB)||0} · ${isWin?'+'+m.pts.gain:'-'+m.pts.loss} pts${m.durationSeconds ? ' · ⏱ ' + formatDurationThai(m.durationSeconds) : ''}${m.mood ? ' · ' + esc(m.mood) : ''}</div></div>`;
     }).join('') || `<div class="text-muted" style="text-align:center;padding:20px">${t('no_match')}</div>`;
   } catch(e) { console.error(e); }
 }
@@ -1018,7 +1108,7 @@ async function approvePending(pendingId) {
         }
       }
     }
-    _lastSavedMatchId = await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss }, mood: r.mood || null });
+    _lastSavedMatchId = await dbAddMatch({ type: r.type, teamA: r.team_a, teamB: r.team_b, scoreA: r.score_a, scoreB: r.score_b, winTeam: r.win_team, pts: { gain: r.pts_gain, loss: r.pts_loss }, mood: r.mood || null, startedAt: r.started_at ? new Date(r.started_at).getTime() : null, endedAt: r.ended_at ? new Date(r.ended_at).getTime() : null, durationSeconds: r.duration_seconds ?? null });
     await dbDeletePending(pendingId);
     await loadAll();
     toast('✅ ยืนยันแมตช์สำเร็จ! คะแนนถูกบันทึกแล้ว 🎉', 'success');

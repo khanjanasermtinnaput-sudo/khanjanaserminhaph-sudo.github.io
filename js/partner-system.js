@@ -9,17 +9,27 @@
 // lbRenderBoard/loadAll cleanly, same convention as dashboard.js/levels.js.
 
 db.officialPairs = [];
+db.pairRankings = [];
 
 async function loadPairs() {
   try { db.officialPairs = await supaFetch('v_official_pairs?select=*'); }
   catch(e) { console.warn('loadPairs failed:', e); db.officialPairs = []; }
 }
 
-// Wrap loadAll so officialPairs stays in sync with every players/matches refresh.
+// Doubles Ranking board data — every unique pair that has played together
+// (from pair_stats via v_pair_rankings), NOT the disjoint official-partner
+// matching above. See supabase_partner_system.sql section 9.
+async function loadPairRankings() {
+  try { db.pairRankings = await supaFetch('v_pair_rankings?select=*'); }
+  catch(e) { console.warn('loadPairRankings failed:', e); db.pairRankings = []; }
+}
+
+// Wrap loadAll so officialPairs/pairRankings stay in sync with every players/matches refresh.
 const _loadAllForPartners = loadAll;
 loadAll = async function() {
   await _loadAllForPartners();
   await loadPairs();
+  await loadPairRankings();
 };
 
 async function dbRecalcPartnerSystem(matchId) {
@@ -64,15 +74,19 @@ function setLbMode(mode) {
 }
 
 // ── Double Rank board rendering ──────────────────────────────────────────────
-// Builds pair "rows" purely from db.players + db.officialPairs (never a
+// Builds pair "rows" purely from db.players + db.pairRankings (never a
 // stored score) sorted by live (p1.pts+p2.pts)/2, reusing the exact same
 // .lb-br.lb-glass row shell (and its ripple/animation/base CSS) as the
 // single-rank board, plus additive .lb-br-pair/.lb-rplyr-pair/... classes so
 // single-rank rows are untouched.
+//
+// Sourced from db.pairRankings (v_pair_rankings, backed by pair_stats) —
+// EVERY unique pair that has played together gets its own row here, unlike
+// db.officialPairs above which is capped at one disjoint pairing per player.
 function _buildOfficialPairsWithScore() {
   const byId = new Map(db.players.map(p => [p.id, p]));
   const pairs = [];
-  for (const row of db.officialPairs) {
+  for (const row of db.pairRankings) {
     const p1 = byId.get(row.player_id_low), p2 = byId.get(row.player_id_high);
     if (!p1 || !p2) continue; // deleted/inactive player — silently excluded, no crash
     const score = Math.round((p1.pts + p2.pts) / 2);

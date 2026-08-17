@@ -489,6 +489,8 @@ function initCrownSparkle(canvas, W, H) {
         <button class="btn btn-primary" onclick="startSingles()">▶ เริ่มแมตช์</button>
       </div>
       <div id="doublesSetup" class="hidden">
+        <input type="text" id="pairPickerSearch" class="inp" placeholder="🔎 ค้นหาคู่หรือชื่อนักกีฬา" oninput="renderPairPicker(this.value)" style="margin-bottom:8px;width:100%">
+        <div class="player-grid" id="pairPickerList" style="margin-bottom:10px"></div>
         <div class="player-slot-row" style="grid-template-columns:1fr 1fr" id="doublesSlots"></div>
         <div class="player-grid" id="doublesGrid"></div>
         <button class="btn btn-primary mt-12" onclick="startDoubles()">▶ เริ่มแมตช์</button>
@@ -704,6 +706,31 @@ CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (tr
 -- gacha_frame, gacha_name (รันไปแล้ว)
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
+
+      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.3 — Doubles Ranking ทุกคู่ (v_pair_rankings)</div>
+      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">-- ดูไฟล์ supabase_partner_system.sql ส่วน "9. Doubles Ranking (all pairs)"
+CREATE OR REPLACE VIEW public.v_pair_rankings AS
+SELECT
+  ps.player_id_low, ps.player_id_high,
+  p1.name AS name_low, p2.name AS name_high,
+  ROUND((p1.pts + p2.pts) / 2.0) AS double_rank_score,
+  ps.matches_together, ps.wins_together, ps.losses_together,
+  CASE WHEN ps.matches_together > 0
+       THEN ROUND(ps.wins_together::numeric / ps.matches_together * 100, 1)
+       ELSE 0 END AS win_rate_pct,
+  ps.last_played_at
+FROM public.pair_stats ps
+JOIN public.players p1 ON p1.id = ps.player_id_low
+JOIN public.players p2 ON p2.id = ps.player_id_high;
+GRANT SELECT ON public.v_pair_rankings TO anon, authenticated;</pre>
+
+      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.2 — Match Duration (Referee Mode)</div>
+      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE matches ADD COLUMN IF NOT EXISTS started_at timestamptz;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS ended_at timestamptz;
+ALTER TABLE matches ADD COLUMN IF NOT EXISTS duration_seconds integer;
+ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS started_at timestamptz;
+ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS ended_at timestamptz;
+ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS duration_seconds integer;</pre>
 
       <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.1 — Match Mood (อีโมจิบรรยากาศแมตช์)</div>
       <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE matches ADD COLUMN IF NOT EXISTS mood text;
@@ -1108,16 +1135,16 @@ END $$;</pre>
 
 <script src="js/i18n.js?v=20260529l"></script>
 <script src="js/exp-engine.js?v=20260705a"></script>
-<script src="js/db.js?v=20260707a"></script>
+<script src="js/db.js?v=20260817c"></script>
 <script src="js/elo.js?v=20260610a"></script>
-<script src="js/auth.js?v=20260610b"></script>
-<script src="js/leaderboard.js?v=20260816a"></script>
+<script src="js/auth.js?v=20260817c"></script>
+<script src="js/leaderboard.js?v=20260817c"></script>
 <script src="js/profile.js?v=20260625a"></script>
 <script src="js/stats.js?v=20260610a"></script>
 <script src="js/season.js?v=20260610a"></script>
-<script src="js/utils.js?v=20260703a"></script>
+<script src="js/utils.js?v=20260817c"></script>
 <script src="js/achievements.js?v=20260610a"></script>
-<script src="js/rankup.js?v=20260610a"></script>
+<script src="js/rankup.js?v=20260817c"></script>
 <script src="js/daily.js?v=20260625a"></script>
 <script src="js/avatar.js?v=20260703a"></script>
 <script src="js/gacha.js?v=20260707a"></script>
@@ -1853,6 +1880,6 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/levelrewards.js?v=20260706a"></script>
 <!-- Partner System (Double Rank) — loads LAST so it wraps the fully-patched
      renderLeaderboard/lbRenderBoard/loadAll/saveMatch/approvePending cleanly -->
-<script src="js/partner-system.js?v=20260817b"></script>
+<script src="js/partner-system.js?v=20260817c"></script>
 </body>
 </html>
