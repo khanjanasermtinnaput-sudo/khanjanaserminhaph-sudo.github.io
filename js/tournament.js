@@ -395,6 +395,9 @@ async function _refFinish() {
         if (winTeam?.playerIds) await awardMatchCoins(winTeam.playerIds);
       } catch(e) {}
     }
+    if (matchType === '2v2' && typeof dbRecalcPartnerSystem === 'function') {
+      try { await dbRecalcPartnerSystem(null); } catch(e) {}
+    }
     _refClose();
     toast('บันทึกผลแล้ว ✅', 'success');
     renderTournamentSection();
@@ -1515,8 +1518,40 @@ function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
     }
   }
 
+  // Partner System: if the player has an official partner and hasn't
+  // registered yet, suggest the specific empty team-slot where their
+  // partner already claimed a seat — a UI hint only, never auto-registers
+  // (the player still must click the empty seat themselves via the normal
+  // claimTournamentSlot flow).
+  let suggestSlot = null, suggestPartnerName = null;
+  if (is2v2 && currentUser && !mySlot && typeof getOfficialPartner === 'function') {
+    const partner = getOfficialPartner(currentUser.id);
+    if (partner) {
+      outer2: for (const [g, gSlots] of Object.entries(slots)) {
+        for (let i = 0; i < gSlots.length; i++) {
+          const team = gSlots[i];
+          const partnerIdx = team.indexOf(partner.id);
+          if (partnerIdx !== -1) {
+            const otherIdx = partnerIdx === 0 ? 1 : 0;
+            if (team[otherIdx] === null || team[otherIdx] === undefined) {
+              suggestSlot = { g, i, s: otherIdx };
+              suggestPartnerName = partner.name;
+              break outer2;
+            }
+          }
+        }
+      }
+    }
+  }
+
   const cols = Math.min(groups.length, 4);
-  let html = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;margin-bottom:12px">`;
+  let html = '';
+  if (suggestSlot) {
+    html += `<div style="background:rgba(0,245,160,0.08);border:1px solid rgba(0,245,160,0.3);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:0.76rem;color:var(--neon)">
+      💡 แนะนำ: <b>${esc(suggestPartnerName)}</b> คู่ทางการของคุณอยู่ทีม ${suggestSlot.i + 1} สาย ${suggestSlot.g} — กดช่องที่ว่างเพื่อจับคู่
+    </div>`;
+  }
+  html += `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:8px;margin-bottom:12px">`;
 
   for (const grp of groups) {
     const gSlots = slots[grp] || [];
@@ -1533,13 +1568,15 @@ function _renderRegSlotTable(cfg, tournamentId, isAdmin) {
           const isMe = currentUser && pid === currentUser.id;
           const isEmpty = pid === null || pid === undefined;
           const canClaim = currentUser && isEmpty && !mySlot;
+          const isSuggested = suggestSlot && suggestSlot.g === grp && suggestSlot.i === tIdx && suggestSlot.s === sIdx;
           html += `<div onclick="claimTournamentSlot(${tournamentId},'${grp}',${tIdx},${sIdx})"
             style="padding:5px 8px;border-radius:6px;margin-bottom:2px;font-size:0.74rem;
             cursor:${canClaim||isMe?'pointer':'default'};
             background:${isMe?'rgba(0,245,160,0.12)':isEmpty?'rgba(255,255,255,0.03)':'rgba(255,255,255,0.06)'};
-            border:1px solid ${isMe?'rgba(0,245,160,0.5)':isEmpty?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.12)'};
+            border:1px solid ${isMe?'rgba(0,245,160,0.5)':isSuggested?'var(--neon)':isEmpty?'rgba(255,255,255,0.07)':'rgba(255,255,255,0.12)'};
+            ${isSuggested ? 'box-shadow:0 0 0 1px var(--neon) inset;' : ''}
             color:${isMe?'var(--neon)':isEmpty?'var(--muted)':'var(--text)'}">
-            ${isMe ? `✓ ${pName(pid)}` : isEmpty ? (canClaim ? '<span style="color:var(--neon)">+ สมัคร</span>' : 'ว่าง') : pName(pid)}
+            ${isMe ? `✓ ${pName(pid)}` : isEmpty ? (canClaim ? `<span style="color:var(--neon)">${isSuggested ? '💡 ' : '+ '}สมัคร</span>` : 'ว่าง') : pName(pid)}
           </div>`;
         });
         html += `</div>`;

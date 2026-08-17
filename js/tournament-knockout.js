@@ -95,6 +95,10 @@ async function _koRefFinish() {
   const { tournamentId, matchId, games } = _koRefState;
   try {
     await dbTournamentSubmitKnockoutResult(tournamentId, matchId, games, winnerSide, `ko-${matchId}-${Date.now()}`);
+    // Knockout matches can be 1v1 or 2v2; matchType isn't in _koRefState, and
+    // a recalc is a cheap, idempotent full rebuild at club-app scale, so it's
+    // simplest to always fire it here rather than thread matchType through.
+    if (typeof dbRecalcPartnerSystem === 'function') { try { await dbRecalcPartnerSystem(matchId); } catch(e) {} }
     _koRefClose();
     toast('บันทึกผลแล้ว ✅', 'success');
     const wasFullscreen = !!document.getElementById('brmxOverlay');

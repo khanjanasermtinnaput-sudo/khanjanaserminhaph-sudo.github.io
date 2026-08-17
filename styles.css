@@ -1287,3 +1287,25 @@ html.perf-anim-paused *::after{animation-play-state:paused!important}
   .brmx-round:not(.brmx-lastround) .brmx-pair.brmx-haspartner{border-right:none}
   .brmx-round:not(.brmx-lastround) .brmx-pair{padding-right:0}
 }
+
+/* ── Partner System — Single/Double Rank toggle + Double Rank pair rows ────
+   Additive only: no existing .lb-br rule is touched, so Single Rank rows
+   are provably unchanged. Reuses the min-width:0 + overflow:hidden +
+   text-overflow:ellipsis convention already proven on .lb-rn/.pc-name, and
+   the position:relative;isolation:isolate convention already proven on
+   .lb-rav's wrapper, so animated gacha frames/badges on either partner
+   can't expand or detach the card border. */
+.lb-mode-toggle{display:flex;gap:8px;margin:10px 0 4px;background:var(--card);border:1px solid var(--glass-border);border-radius:12px;padding:4px}
+.lb-mode-btn{flex:1;padding:9px 10px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-family:inherit;font-size:0.8rem;font-weight:700;cursor:pointer;transition:all .2s}
+.lb-mode-btn.active{background:var(--neon);color:#04140f}
+
+.lb-rplyr-pair{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+.lb-rplyr-half{display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 0}
+.lb-rplyr-sep{color:var(--muted);font-size:0.8rem;flex-shrink:0}
+.lb-rn-pair{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;display:block;font-size:0.78rem;font-weight:700}
+.lb-rpartner{font-size:0.66rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-top:1px}
+
+@media(max-width:620px){
+  .lb-mode-btn{font-size:0.72rem;padding:8px 6px}
+  .lb-rn-pair{font-size:0.7rem}
+}

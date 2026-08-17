@@ -303,6 +303,12 @@ function initCrownSparkle(canvas, W, H) {
       <button class="info-btn" onclick="showRankInfo()" style="flex-shrink:0">?</button>
     </div>
 
+    <!-- SINGLE / DOUBLE RANK TOGGLE -->
+    <div class="lb-mode-toggle">
+      <button class="lb-mode-btn active" data-mode="single" onclick="setLbMode('single')">👤 Single Rank</button>
+      <button class="lb-mode-btn" data-mode="double" onclick="setLbMode('double')">👥 Double Rank</button>
+    </div>
+
     <!-- DAILY CHALLENGE -->
     <div class="card dc-card" id="dailyChallengeCard" style="display:none">
       <div class="card-title" style="color:var(--neon2)">🎯 Daily Challenge</div>
@@ -354,7 +360,7 @@ function initCrownSparkle(canvas, W, H) {
     </div>
 
     <!-- PODIUM TOP 3 -->
-    <div class="lb-pod-wrap">
+    <div class="lb-pod-wrap" id="lbPodWrap">
       <div class="lb-slabel">🥇 Top 3</div>
       <div class="lb-podium" id="lbPodium">
         <!-- rendered by JS -->
@@ -378,10 +384,10 @@ function initCrownSparkle(canvas, W, H) {
     <!-- BOARD -->
     <div>
       <div class="lb-slabel" style="animation-delay:.72s">อันดับทั้งหมด</div>
-      <div class="lb-bh">
+      <div class="lb-bh" id="lbBoardHeader">
         <div style="text-align:center">#</div>
         <div>ผู้เล่น</div>
-        <div style="text-align:center">คะแนน</div>
+        <div style="text-align:center" class="lb-bh-score-label">คะแนน</div>
         <div style="text-align:center">ชนะ/แพ้</div>
         <div style="text-align:center">Win%</div>
         <div></div>
@@ -1845,5 +1851,8 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/levels.js?v=20260706a"></script>
 <!-- Level Rewards page — needs LEVEL_REWARDS/claimLevelRewardUI from levels.js -->
 <script src="js/levelrewards.js?v=20260706a"></script>
+<!-- Partner System (Double Rank) — loads LAST so it wraps the fully-patched
+     renderLeaderboard/lbRenderBoard/loadAll/saveMatch/approvePending cleanly -->
+<script src="js/partner-system.js?v=20260817a"></script>
 </body>
 </html>
