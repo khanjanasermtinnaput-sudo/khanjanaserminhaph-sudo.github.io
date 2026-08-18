@@ -643,14 +643,25 @@ function _npRender(pop) {
     }
   }
 }
+// กติกา BWF: ต้องถึง 21 ก่อน (เว้นแต่ชนะที่ 30 คือ hard cap) และห่างกันอย่างน้อย 2
+// แต้ม — ใช้กฎเดียวกับ checkBWFWin() (ฝั่ง tap-scoring) เพื่อไม่ให้ numpad รับ
+// ผลที่เป็นไปไม่ได้ในแบดมินตันจริง เช่น 21-20 หรือ 19-15
+function _isValidBadmintonFinalScore(sA, sB) {
+  if (sA === sB) return false;
+  const hi = Math.max(sA, sB), lo = Math.min(sA, sB);
+  if (hi > 30) return false;
+  if (hi === 30) return true; // ชนะที่ cap 30 — ไม่ต้องห่าง 2 แต้ม
+  if (hi < 21) return false;  // ยังไม่จบเกม
+  return (hi - lo) >= 2;
+}
 function npSubmit() {
   const np = window._np;
   const sA = parseInt(np.a), sB = parseInt(np.b);
   if (!np.a || !np.b || isNaN(sA) || isNaN(sB)) return toast('กรอกคะแนนให้ครบทั้งสองฝั่ง', 'error');
-  if (sA <= 0 || sB <= 0) return toast('คะแนนต้องมากกว่า 0', 'error');
+  if (sA < 0 || sB < 0) return toast('คะแนนต้องไม่ติดลบ', 'error');
   if (sA === sB) return toast('คะแนนเท่ากัน ไม่มีเสมอในแบดมินตัน', 'error');
-  if (sA >= 28 && sB >= 28) {
-    if (!confirm(`คะแนน ${sA}–${sB} ผิดปกติ ยืนยันไหม?`)) return;
+  if (!_isValidBadmintonFinalScore(sA, sB)) {
+    return toast(`คะแนน ${sA}-${sB} ไม่ใช่ผลจบเกมที่ถูกต้อง (ต้องถึง 21 และห่างกันอย่างน้อย 2 แต้ม หรือจบที่ 30)`, 'error');
   }
   currentMatch.scoreA = sA;
   currentMatch.scoreB = sB;
@@ -744,6 +755,13 @@ function confirmFinish() {
   }
 }
 async function saveMatch() {
+  // กันกดซ้ำ/ยิงซ้ำ (double-tap บนมือถือ หรือเรียกซ้อนจากโค้ด) ทำให้เกิดแมตช์
+  // ซ้ำ 2 แถวในตาราง matches — currentMatch ถูกเคลียร์เป็น null ตอนท้ายฟังก์ชัน
+  // เท่านั้น (หลัง await ทั้งหมดเสร็จ) จึงต้องมี flag กันตั้งแต่ก่อน await แรก
+  if (!currentMatch || currentMatch._saving) return;
+  currentMatch._saving = true;
+  const saveBtnEl = document.getElementById('saveMatchBtn');
+  if (saveBtnEl) saveBtnEl.disabled = true;
   const sA = currentMatch.scoreA, sB = currentMatch.scoreB;
   const winTeam = currentMatch._winTeam || (sA > sB ? 'A' : 'B');
   const winners = currentMatch['team'+winTeam];
@@ -843,6 +861,9 @@ async function saveMatch() {
   } catch(e) {
     console.error('saveMatch error:', e);
     toast('❌ ' + (e.message || 'บันทึกไม่ได้ ดู Console สำหรับรายละเอียด'), 'error');
+    // เกิด error ก่อนบันทึกสำเร็จ — currentMatch ยังไม่ถูกเคลียร์ ปลดล็อกให้กดบันทึกซ้ำได้
+    if (currentMatch) currentMatch._saving = false;
+    if (saveBtnEl) saveBtnEl.disabled = false;
   }
 }
 
