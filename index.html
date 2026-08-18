@@ -1850,11 +1850,15 @@ document.addEventListener('DOMContentLoaded', function() {
       // which surfaced as "Failed to fetch". verify_jwt is off, so no auth needed.
       const res = await fetch(AI_ENDPOINT, {
         method: 'POST',
-        headers: { 'content-type': 'text/plain;charset=UTF-8' },
+        headers: {
+          'content-type': 'text/plain;charset=UTF-8',
+          ...(typeof currentToken !== 'undefined' && currentToken ? { 'x-player-token': currentToken } : {})
+        },
         body: JSON.stringify({ model: getModel(), messages: aiHistory })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (res.status === 401) throw new Error('กรุณาเข้าสู่ระบบก่อนใช้งาน AOF Assistance');
         throw new Error(data.error || ('เซิร์ฟเวอร์ตอบกลับ HTTP ' + res.status));
       }
       bumpQuota();

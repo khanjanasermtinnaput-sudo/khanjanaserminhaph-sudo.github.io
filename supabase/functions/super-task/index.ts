@@ -1,29 +1,35 @@
-// ────────────────────────────────────────────────────────────────────────────
-// SUPERSEDED (2026-08-18 QA audit): the live client actually calls the
-// "super-task" function (supabase/functions/super-task/index.ts), which had
-// drifted from this source (no auth, no topic restriction) and has now been
-// fixed there. This "aof-chat" slug is not deployed/reachable by the app —
-// kept only as history. Deploy/maintain super-task instead.
-// ────────────────────────────────────────────────────────────────────────────
-// Supabase Edge Function: aof-chat
-// AOF Assistance — backend proxy to Google Gemini.
+// Supabase Edge Function: super-task
+// AOF Assistance — backend proxy to Google Gemini, called by the badminton
+// club site's "AOF AI" chatbot tile.
 //
-// Why this exists:
-//   The Gemini API key MUST NOT live in the browser. This function keeps the key
-//   server-side (as the GEMINI_API_KEY secret) and is the ONLY thing that talks
-//   to Gemini. The static site (GitHub Pages) calls this endpoint instead.
+// QA audit (2026-08-18) found this deployed function (slug "super-task",
+// the one the client actually calls — js/db.js / index.html's AI_ENDPOINT
+// points at /functions/v1/super-task, not the "aof-chat" slug that lives in
+// this repo's git history) had drifted from that source in two ways:
+//   1. No authentication at all (verify_jwt=false + no session-token check),
+//      so any script — not just the browser client — could hit it for free
+//      and burn the club's Gemini quota/cost.
+//   2. The system prompt had regressed to a completely unrestricted
+//      "answer any question on any topic" assistant, rather than the
+//      3-topic-only (site features / badminton technique+rules / player
+//      health) constraint the product is supposed to enforce. Combined with
+//      #1, this was effectively a free, open, unbranded general-purpose
+//      Gemini proxy sitting behind a badminton club's API key.
+// This version restores the topic constraint and requires a valid player
+// session token (same pattern as supabase/functions/gacha-pull), tying
+// usage to an identifiable logged-in club member.
 //
 // Deploy:
 //   supabase secrets set GEMINI_API_KEY=AIza...      # store the key (never in git)
-//   supabase functions deploy aof-chat --no-verify-jwt
+//   supabase functions deploy super-task --no-verify-jwt
 //
 // Endpoint:
-//   https://<project-ref>.supabase.co/functions/v1/aof-chat
-// ────────────────────────────────────────────────────────────────────────────
+//   https://<project-ref>.supabase.co/functions/v1/super-task
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
 
-// Models the client is allowed to request. Anything else falls back to default.
 const ALLOWED_MODELS = new Set([
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
@@ -62,7 +68,7 @@ function corsHeaders(origin: string): HeadersInit {
   return {
     "Access-Control-Allow-Origin": allowed || "null",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-player-token",
     "Vary": "Origin",
   };
 }
@@ -96,6 +102,24 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405, cors);
   if (!GEMINI_API_KEY) {
     return json({ error: "เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า GEMINI_API_KEY" }, 500, cors);
+  }
+
+  // Require a valid, unexpired player session token — same check as
+  // gacha-pull — so this can't be hit for free by anonymous scripts.
+  const token = req.headers.get("x-player-token") ?? "";
+  if (!token) return json({ error: "unauthorized" }, 401, cors);
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false } }
+  );
+  const { data: session } = await supabase
+    .from("player_sessions")
+    .select("player_id, expires_at")
+    .eq("token", token)
+    .maybeSingle();
+  if (!session || new Date(session.expires_at) <= new Date()) {
+    return json({ error: "unauthorized" }, 401, cors);
   }
 
   // Parse body
