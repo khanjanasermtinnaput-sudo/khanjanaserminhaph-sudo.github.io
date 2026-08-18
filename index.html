@@ -6,6 +6,17 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<!--
+  vercel.json defines a full header set (CSP, HSTS, X-Frame-Options,
+  Referrer-Policy, Permissions-Policy) but this site is actually served by
+  GitHub Pages, which ignores vercel.json entirely — none of those headers
+  were reaching real visitors (QA audit finding, 2026-08-18). A <meta> CSP
+  tag is the only one of those protections GitHub Pages can serve at all;
+  X-Frame-Options/HSTS/Referrer-Policy/Permissions-Policy have no HTML
+  equivalent and need an actual HTTP layer (e.g. a real Vercel/Cloudflare
+  deploy) to be enforced.
+-->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://tprmqsfbeyqurwqpmpia.supabase.co; img-src 'self' data: blob:; font-src 'self'; worker-src 'self'; manifest-src 'self';">
 <script>
 // CROWN_SRC is hardcoded — never set from user input or external variables (LOW-01)
 const CROWN_SRC = 'assets/crown.png';
