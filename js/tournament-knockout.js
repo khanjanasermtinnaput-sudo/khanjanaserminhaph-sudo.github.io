@@ -57,10 +57,7 @@ async function dbTournamentGrantRewards(tournamentId) {
 let _koRefState = null;
 
 function _koRefGameOver(a, b) {
-  const hi = Math.max(a, b), lo = Math.min(a, b);
-  if (hi >= 30) return true;
-  if (hi >= 21 && hi - lo >= 2) return true;
-  return false;
+  return AdminV2.scoring.isGameOver(a, b);
 }
 function koOpenReferee(tournamentId, matchId, idA, idB, labelA, labelB, winsNeeded) {
   if (!idA || !idB || idA === idB) return toast('แมตช์นี้ยังไม่มีผู้เล่นครบ', 'error');

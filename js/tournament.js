@@ -334,10 +334,7 @@ function _refLabel(tid, id, matchType) {
 }
 
 function _refGameOver(a, b) {
-  const hi = Math.max(a, b), lo = Math.min(a, b);
-  if (hi >= 30) return true;          // hard cap at 30
-  if (hi >= 21 && hi - lo >= 2) return true;
-  return false;
+  return AdminV2.scoring.isGameOver(a, b);
 }
 
 function openReferee(tid, group, idA, idB, matchType) {

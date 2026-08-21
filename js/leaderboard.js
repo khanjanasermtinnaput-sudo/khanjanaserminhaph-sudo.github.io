@@ -507,9 +507,7 @@ function checkBWFWin() {
   // ป้องกัน popup ซ้อน
   if (currentMatch._bwfTriggered) return;
   let winner = null;
-  if (sA >= 30 || sB >= 30) {
-    winner = sA > sB ? 'A' : 'B';
-  } else if ((sA >= 21 || sB >= 21) && Math.abs(sA - sB) >= 2) {
+  if (AdminV2.scoring.isGameOver(sA, sB)) {
     winner = sA > sB ? 'A' : 'B';
   }
   if (winner) {
@@ -647,12 +645,11 @@ function _npRender(pop) {
 // แต้ม — ใช้กฎเดียวกับ checkBWFWin() (ฝั่ง tap-scoring) เพื่อไม่ให้ numpad รับ
 // ผลที่เป็นไปไม่ได้ในแบดมินตันจริง เช่น 21-20 หรือ 19-15
 function _isValidBadmintonFinalScore(sA, sB) {
-  if (sA === sB) return false;
-  const hi = Math.max(sA, sB), lo = Math.min(sA, sB);
-  if (hi > 30) return false;
-  if (hi === 30) return true; // ชนะที่ cap 30 — ไม่ต้องห่าง 2 แต้ม
-  if (hi < 21) return false;  // ยังไม่จบเกม
-  return (hi - lo) >= 2;
+  // Delegates to js/admin/scoring.js — the same rule rpc_tournament_submit_
+  // knockout_result enforces server-side (cap 30 only valid as 30-29; a bare
+  // "hi===30" used to be accepted unconditionally here, wrongly letting a
+  // score like 30-5 through manual entry).
+  return AdminV2.scoring.isValidFinalScore(sA, sB);
 }
 function npSubmit() {
   const np = window._np;

@@ -11,9 +11,9 @@ window.AdminV2 = window.AdminV2 || {};
   AdminV2.ROUTES = [
     { id: 'overview',     label: 'ภาพรวม',        icon: '📊', ready: true },
     { id: 'players',      label: 'ผู้เล่น',        icon: '👥', ready: true },
-    { id: 'matches',      label: 'แมตช์',          icon: '🏸', ready: false },
+    { id: 'matches',      label: 'แมตช์',          icon: '🏸', ready: true },
     { id: 'tournaments',  label: 'ทัวร์นาเมนต์',   icon: '🏆', ready: false },
-    { id: 'referee',      label: 'ผู้ตัดสิน',      icon: '👆', ready: false },
+    { id: 'referee',      label: 'ผู้ตัดสิน',      icon: '👆', ready: true },
     { id: 'achievements', label: 'Achievement',    icon: '🏅', ready: false },
     { id: 'rewards',      label: 'รางวัล',         icon: '🎁', ready: false },
     { id: 'rankings',     label: 'อันดับ',         icon: '📈', ready: false },

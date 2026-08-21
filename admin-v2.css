@@ -124,6 +124,9 @@
 .av2-hist-win { color: var(--neon); font-weight: 700; }
 .av2-hist-loss { color: var(--red); font-weight: 700; }
 
+/* ── Referee Center picker ── */
+.av2-ref-picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+
 /* ── Mobile: sidebar becomes an off-canvas drawer ── */
 @media (max-width: 860px) {
   .av2-drawer-toggle { display: inline-flex; align-items: center; justify-content: center; }

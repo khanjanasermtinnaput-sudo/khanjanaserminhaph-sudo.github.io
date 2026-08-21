@@ -51,6 +51,18 @@ window.AdminV2 = window.AdminV2 || {};
         (m.teamB || []).some(p => p.id === playerId)
       );
     },
+
+    async listMatches(status) {
+      const rows = await supaFetch('matches?status=eq.' + status + '&order=played_at.desc&limit=200');
+      return rows.map(m => ({ ...normalizeMatch(m), status: m.status, voidedAt: m.voided_at, voidedBy: m.voided_by, voidReason: m.void_reason }));
+    },
+
+    async voidMatch(matchId, reason) {
+      return supaFetch('rpc/rpc_admin_void_match', {
+        method: 'POST',
+        body: JSON.stringify({ p_match: matchId, p_reason: reason }),
+      });
+    },
   };
 
 })();
