@@ -1341,7 +1341,7 @@ async function saveEditPlayer() {
       try {
         await dbUpdatePlayer(id, data);
         await loadPlayers(); closeModal('editPlayerModal'); renderAdmin();
-        toast('บันทึกแล้ว — แต่ Gacha effect ยังไม่มี column ใน DB (รัน ALTER TABLE ใน Admin → SQL)', 'info');
+        toast('บันทึกแล้ว — แต่ Gacha effect ยังไม่มี column ใน DB (แจ้งผู้ดูแลระบบ)', 'info');
         return;
       } catch(e2) { toast('บันทึกไม่ได้: ' + e2.message, 'error'); return; }
     }

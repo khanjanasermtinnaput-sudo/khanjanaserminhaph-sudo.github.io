@@ -198,18 +198,7 @@ function renderCachAdmin() {
     ${catalog.length ? `
       <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Achievements ที่สร้างไว้</div>
       ${catalog.map(a => buildCachItemHTML(a, players)).join('')}
-    ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}
-    <details style="margin-top:14px">
-      <summary style="font-size:0.73rem;color:var(--muted);cursor:pointer;user-select:none">🔧 เปิดใช้ sync ข้ามเครื่อง (Supabase SQL)</summary>
-      <div style="margin-top:8px;background:rgba(0,0,0,0.25);border-radius:10px;padding:10px;font-size:0.7rem;color:var(--muted)">
-        รัน SQL นี้ใน Supabase → SQL Editor แล้ว achievements จะ sync ข้ามเครื่องได้:
-        <pre style="margin:8px 0 6px;padding:8px;background:rgba(0,0,0,0.3);border-radius:7px;font-size:0.68rem;overflow-x:auto;white-space:pre-wrap;color:#a8d8a8">ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';
-ALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
-        <button class="btn btn-ghost btn-sm" style="font-size:0.7rem;padding:4px 10px" onclick="navigator.clipboard.writeText(\`ALTER TABLE players ADD COLUMN IF NOT EXISTS custom_ach text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS prime_titles text DEFAULT '[]';\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;\nALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;\`).then(()=>toast('คัดลอกแล้ว!','success'))">📋 คัดลอก SQL</button>
-      </div>
-    </details>`;
+    ` : '<div class="text-muted" style="text-align:center;padding:10px;font-size:0.8rem">ยังไม่มี Achievement · กรอกด้านบนแล้วกดสร้าง</div>'}`;
 }
 
 function buildCachItemHTML(ach, players) {

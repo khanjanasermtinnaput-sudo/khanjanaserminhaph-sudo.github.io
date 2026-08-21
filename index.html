@@ -82,6 +82,7 @@ function initCrownSparkle(canvas, W, H) {
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=20260817b">
 <link rel="stylesheet" href="redesign.css?v=20260627c">
+<link rel="stylesheet" href="admin-v2.css?v=20260821a">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0c040">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -174,7 +175,7 @@ function initCrownSparkle(canvas, W, H) {
     <button class="nav-btn" id="navGacha" onclick="showSection('gacha')">Gacha</button>
     <button class="nav-btn" id="navHist" onclick="showSection('history')">ประวัติ</button>
     <button class="nav-btn" id="navProfile" onclick="showSection('profile')">โปรไฟล์</button>
-    <button class="nav-btn" id="adminNavBtn" onclick="showSection('admin')">Admin</button>
+    <button class="nav-btn" id="adminNavBtn" onclick="showSection('adminV2')">Admin</button>
     <button class="nav-btn" id="navLogoutBtn" onclick="logout()">ออก</button>
     <span id="navHiLabel">สวัสดี</span>
     <!-- mailbox + update kept here purely for badge logic; surfaced in the ⋮ sheet -->
@@ -194,7 +195,7 @@ function initCrownSparkle(canvas, W, H) {
       <button type="button" class="bk-sheet-item" onclick="bkSheetGo('ai')">🤖<span>AOF AI</span></button>
       <button type="button" class="bk-sheet-item" onclick="bkCloseSheet();showPatchNotes()">📲<span>อัปเดต</span></button>
       <button type="button" class="bk-sheet-item" onclick="bkSheetGo('history')">📜<span>ประวัติ</span></button>
-      <button type="button" class="bk-sheet-item bk-sheet-admin" id="bkSheetAdmin" onclick="bkSheetGo('admin')">⚙️<span>Admin</span></button>
+      <button type="button" class="bk-sheet-item bk-sheet-admin" id="bkSheetAdmin" onclick="bkSheetGo('adminV2')">⚙️<span>Admin</span></button>
     </div>
     <div class="bk-sheet-sep"></div>
     <div class="bk-sheet-prefs">
@@ -706,109 +707,6 @@ function initCrownSparkle(canvas, W, H) {
   <main>
     <div class="card" id="pendingCard" style="border-color:rgba(255,215,0,0.35);background:rgba(255,215,0,0.04)"><div class="card-title" style="color:var(--gold)">⏳ รอ Admin ยืนยัน <span id="pendingBadge" class="hidden" style="background:var(--red);color:#fff;border-radius:50px;font-size:0.72rem;padding:2px 8px;font-family:Sarabun">0</span></div><div id="pendingList"><div class="text-muted" style="text-align:center;padding:16px;font-size:0.83rem">ไม่มีรายการรอยืนยัน</div></div></div>
     <div class="card"><div class="card-title">⚙️ Admin Panel</div><div class="admin-grid" id="adminStats"></div></div>
-    <div class="card" style="border-color:rgba(0,217,245,0.3);background:rgba(0,217,245,0.04)">
-      <div class="card-title" style="color:var(--neon2)">🗄️ Supabase Setup — SQL</div>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.05em">✅ รันแล้ว (ไม่ต้องรันซ้ำ)</div>
-      <pre style="background:rgba(0,0,0,0.15);border:1px solid var(--glass-border);border-radius:8px;padding:10px;font-size:0.68rem;color:var(--muted);overflow-x:auto;white-space:pre-wrap;line-height:1.6;opacity:0.6">-- pending_matches (รันไปแล้ว)
-CREATE TABLE IF NOT EXISTS pending_matches (...);
-ALTER TABLE pending_matches ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "allow all" ON pending_matches FOR ALL USING (true) WITH CHECK (true);
--- gacha_frame, gacha_name (รันไปแล้ว)
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_frame text;
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_name text;</pre>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.3 — Doubles Ranking ทุกคู่ (v_pair_rankings)</div>
-      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">-- ดูไฟล์ supabase_partner_system.sql ส่วน "9. Doubles Ranking (all pairs)"
-CREATE OR REPLACE VIEW public.v_pair_rankings AS
-SELECT
-  ps.player_id_low, ps.player_id_high,
-  p1.name AS name_low, p2.name AS name_high,
-  ROUND((p1.pts + p2.pts) / 2.0) AS double_rank_score,
-  ps.matches_together, ps.wins_together, ps.losses_together,
-  CASE WHEN ps.matches_together > 0
-       THEN ROUND(ps.wins_together::numeric / ps.matches_together * 100, 1)
-       ELSE 0 END AS win_rate_pct,
-  ps.last_played_at
-FROM public.pair_stats ps
-JOIN public.players p1 ON p1.id = ps.player_id_low
-JOIN public.players p2 ON p2.id = ps.player_id_high;
-GRANT SELECT ON public.v_pair_rankings TO anon, authenticated;</pre>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.2 — Match Duration (Referee Mode)</div>
-      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE matches ADD COLUMN IF NOT EXISTS started_at timestamptz;
-ALTER TABLE matches ADD COLUMN IF NOT EXISTS ended_at timestamptz;
-ALTER TABLE matches ADD COLUMN IF NOT EXISTS duration_seconds integer;
-ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS started_at timestamptz;
-ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS ended_at timestamptz;
-ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS duration_seconds integer;</pre>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.1 — Match Mood (อีโมจิบรรยากาศแมตช์)</div>
-      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE matches ADD COLUMN IF NOT EXISTS mood text;
-ALTER TABLE pending_matches ADD COLUMN IF NOT EXISTS mood text;</pre>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--gold);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v7.0 — Online/Offline Status</div>
-      <pre style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,215,0,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--gold);overflow-x:auto;white-space:pre-wrap;line-height:1.6">ALTER TABLE players ADD COLUMN IF NOT EXISTS last_seen timestamptz;</pre>
-
-      <div style="font-size:0.78rem;font-weight:700;color:var(--neon);margin:14px 0 6px;text-transform:uppercase;letter-spacing:0.05em">🆕 SQL ใหม่ v6.0 — รันเฉพาะนี้เท่านั้น</div>
-      <pre id="newSqlPre" style="background:rgba(0,0,0,0.3);border:1px solid rgba(0,245,160,0.3);border-radius:8px;padding:12px;font-size:0.72rem;color:var(--neon);overflow-x:auto;white-space:pre-wrap;line-height:1.6">-- เพิ่ม column ใหม่ใน players
-ALTER TABLE players ADD COLUMN IF NOT EXISTS coins integer DEFAULT 0;
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_emoji text;
-ALTER TABLE players ADD COLUMN IF NOT EXISTS consecutive_losses integer DEFAULT 0;
-ALTER TABLE players ADD COLUMN IF NOT EXISTS gacha_inventory text DEFAULT '{}';
-
--- กล่องจดหมาย
-CREATE TABLE IF NOT EXISTS mailbox (
-  id bigserial PRIMARY KEY,
-  player_id integer,
-  item_type text,
-  item_value text,
-  message text,
-  claimed boolean DEFAULT false,
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE mailbox ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='mailbox' AND policyname='allow all') THEN
-    EXECUTE 'CREATE POLICY "allow all" ON mailbox FOR ALL USING (true) WITH CHECK (true)';
-  END IF;
-END $$;
-
--- Tournament
-CREATE TABLE IF NOT EXISTS tournaments (
-  id bigserial PRIMARY KEY,
-  name text,
-  tier text,
-  status text DEFAULT 'active',
-  groups jsonb DEFAULT '[]',
-  created_at timestamptz DEFAULT now()
-);
-ALTER TABLE tournaments ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tournaments' AND policyname='allow all') THEN
-    EXECUTE 'CREATE POLICY "allow all" ON tournaments FOR ALL USING (true) WITH CHECK (true)';
-  END IF;
-END $$;
-
-CREATE TABLE IF NOT EXISTS tournament_matches (
-  id bigserial PRIMARY KEY,
-  tournament_id bigint,
-  group_letter text,
-  player_a integer,
-  player_b integer,
-  score_a integer,
-  score_b integer,
-  winner_id integer,
-  played_at timestamptz DEFAULT now()
-);
-ALTER TABLE tournament_matches ENABLE ROW LEVEL SECURITY;
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='tournament_matches' AND policyname='allow all') THEN
-    EXECUTE 'CREATE POLICY "allow all" ON tournament_matches FOR ALL USING (true) WITH CHECK (true)';
-  END IF;
-END $$;</pre>
-      <button class="btn btn-primary btn-sm" style="margin-top:8px;width:auto" onclick="navigator.clipboard.writeText(document.getElementById('newSqlPre').textContent).then(()=>toast('คัดลอก SQL ใหม่แล้ว ✅','success'))">📋 คัดลอก SQL ใหม่</button>
-    </div>
     <div class="card"><div class="card-title">👥 จัดการผู้เล่น</div><div id="adminPlayerList"></div></div>
     <div class="card">
       <div class="card-title">💾 สำรองข้อมูล</div>
@@ -820,6 +718,11 @@ END $$;</pre>
     <div class="card" id="cachAdminCard"><div class="card-title">🏆 มอบ Achievement</div><div id="cachAdminBody"></div></div>
     <div class="card"><div class="card-title" style="color:var(--red)">⚠️ Danger Zone</div><button class="btn btn-danger" onclick="resetAllData()">🗑️ ล้างข้อมูลทั้งหมด</button></div>
   </main>
+</div>
+
+<!-- ADMIN V2 -->
+<div id="adminV2Section" class="section">
+  <main><div id="adminV2Content"></div></main>
 </div>
 
 <!-- MODALS -->
@@ -943,7 +846,7 @@ END $$;</pre>
 
       <div class="patch-section">
         <div class="patch-sec-title t-new">🧹 Quality of Life & Cleanup (v7.1)</div>
-        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>😄 <strong>Match Mood บันทึกจริงแล้ว</strong> — อีโมจิบรรยากาศที่เลือกหลังจบแมตช์ จะแสดงในหน้า 📋 ประวัติ และการ์ด "วันนี้"<br><span style="font-size:0.75rem;color:var(--muted);margin-top:3px;display:block">Admin ต้องรัน SQL v7.1 ใน Admin → Supabase ก่อน mood ถึงจะถูกบันทึก</span></div></div>
+        <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>😄 <strong>Match Mood บันทึกจริงแล้ว</strong> — อีโมจิบรรยากาศที่เลือกหลังจบแมตช์ จะแสดงในหน้า 📋 ประวัติ และการ์ด "วันนี้"</div></div>
         <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>🪙 <strong>กาชาออกซ้ำคืนเหรียญ</strong> — ได้ของที่มีอยู่แล้วไม่เสียเปล่าอีกต่อไป: Emoji +1 · Frame +3 · Ultra Rare +6 · Secret +20</div></div>
         <div class="patch-item i-new"><div class="patch-dot d-new"></div><div>💾 <strong>Backup เต็มระบบ</strong> — ปุ่มส่งออกได้ครบทุกแมตช์ (เดิมตัดที่ 50) + ปุ่มนำเข้า "กู้คืนข้อมูล" ใช้งานได้จริงแล้ว</div></div>
         <div class="patch-item i-fix"><div class="patch-dot d-fix"></div><div>🐛 <strong>แก้บัค</strong> — Master เห็นความคืบหน้าไป King แล้ว · iOS Safari ไม่พังหลัง login · เหรียญจากกล่องของขวัญไม่มีทางหาย</div></div>
@@ -1146,14 +1049,14 @@ END $$;</pre>
 
 <script src="js/i18n.js?v=20260529l"></script>
 <script src="js/exp-engine.js?v=20260705a"></script>
-<script src="js/db.js?v=20260817c"></script>
+<script src="js/db.js?v=20260821a"></script>
 <script src="js/elo.js?v=20260610a"></script>
 <script src="js/auth.js?v=20260817c"></script>
-<script src="js/leaderboard.js?v=20260817c"></script>
+<script src="js/leaderboard.js?v=20260821a"></script>
 <script src="js/profile.js?v=20260625a"></script>
 <script src="js/stats.js?v=20260610a"></script>
-<script src="js/season.js?v=20260610a"></script>
-<script src="js/utils.js?v=20260817c"></script>
+<script src="js/season.js?v=20260821a"></script>
+<script src="js/utils.js?v=20260821a"></script>
 <script src="js/achievements.js?v=20260610a"></script>
 <script src="js/rankup.js?v=20260817c"></script>
 <script src="js/daily.js?v=20260625a"></script>
@@ -1888,7 +1791,7 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/fusion.js?v=20260703b"></script>
 <script src="js/market.js?v=20260703c"></script>
 <!-- Dashboard redesign controller — loads LAST so it wraps showSection/afterLogin/loadAll cleanly -->
-<script src="js/dashboard.js?v=20260703a"></script>
+<script src="js/dashboard.js?v=20260821a"></script>
 <!-- Level/EXP UI — loads after all other renderProfile wrappers so #levelCard appends last -->
 <script src="js/levels.js?v=20260706a"></script>
 <!-- Level Rewards page — needs LEVEL_REWARDS/claimLevelRewardUI from levels.js -->
@@ -1896,5 +1799,12 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Partner System (Double Rank) — loads LAST so it wraps the fully-patched
      renderLeaderboard/lbRenderBoard/loadAll/saveMatch/approvePending cleanly -->
 <script src="js/partner-system.js?v=20260817c"></script>
+
+<!-- Admin V2 — a self-contained namespace (window.AdminV2) with its own
+     renderAdminV2() global. Loads after everything else so it can read every
+     app global, but joins no monkey-patch chain of its own (see js/admin/core.js). -->
+<script src="js/admin/ui.js?v=20260821a"></script>
+<script src="js/admin/core.js?v=20260821a"></script>
+<script src="js/admin/overview.js?v=20260821a"></script>
 </body>
 </html>

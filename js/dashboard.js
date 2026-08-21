@@ -30,7 +30,7 @@
     { icon: '🏛️',  name: 'Hall of Fame', go: () => callIf('openHoF') },
     { icon: '🔔',  name: 'แจ้งเตือน',     go: () => callIf('toggleNotifPanel') },
     { icon: '📲',  name: 'อัปเดต',        go: () => callIf('showPatchNotes') },
-    { icon: '⚙️',  name: 'Admin', adminOnly: true, go: () => showSection('admin') },
+    { icon: '⚙️',  name: 'Admin', adminOnly: true, go: () => showSection('adminV2') },
   ];
 
   function callIf(fn) { if (typeof window[fn] === 'function') window[fn](); }
