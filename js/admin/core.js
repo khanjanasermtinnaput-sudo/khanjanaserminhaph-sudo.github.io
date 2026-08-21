@@ -10,7 +10,7 @@ window.AdminV2 = window.AdminV2 || {};
 
   AdminV2.ROUTES = [
     { id: 'overview',     label: 'ภาพรวม',        icon: '📊', ready: true },
-    { id: 'players',      label: 'ผู้เล่น',        icon: '👥', ready: false },
+    { id: 'players',      label: 'ผู้เล่น',        icon: '👥', ready: true },
     { id: 'matches',      label: 'แมตช์',          icon: '🏸', ready: false },
     { id: 'tournaments',  label: 'ทัวร์นาเมนต์',   icon: '🏆', ready: false },
     { id: 'referee',      label: 'ผู้ตัดสิน',      icon: '👆', ready: false },
@@ -86,17 +86,17 @@ window.AdminV2 = window.AdminV2 || {};
     const route = AdminV2.ROUTES.find(r => r.id === AdminV2.route);
     if (!route) return;
 
-    if (route.id === 'overview' && AdminV2.overview) {
-      AdminV2.overview.render(content);
+    // Each ready route owns a module of the same name (AdminV2.<id>.render) —
+    // adding a new phase means dropping in that module and flipping `ready`,
+    // no further change here.
+    if (route.ready && AdminV2[route.id] && typeof AdminV2[route.id].render === 'function') {
+      AdminV2[route.id].render(content);
       return;
     }
-    if (!route.ready) {
-      AdminV2.state(content, 'empty', {
-        icon: route.icon,
-        message: `${route.label} — จะเปิดใช้งานใน Phase ถัดไป`,
-      });
-      return;
-    }
+    AdminV2.state(content, 'empty', {
+      icon: route.icon,
+      message: `${route.label} — จะเปิดใช้งานใน Phase ถัดไป`,
+    });
   }
 
   function wireSearch() {

@@ -102,6 +102,28 @@
 .av2-confirm-actions { display: flex; gap: 10px; margin-top: 18px; }
 .av2-confirm-actions .btn { width: auto; flex: 1; }
 
+/* ── Players panel ── */
+.av2-players-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+.av2-players-toolbar .inp { width: auto; flex: 1; min-width: 160px; }
+.av2-checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--muted); white-space: nowrap; }
+.av2-muted { color: var(--muted); font-size: 0.82rem; }
+.av2-badge { display: inline-block; font-size: 0.68rem; font-weight: 700; padding: 1px 7px; border-radius: 50px; margin-left: 4px; }
+.av2-badge-gold { background: rgba(255,215,0,0.15); color: var(--gold); }
+.av2-badge-red { background: rgba(255,71,87,0.15); color: var(--red); }
+
+/* ── Drawer content sections (used by Players, and future panels) ── */
+.av2-drawer-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; text-align: center; font-size: 0.78rem; color: var(--muted); }
+.av2-drawer-stats strong { display: block; font-family: 'Rajdhani', sans-serif; font-size: 1.15rem; color: var(--text); }
+.av2-drawer-section { border-top: 1px solid var(--glass-border); padding-top: 14px; margin-top: 14px; }
+.av2-drawer-section:first-of-type { border-top: none; margin-top: 0; padding-top: 0; }
+.av2-drawer-section-title { font-weight: 700; font-size: 0.88rem; margin-bottom: 10px; color: var(--text); }
+.av2-quick-adjust-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.av2-quick-adjust-row .btn { width: auto; }
+.av2-hist-row { padding: 7px 0; border-bottom: 1px solid var(--glass-border); font-size: 0.82rem; }
+.av2-hist-row:last-child { border-bottom: none; }
+.av2-hist-win { color: var(--neon); font-weight: 700; }
+.av2-hist-loss { color: var(--red); font-weight: 700; }
+
 /* ── Mobile: sidebar becomes an off-canvas drawer ── */
 @media (max-width: 860px) {
   .av2-drawer-toggle { display: inline-flex; align-items: center; justify-content: center; }

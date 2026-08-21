@@ -44,11 +44,14 @@ let currentMatch = null;
 let _lastSavedMatchId = null;
 
 // คอลัมน์ที่ปลอดภัยต่อการเปิดเผย (ไม่รวม pin) — กัน PIN ของทุกคนรั่วมาที่ client
-const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,level,total_exp,current_exp,required_exp,last_level_up,reward_claimed,prestige,lifetime_exp,highest_level,best_win_streak,consecutive_wins,prestige_at';
+const PLAYER_PUBLIC_COLS = 'id,name,pts,wins,losses,is_admin,prime_titles,custom_ach,coins,gacha_frame,gacha_name,gacha_emoji,gacha_inventory,owned_effects,consecutive_losses,last_seen,level,total_exp,current_exp,required_exp,last_level_up,reward_claimed,prestige,lifetime_exp,highest_level,best_win_streak,consecutive_wins,prestige_at,nickname,class_label,deleted_at';
 async function loadPlayers() {
   let rows;
   try {
-    rows = await supaFetch('players?select=' + PLAYER_PUBLIC_COLS + '&order=pts.desc');
+    // deleted_at=is.null: a soft-deleted player (Admin V2) must disappear from
+    // the public leaderboard/rankings exactly as a hard delete would have —
+    // Admin V2's own player list bypasses this filter (js/admin/api.js).
+    rows = await supaFetch('players?select=' + PLAYER_PUBLIC_COLS + '&deleted_at=is.null&order=pts.desc');
   } catch(e) {
     // คอลัมน์ optional บางตัวอาจยังไม่มี → ใช้คอลัมน์หลักที่มีแน่ ๆ (ยังคงไม่รวม pin)
     rows = await supaFetch('players?select=id,name,pts,wins,losses,is_admin&order=pts.desc');
