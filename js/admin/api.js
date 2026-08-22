@@ -104,6 +104,47 @@ window.AdminV2 = window.AdminV2 || {};
         body: JSON.stringify({ p_tournament_id: tournamentId, p_target_player: targetPlayerId, p_reason: reason }),
       });
     },
+
+    async listAchievements() {
+      return supaFetch('admin_achievements?archived_at=is.null&order=created_at.desc');
+    },
+
+    async createAchievement(fields) {
+      return supaFetch('rpc/rpc_admin_create_achievement', {
+        method: 'POST',
+        body: JSON.stringify({
+          p_title: fields.title, p_description: fields.description || null, p_icon: fields.icon || null,
+          p_rarity: fields.rarity || 'bronze', p_hidden: !!fields.hidden, p_repeatable: !!fields.repeatable,
+          p_rule: fields.rule || null, p_reward: fields.reward || null,
+        }),
+      });
+    },
+
+    async archiveAchievement(id) {
+      return supaFetch('rpc/rpc_admin_archive_achievement', { method: 'POST', body: JSON.stringify({ p_id: id }) });
+    },
+
+    async grantAchievement(achievementId, playerId, note) {
+      return supaFetch('rpc/rpc_admin_grant_achievement', {
+        method: 'POST',
+        body: JSON.stringify({ p_achievement_id: achievementId, p_player_id: playerId, p_note: note || null }),
+      });
+    },
+
+    async revokeAchievement(grantId, reason) {
+      return supaFetch('rpc/rpc_admin_revoke_achievement', { method: 'POST', body: JSON.stringify({ p_grant_id: grantId, p_reason: reason }) });
+    },
+
+    async listGrantsForAchievement(achievementId) {
+      return supaFetch('player_achievement_grants?achievement_id=eq.' + achievementId + '&revoked_at=is.null&order=granted_at.desc');
+    },
+
+    async grantCurrency(playerIds, amount, reason) {
+      return supaFetch('rpc/rpc_admin_grant_currency', {
+        method: 'POST',
+        body: JSON.stringify({ p_player_ids: playerIds, p_amount: amount, p_reason: reason }),
+      });
+    },
   };
 
 })();
