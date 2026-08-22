@@ -124,6 +124,10 @@
 .av2-hist-win { color: var(--neon); font-weight: 700; }
 .av2-hist-loss { color: var(--red); font-weight: 700; }
 
+/* ── Tournament Studio ── */
+.av2-event-row { cursor: pointer; }
+.av2-event-row:hover { background: var(--card-hover); border-radius: var(--radius-xs); }
+
 /* ── Referee Center picker ── */
 .av2-ref-picker-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
 
