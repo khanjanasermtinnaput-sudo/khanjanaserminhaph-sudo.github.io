@@ -220,6 +220,8 @@ window.AdminV2 = window.AdminV2 || {};
       const t = tournamentsList.find(x => x.id === tournamentId) || await dbGetTournamentById(tournamentId);
       const { entrants, isDoubles, cfg } = flattenEntrants(t);
       const playerName = (id) => (db.players.find(p => p.id === id) || {}).name || ('#' + id);
+      const koMatches = t.status !== 'active' ? [] : await dbGetTournamentMatches(tournamentId).then(ms => ms.filter(m => m.round_index !== null)).catch(() => []);
+      const hasBracket = koMatches.length > 0 || (t.status === 'completed');
 
       const body = document.createElement('div');
       body.className = 'av2-panel';
@@ -228,8 +230,11 @@ window.AdminV2 = window.AdminV2 || {};
           <button class="btn btn-ghost btn-sm" id="av2EventBack" style="width:auto;margin-bottom:10px">← กลับ</button>
           <div class="card-title">${escapeHtml(t.event_label || t.name)} <span class="av2-badge">${escapeHtml(t.tier || '')}</span></div>
           <div class="av2-muted">สถานะ: ${escapeHtml(t.status)} · ประเภท: ${isDoubles ? 'คู่' : 'เดี่ยว'}</div>
-          <div class="av2-muted" style="margin-top:8px">การจัดสาย/บันทึกผลแบบเต็ม ยังอยู่ที่หน้า Tournament เดิม (จะย้ายมาที่นี่ใน Bracket Editor เฟสถัดไป) —
-            <a href="#" id="av2GoLegacyTournament" style="color:var(--neon2)">เปิดในหน้า Tournament เดิม →</a>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            ${hasBracket
+              ? `<button class="btn btn-primary btn-sm" id="av2ViewBracket" style="width:auto">🏆 ดูสาย Bracket</button>`
+              : `<button class="btn btn-primary btn-sm" id="av2GenerateDraw" style="width:auto">🎲 สร้างสายการแข่งขัน</button>`}
+            <a href="#" id="av2GoLegacyTournament" style="color:var(--neon2);align-self:center;font-size:0.82rem">เปิดในหน้า Tournament เดิม →</a>
           </div>
         </div>
         <div class="card">
@@ -250,6 +255,20 @@ window.AdminV2 = window.AdminV2 || {};
 
       document.getElementById('av2EventBack').onclick = (ev) => { ev.preventDefault(); renderList(container); };
       document.getElementById('av2GoLegacyTournament').onclick = (ev) => { ev.preventDefault(); showSection('tournament'); };
+
+      const viewBtn = document.getElementById('av2ViewBracket');
+      if (viewBtn) viewBtn.onclick = () => AdminV2.bracket.viewBracket(tournamentId);
+      const genBtn = document.getElementById('av2GenerateDraw');
+      if (genBtn) genBtn.onclick = () => {
+        const drawEntrants = isDoubles
+          ? entrants.filter(e => e.subIdx === 0).map(e => {
+              const partner = entrants.find(x => x.group === e.group && x.slotIdx === e.slotIdx && x.subIdx === 1);
+              return { playerId: e.playerId, partnerId: partner ? partner.playerId : null, label: playerName(e.playerId) + (partner ? ' / ' + playerName(partner.playerId) : '') };
+            })
+          : entrants.map(e => ({ playerId: e.playerId, label: playerName(e.playerId) }));
+        AdminV2._onDrawDone = () => renderEventDetail(container, tournamentId);
+        AdminV2.bracket.openDrawFlow(tournamentId, drawEntrants);
+      };
 
       container.querySelectorAll('[data-remove]').forEach(btn => {
         btn.onclick = () => {
