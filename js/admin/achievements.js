@@ -1,9 +1,14 @@
 // Admin V2 — Achievement Studio (js/admin/achievements.js)
-// Creates achievements in the NEW admin_achievements table (supabase_admin_v2_achievements.sql)
-// — this does not touch the existing hardcoded ACHIEVEMENTS_DEF (js/achievements.js)
-// or the legacy admin-created catalog packed into players.prime_titles
-// (js/season.js). See the migration header for why: migrating 43 real
-// players' historical data out of that column is a separate, real task.
+// Manages achievements in admin_achievements (supabase_admin_v2_achievements.sql).
+// The legacy admin-created catalog that used to live packed into
+// players.prime_titles (js/season.js __catalog:/__cach: sentinels) has been
+// migrated in — see supabase_admin_v2_achievements_migration.sql — as
+// ordinary rows with legacy_id set (badged "ย้ายจากระบบเดิม" below); that
+// migration never touched prime_titles itself, so the legacy admin page
+// keeps reading and working exactly as before. The hardcoded, always-live-
+// recomputed ACHIEVEMENTS_DEF/TOURNAMENT_ACHIEVEMENTS_DEF (js/achievements.js)
+// are NOT migrated — they're code, not data — but are shown read-only below
+// (builtInSectionHTML) so this screen shows the complete picture.
 //
 // The rule builder only ever produces {field, operator, value} — a plain
 // data comparison the server whitelists (supabase_admin_v2_achievements.sql),
@@ -38,7 +43,7 @@ window.AdminV2 = window.AdminV2 || {};
 
   function cardHTML(a) {
     return `<div class="card" data-ach="${a.id}">
-      <div class="card-title">${escapeHtml(a.icon || '🏅')} ${escapeHtml(a.title)} <span class="av2-badge av2-badge-gold">${escapeHtml(a.rarity)}</span>${a.hidden ? ' <span class="av2-badge">ซ่อน</span>' : ''}${a.repeatable ? ' <span class="av2-badge">รับซ้ำได้</span>' : ''}</div>
+      <div class="card-title">${escapeHtml(a.icon || '🏅')} ${escapeHtml(a.title)} <span class="av2-badge av2-badge-gold">${escapeHtml(a.rarity)}</span>${a.hidden ? ' <span class="av2-badge">ซ่อน</span>' : ''}${a.repeatable ? ' <span class="av2-badge">รับซ้ำได้</span>' : ''}${a.legacy_id ? ' <span class="av2-badge">ย้ายจากระบบเดิม</span>' : ''}</div>
       ${a.description ? `<div class="av2-muted">${escapeHtml(a.description)}</div>` : ''}
       <div class="av2-muted" style="margin-top:6px">เงื่อนไข: ${escapeHtml(ruleText(a.rule))}</div>
       ${a.reward ? `<div class="av2-muted">รางวัล: ${a.reward.coins ? '+' + a.reward.coins + ' เหรียญ ' : ''}${a.reward.elo ? '+' + a.reward.elo + ' ELO' : ''}</div>` : ''}
@@ -78,6 +83,25 @@ window.AdminV2 = window.AdminV2 || {};
     </div>`;
   }
 
+  // Read-only — ACHIEVEMENTS_DEF/TOURNAMENT_ACHIEVEMENTS_DEF (js/achievements.js,
+  // both plain globals already loaded on every page, no fetch needed) are
+  // developer-authored check() closures, always recomputed live, never stored
+  // as a grant anywhere. There's nothing here to create/grant/revoke/archive —
+  // this section exists purely so "what achievements exist in this system"
+  // shows the complete picture in one place, per the spec.
+  function builtInSectionHTML() {
+    const defs = [
+      ...(typeof ACHIEVEMENTS_DEF !== 'undefined' ? ACHIEVEMENTS_DEF : []),
+      ...(typeof TOURNAMENT_ACHIEVEMENTS_DEF !== 'undefined' ? TOURNAMENT_ACHIEVEMENTS_DEF : []),
+    ];
+    if (!defs.length) return '';
+    return `<div class="card">
+      <div class="card-title">🔧 Achievement ในตัว (โค้ด — แก้ไข/มอบด้วยมือไม่ได้)</div>
+      <div class="av2-muted" style="margin-bottom:8px">ปลดล็อกอัตโนมัติตามเงื่อนไขในโค้ด ไม่ใช่ข้อมูลที่มอบให้ผู้เล่นทีละคน</div>
+      ${defs.map(d => `<div class="av2-hist-row">${escapeHtml(d.icon || '🏅')} <strong>${escapeHtml(d.title)}</strong>${d.desc ? ` <span class="av2-muted">— ${escapeHtml(d.desc)}</span>` : ''}</div>`).join('')}
+    </div>`;
+  }
+
   async function render(container) {
     AdminV2.state(container, 'loading', {});
     try {
@@ -85,7 +109,7 @@ window.AdminV2 = window.AdminV2 || {};
       await loadAll();
       const body = document.createElement('div');
       body.className = 'av2-panel';
-      body.innerHTML = renderCreateForm() + list.map(cardHTML).join('') + (list.length ? '' : '<div class="card"><div class="av2-muted" style="text-align:center;padding:16px">ยังไม่มี Achievement ที่สร้างผ่าน Admin V2</div></div>');
+      body.innerHTML = renderCreateForm() + builtInSectionHTML() + list.map(cardHTML).join('') + (list.length ? '' : '<div class="card"><div class="av2-muted" style="text-align:center;padding:16px">ยังไม่มี Achievement ที่สร้างผ่าน Admin V2</div></div>');
       container.innerHTML = '';
       container.appendChild(body);
       wire(container);
