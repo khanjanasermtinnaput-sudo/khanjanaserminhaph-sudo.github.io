@@ -16,9 +16,9 @@ window.AdminV2 = window.AdminV2 || {};
     { id: 'referee',      label: 'ผู้ตัดสิน',      icon: '👆', ready: true },
     { id: 'achievements', label: 'Achievement',    icon: '🏅', ready: true },
     { id: 'rewards',      label: 'รางวัล',         icon: '🎁', ready: true },
-    { id: 'rankings',     label: 'อันดับ',         icon: '📈', ready: false },
-    { id: 'logs',         label: 'บันทึกกิจกรรม',  icon: '📜', ready: false },
-    { id: 'settings',     label: 'ตั้งค่า',        icon: '⚙️', ready: false },
+    { id: 'rankings',     label: 'อันดับ',         icon: '📈', ready: true },
+    { id: 'logs',         label: 'บันทึกกิจกรรม',  icon: '📜', ready: true },
+    { id: 'settings',     label: 'ตั้งค่า',        icon: '⚙️', ready: true },
   ];
 
   let mounted = false;

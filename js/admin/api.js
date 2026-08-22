@@ -145,6 +145,17 @@ window.AdminV2 = window.AdminV2 || {};
         body: JSON.stringify({ p_player_ids: playerIds, p_amount: amount, p_reason: reason }),
       });
     },
+
+    // admin_actions is append-only (supabase_admin_security.sql) — this is a
+    // pure read. Bounded like every other list in this app (js/db.js loadMatches
+    // etc. all cap at a few hundred rows).
+    async listAdminActions(limit) {
+      return supaFetch('admin_actions?order=created_at.desc&limit=' + (limit || 200));
+    },
+
+    async deleteTournament(tournamentId) {
+      return supaFetch('rpc/rpc_tournament_delete', { method: 'POST', body: JSON.stringify({ p_tournament_id: tournamentId }) });
+    },
   };
 
 })();
