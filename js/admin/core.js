@@ -39,10 +39,6 @@ window.AdminV2 = window.AdminV2 || {};
     document.getElementById('av2SidebarBackdrop').classList.remove('av2-sidebar-open');
   };
 
-  AdminV2.showLegacy = function () {
-    showSection('admin');
-  };
-
   function renderSidebarActive() {
     document.querySelectorAll('.av2-nav-item').forEach(el => {
       el.classList.toggle('active', el.dataset.route === AdminV2.route);
@@ -62,9 +58,6 @@ window.AdminV2 = window.AdminV2 || {};
         <nav class="av2-sidebar" id="av2Sidebar">
           <div class="av2-sidebar-brand">🏸 Admin V2</div>
           <div class="av2-nav">${navItems}</div>
-          <button type="button" class="av2-nav-item av2-nav-legacy" id="av2LegacyBtn">
-            <span class="av2-nav-icon">⚠️</span><span class="av2-nav-label">Admin แบบเดิม</span>
-          </button>
         </nav>
         <div class="av2-workspace">
           <div class="av2-topbar">
@@ -149,7 +142,6 @@ window.AdminV2 = window.AdminV2 || {};
     document.querySelectorAll('.av2-nav-item[data-route]').forEach(btn => {
       btn.onclick = () => AdminV2.go(btn.dataset.route);
     });
-    document.getElementById('av2LegacyBtn').onclick = AdminV2.showLegacy;
     document.getElementById('av2DrawerToggle').onclick = () => {
       document.getElementById('av2Sidebar').classList.toggle('av2-sidebar-open');
       document.getElementById('av2SidebarBackdrop').classList.toggle('av2-sidebar-open');
