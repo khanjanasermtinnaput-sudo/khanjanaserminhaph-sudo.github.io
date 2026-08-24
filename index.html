@@ -1019,6 +1019,10 @@ function initCrownSparkle(canvas, W, H) {
 <script src="js/tournament/draw.js?v=20260824a"></script>
 <script src="js/tournament/standings.js?v=20260824a"></script>
 <script src="js/tournament/errors.js?v=20260824a"></script>
+<!-- The shared tournament data service: the single path Admin Studio and the
+     public Hub both use. It resolves supaFetch (js/db.js) at call time rather
+     than at load time, so it can sit here with the other tournament modules. -->
+<script src="js/tournament/service.js?v=20260824a"></script>
 <script src="js/exp-engine.js?v=20260705a"></script>
 <script src="js/db.js?v=20260821a"></script>
 <script src="js/elo.js?v=20260610a"></script>
@@ -1127,83 +1131,15 @@ lbRenderBoard = function(data, animate) {
   });
 };
 
-// ── PATCH renderAdmin for Coin Give + Tournament section ──
-const _renderAdminV4 = renderAdmin;
-renderAdmin = async function() {
-  await _renderAdminV4();
-  if (!isAdminUser()) return;
-  const main = document.querySelector('#adminSection main');
-  if (!main) return;
-  // Coin Give section
-  if (!document.getElementById('adminCoinSection')) {
-    const div = document.createElement('div');
-    div.id = 'adminCoinSection';
-    div.className = 'card';
-    div.innerHTML = `<div class="card-title">🪙 ให้เหรียญผู้เล่น</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <select class="inp" id="coinGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
-          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.coins||0}🪙)</option>`).join('')}
-        </select>
-        <input class="inp" type="number" id="coinGiveAmount" placeholder="จำนวน" min="1" style="flex:1;min-width:80px;font-size:0.82rem">
-        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveCoins()">ให้เหรียญ</button>
-      </div>
-      <div style="margin-top:8px;font-size:0.75rem;color:var(--muted)">หรือส่งผ่าน Mailbox:</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:4px">
-        <select class="inp" id="mailGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">
-          ${[...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}
-        </select>
-        <select class="inp" id="mailGiveType" style="flex:1;min-width:100px;font-size:0.82rem">
-          <option value="coins">🪙 Coins</option>
-          <option value="elo">📈 ELO</option>
-          <option value="gacha_frame">🖼️ Frame</option>
-          <option value="gacha_emoji">😎 Emoji</option>
-        </select>
-        <input class="inp" id="mailGiveValue" placeholder="ค่า" style="flex:1;min-width:70px;font-size:0.82rem">
-        <input class="inp" id="mailGiveMsg" placeholder="ข้อความ (optional)" style="flex:2;min-width:120px;font-size:0.82rem">
-        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminSendMail()">📬 ส่ง</button>
-      </div>`;
-    main.insertBefore(div, main.firstChild);
-  } else {
-    const sel = document.getElementById('coinGivePlayer');
-    const msel = document.getElementById('mailGivePlayer');
-    if (sel) sel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)} (${p.coins||0}🪙)</option>`).join('');
-    if (msel) msel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-  }
-  // Gacha Gift section
-  if (!document.getElementById('adminElementSection')) {
-    const ediv = document.createElement('div');
-    ediv.id = 'adminElementSection';
-    ediv.className = 'card';
-    const plOpts = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-    ediv.innerHTML = `<div class="card-title">🎁 เสกของ Gacha ให้ผู้เล่น</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-        <select class="inp" id="gachaGivePlayer" style="flex:2;min-width:120px;font-size:0.82rem">${plOpts}</select>
-        <select class="inp" id="gachaGiveType" style="flex:2;min-width:130px;font-size:0.82rem" onchange="adminUpdateGachaGiveItems()">
-          <option value="element">✦ Element</option>
-          <option value="frame">🖼️ Frame</option>
-          <option value="name">✨ Name Effect</option>
-          <option value="emoji">🎭 Emoji</option>
-          <option value="thundergod">⚡ Thunder God</option>
-        </select>
-        <select class="inp" id="gachaGiveItem" style="flex:2;min-width:130px;font-size:0.82rem"></select>
-        <input class="inp" id="gachaGiveMsg" placeholder="ข้อความ (optional)" style="flex:3;min-width:140px;font-size:0.82rem">
-        <button class="btn btn-primary btn-sm" style="white-space:nowrap;width:auto" onclick="adminGiveGachaItem()">🎁 เสก</button>
-      </div>`;
-    main.insertBefore(ediv, main.children[1] || main.firstChild);
-    adminUpdateGachaGiveItems();
-  } else {
-    const psel = document.getElementById('gachaGivePlayer');
-    if (psel) psel.innerHTML = [...db.players].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
-  }
-  // Tournament section — always re-render when admin is opened
-  if (!document.getElementById('tournamentAdminSection')) {
-    const tdiv = document.createElement('div');
-    tdiv.className = 'card';
-    tdiv.innerHTML = `<div class="card-title">🏆 Tournament</div><div id="tournamentAdminSection"></div>`;
-    main.appendChild(tdiv);
-  }
-  renderTournamentSection();
-};
+// The renderAdmin() monkey patch that used to live here (Coin Give + the
+// legacy Tournament admin panel) was removed with Tournament V2 Phase 2.
+// It had been dead since Legacy Admin (#adminSection) was deleted on
+// 2026-08-22: its first act was `document.querySelector('#adminSection main')`
+// followed by `if (!main) return;`, so every later line was unreachable.
+// Coin granting lives in Admin V2 Rewards Center; tournaments live in
+// Admin Tournament Studio. adminGiveCoins() below is likewise only reachable
+// from markup that patch used to inject, and is left in place for now rather
+// than widening this change into js/leaderboard.js.
 
 async function adminGiveCoins() {
   const pid = parseInt(document.getElementById('coinGivePlayer')?.value);
