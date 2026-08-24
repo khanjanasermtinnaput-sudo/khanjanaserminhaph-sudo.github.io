@@ -1011,6 +1011,14 @@ function initCrownSparkle(canvas, W, H) {
      depended on by checkBWFWin/_refGameOver/_koRefGameOver below, so it
      loads first rather than with the rest of js/admin/* at the bottom. -->
 <script src="js/admin/scoring.js?v=20260821a"></script>
+<!-- Tournament V2 pure logic. No DOM, no network, no dependencies on each
+     other; they mirror the server rules so the UI can validate inline and so
+     the rules stay unit-testable under `node --test tests/*.test.mjs`. -->
+<script src="js/tournament/scoring-presets.js?v=20260824a"></script>
+<script src="js/tournament/validation.js?v=20260824a"></script>
+<script src="js/tournament/draw.js?v=20260824a"></script>
+<script src="js/tournament/standings.js?v=20260824a"></script>
+<script src="js/tournament/errors.js?v=20260824a"></script>
 <script src="js/exp-engine.js?v=20260705a"></script>
 <script src="js/db.js?v=20260821a"></script>
 <script src="js/elo.js?v=20260610a"></script>
