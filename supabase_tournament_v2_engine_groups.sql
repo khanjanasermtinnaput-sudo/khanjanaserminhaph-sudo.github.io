@@ -41,7 +41,14 @@ returns table (
   is_tied      boolean,
   qualifies    boolean
 )
-language sql stable security definer set search_path = public
+-- SECURITY INVOKER on purpose: every table read below already carries a public
+-- `for select using (true)` policy, so definer rights would buy nothing and
+-- only widen the blast radius (the Supabase advisor flags anon-executable
+-- SECURITY DEFINER functions for exactly this reason). Verified that an
+-- anonymous caller gets byte-identical standings to an admin.
+-- rpc_generate_knockout_from_qualifiers calls this from inside its own
+-- SECURITY DEFINER body, so qualifier selection is unaffected.
+language sql stable security invoker set search_path = public
 as $$
   with sides as (
     -- one row per (match, participating entry)
@@ -131,7 +138,7 @@ $$;
 
 create or replace function public.rpc_compute_event_standings(p_event_id bigint)
 returns jsonb
-language sql stable security definer set search_path = public
+language sql stable security invoker set search_path = public
 as $$
   select coalesce(jsonb_agg(to_jsonb(s) order by s.group_letter, s.rank), '[]'::jsonb)
     from fn_event_standings(p_event_id) s;

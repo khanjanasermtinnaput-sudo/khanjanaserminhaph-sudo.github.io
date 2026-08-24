@@ -196,7 +196,7 @@ end $$;
 --   points_to_win < winner < cap   -> margin is exactly win_by         (24-22)
 --   winner == cap                  -> margin is exactly 1              (30-29)
 create or replace function public.fn_v2_validate_games(p_games jsonb, p_cfg jsonb)
-returns text language plpgsql immutable as $$
+returns text language plpgsql immutable set search_path = public as $$
 declare
   v_points int; v_win_by int; v_cap int; v_max int; v_need int;
   v_g jsonb; v_a int; v_b int; v_hi int; v_lo int;

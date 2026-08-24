@@ -32,7 +32,7 @@ end $$;
 -- renders team size as read-only.
 create or replace function public.fn_v2_team_size(p_event_kind text, p_override int default null)
 returns int
-language sql immutable
+language sql immutable set search_path = public
 as $$
   select case
     when p_event_kind in ('ms', 'ws') then 1
@@ -46,7 +46,7 @@ $$;
 -- inferred best-of-3 from tier = 'Super 1000' in three separate places.
 create or replace function public.fn_v2_scoring_config(p_preset text, p_custom jsonb default null)
 returns jsonb
-language plpgsql immutable
+language plpgsql immutable set search_path = public
 as $$
 declare
   v_points int; v_cap int; v_max int; v_win_by int;
@@ -79,7 +79,7 @@ end $$;
 create or replace function public.fn_v2_lifecycle_allowed(
   p_from text, p_to text, p_structure text, p_purpose text)
 returns boolean
-language sql immutable
+language sql immutable set search_path = public
 as $$
   select case
     when p_from = p_to then true
