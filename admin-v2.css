@@ -144,3 +144,173 @@
   .av2-content { padding: 14px; }
   .av2-table th, .av2-table td { font-size: 0.8rem; }
 }
+
+/* ── Tournament creation wizard (js/admin/tournament-wizard.js) ──────────────
+   Mobile-first: the matrix is a stack of cards under 860px and a grid above.
+   Every interactive target is at least 44x44 px, which the rest of this app
+   still needs to catch up on. */
+.avw { max-width: 1100px; margin: 0 auto; }
+.avw-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.avw-title { font-size: 1.05rem; margin: 0; }
+.avw-back-to-list { min-height: 44px; }
+
+.avw-stepper {
+  display: flex; gap: 4px; list-style: none; padding: 0; margin: 10px 0 14px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.avw-step {
+  display: flex; align-items: center; gap: 6px; padding: 8px 10px;
+  border-radius: 10px; white-space: nowrap; font-size: 0.78rem;
+  color: var(--muted); background: rgba(255,255,255,0.04); min-height: 44px;
+}
+.avw-step-no {
+  width: 22px; height: 22px; border-radius: 50%; flex: 0 0 22px;
+  display: grid; place-items: center; font-size: 0.72rem;
+  background: rgba(255,255,255,0.12); color: var(--fg, #fff);
+}
+.avw-step-current { color: var(--fg, #fff); background: rgba(0,255,200,0.12); }
+.avw-step-current .avw-step-no { background: var(--neon2, #21e6c1); color: #04231f; font-weight: 700; }
+.avw-step-done .avw-step-no { background: rgba(33,230,193,0.35); color: #04231f; }
+
+.avw-status { min-height: 20px; font-size: 0.8rem; color: var(--neon2, #21e6c1); margin-bottom: 6px; }
+
+.avw-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 14px; margin-bottom: 12px;
+}
+.avw-hint { font-size: 0.8rem; color: var(--muted); margin: 0 0 12px; line-height: 1.5; }
+.avw-hint-inline { font-size: 0.74rem; color: var(--muted); }
+
+.avw-field { margin-bottom: 12px; }
+.avw-field > label, .avw-fieldset > legend {
+  display: block; font-size: 0.8rem; margin-bottom: 5px; color: var(--muted);
+}
+.avw-field .inp { width: 100%; min-height: 44px; }
+.avw-req { color: #ff6b6b; }
+.avw-err { color: #ff8080; font-size: 0.75rem; margin-top: 4px; min-height: 1em; }
+.avw-fieldset { border: 0; padding: 0; margin: 0 0 12px; }
+
+.avw-grid2 { display: grid; grid-template-columns: 1fr; gap: 0 12px; }
+.avw-radio-row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.avw-radio {
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center;
+  padding: 12px; border-radius: 12px; min-height: 44px;
+  border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.02);
+}
+.avw-radio-on { border-color: var(--neon2, #21e6c1); background: rgba(33,230,193,0.08); }
+.avw-radio input { width: 20px; height: 20px; }
+.avw-radio-label { font-size: 0.9rem; cursor: pointer; margin: 0; }
+.avw-radio-hint { grid-column: 2; font-size: 0.75rem; color: var(--muted); }
+
+.avw-check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 0.85rem; }
+.avw-check input { width: 20px; height: 20px; flex: 0 0 20px; }
+.avw-check label { cursor: pointer; margin: 0; display: flex; align-items: center; min-height: 44px; }
+
+.avw-bulk { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.avw-bulk .btn { min-height: 44px; width: auto; }
+
+.avw-matrix { display: grid; gap: 10px; }
+.avw-row {
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; padding: 12px;
+  background: rgba(255,255,255,0.02);
+}
+.avw-row-off { opacity: 0.55; }
+.avw-row-bad { border-color: rgba(255,107,107,0.55); }
+.avw-row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.avw-switch { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.avw-switch input { width: 20px; height: 20px; flex: 0 0 20px; }
+.avw-switch label { cursor: pointer; display: flex; align-items: center; min-height: 44px; }
+.avw-row-title { font-weight: 600; font-size: 0.92rem; }
+.avw-badge {
+  font-size: 0.7rem; padding: 3px 8px; border-radius: 999px;
+  background: rgba(255,255,255,0.10); color: var(--muted);
+}
+.avw-badge-bad { background: rgba(255,107,107,0.18); color: #ff9c9c; }
+.avw-row-body { display: grid; grid-template-columns: 1fr; gap: 0 12px; margin-top: 8px; }
+.avw-row-summary {
+  grid-column: 1 / -1; font-size: 0.76rem; color: var(--muted);
+  padding-top: 6px; border-top: 1px dashed rgba(255,255,255,0.10);
+}
+.avw-warn {
+  grid-column: 1 / -1; font-size: 0.76rem; color: #ffd479;
+  background: rgba(255,196,0,0.08); border-radius: 8px; padding: 8px 10px; margin-top: 8px;
+}
+.avw-warn ul, .avw-block ul { margin: 6px 0 0; padding-left: 18px; }
+.avw-block {
+  font-size: 0.8rem; color: #ff9c9c; background: rgba(255,107,107,0.10);
+  border: 1px solid rgba(255,107,107,0.35); border-radius: 10px; padding: 10px 12px; margin-top: 10px;
+}
+.avw-ok {
+  font-size: 0.85rem; color: #7dffd0; background: rgba(33,230,193,0.10);
+  border-radius: 10px; padding: 10px 12px; margin-top: 10px;
+}
+
+.avw-part { margin-bottom: 18px; }
+.avw-part-title {
+  font-size: 0.92rem; margin: 0 0 8px; display: flex; align-items: center;
+  justify-content: space-between; gap: 8px; flex-wrap: wrap;
+}
+.avw-count { font-size: 0.76rem; color: var(--muted); }
+.avw-count-full { color: #7dffd0; }
+.avw-add { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 8px; }
+.avw-add .inp { min-height: 44px; }
+.avw-add .btn { min-height: 44px; width: auto; }
+.avw-teams { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.avw-team {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.04);
+  font-size: 0.84rem; min-height: 44px;
+}
+.avw-team-del { min-width: 44px; min-height: 44px; width: auto; }
+.avw-empty-inline { font-size: 0.8rem; color: var(--muted); padding: 8px 0; }
+
+.avw-groups { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.avw-group { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 10px; }
+.avw-group-letter { font-weight: 700; font-size: 0.82rem; margin-bottom: 6px; color: var(--neon2, #21e6c1); }
+.avw-group-list { margin: 0; padding-left: 18px; font-size: 0.82rem; display: grid; gap: 4px; }
+
+.avw-review-meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px; margin-bottom: 12px;
+}
+.avw-review-meta > div {
+  background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 10px;
+  display: grid; gap: 2px;
+}
+.avw-review-meta span { font-size: 0.72rem; color: var(--muted); }
+.avw-review-meta strong { font-size: 0.86rem; }
+.avw-review-table { width: 100%; }
+.avw-tr-off { opacity: 0.5; }
+
+.avw-done { text-align: center; }
+.avw-done-icon { font-size: 2.4rem; }
+
+/* Sticky action bar: the primary action stays reachable on a long step. */
+.avw-actions {
+  position: sticky; bottom: 0; z-index: 5;
+  display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 10px 0; margin-top: 6px;
+  background: linear-gradient(to top, var(--bg, #0b0f14) 62%, transparent);
+}
+.avw-actions .btn { min-height: 46px; width: auto; padding-inline: 18px; }
+
+/* screen-reader-only label */
+.avw-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (min-width: 720px) {
+  .avw-grid2 { grid-template-columns: 1fr 1fr; }
+  .avw-radio-row { grid-template-columns: 1fr 1fr; }
+  .avw-row-body { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+  .avw-add { grid-template-columns: 1fr 1fr auto; align-items: end; }
+  .avw-groups { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avw *, .avw *::before, .avw *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

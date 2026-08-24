@@ -64,7 +64,13 @@ window.AdminV2 = window.AdminV2 || {};
       body.className = 'av2-panel';
       body.innerHTML = `
         <div class="card">
-          <button class="btn btn-primary btn-sm" id="av2NewSeriesBtn" style="width:auto">➕ สร้างทัวร์นาเมนต์ใหม่ (Series)</button>
+          <button class="btn btn-primary btn-sm" id="av2NewSeriesBtn" style="width:auto">➕ สร้างรายการแข่งขัน</button>
+          ${AdminV2.tournamentWizard && AdminV2.tournamentWizard.hasDraft()
+            ? `<div class="av2-muted" style="margin-top:8px;font-size:0.8rem">
+                 มีฉบับร่างที่ยังสร้างไม่เสร็จค้างอยู่ — กดปุ่มด้านบนเพื่อทำต่อ
+                 <button class="btn btn-ghost btn-sm" id="av2DiscardDraft" style="width:auto;margin-left:6px">ทิ้งฉบับร่าง</button>
+               </div>`
+            : ''}
         </div>
         ${seriesList.length ? seriesList.map(seriesCardHTML).join('') : ''}
         ${legacyCardHTML()}
@@ -73,7 +79,20 @@ window.AdminV2 = window.AdminV2 || {};
       container.innerHTML = '';
       container.appendChild(body);
 
-      document.getElementById('av2NewSeriesBtn').onclick = () => renderNewSeriesForm(container);
+      // The six-step wizard is the way a competition gets created now: it builds
+      // the whole series client-side and publishes it in ONE transaction, so a
+      // partial series cannot result. renderNewSeriesForm below is the pre-V2
+      // one-event-at-a-time path, still reachable for adding an event to an
+      // existing series until Phase 4 replaces that too.
+      document.getElementById('av2NewSeriesBtn').onclick = () => {
+        if (AdminV2.tournamentWizard) AdminV2.tournamentWizard.open(container);
+        else renderNewSeriesForm(container);
+      };
+      const discardBtn = document.getElementById('av2DiscardDraft');
+      if (discardBtn) discardBtn.onclick = () => {
+        AdminV2.tournamentWizard.discardDraft();
+        renderList(container);
+      };
       container.querySelectorAll('[data-add-event]').forEach(btn => {
         btn.onclick = () => renderNewEventForm(container, Number(btn.dataset.addEvent));
       });
