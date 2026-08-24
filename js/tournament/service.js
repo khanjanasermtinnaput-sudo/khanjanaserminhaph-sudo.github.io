@@ -283,6 +283,30 @@
       });
     },
 
+    // ── selection mode & courts ─────────────────────────────────────────────
+    async finalizeSelection(eventId, results, reason, expectedVersion) {
+      return rpc('rpc_admin_finalize_selection', {
+        p_event_id: eventId, p_results: results,
+        p_reason: reason, p_expected_version: expectedVersion
+      });
+    },
+
+    async listSelectionResults(eventId) {
+      return get('tournament_selection_results?tournament_id=eq.' + eventId +
+        '&select=*&order=rank.asc.nullslast,result.asc');
+    },
+
+    async listCourts(seriesId) {
+      return get('tournament_courts?series_id=eq.' + seriesId +
+        '&select=*&order=court_no.asc');
+    },
+
+    async assignCourt(matchId, courtId, scheduledAt) {
+      return rpc('rpc_admin_assign_court', {
+        p_match_id: matchId, p_court_id: courtId, p_scheduled_at: scheduledAt || null
+      });
+    },
+
     async correctResult(matchId, games, reason, opts) {
       var o = opts || {};
       return rpc('rpc_admin_correct_match_result', {

@@ -173,6 +173,8 @@ declare
   v_entry    bigint;
   v_total    int := 0;
   v_version  int;
+  v_group_count      int;
+  v_payload_letters  text[];
 begin
   v_uid := fn_v2_assert_admin();
 
@@ -188,6 +190,27 @@ begin
   end if;
   if p_draw_method not in ('random','seeded','manual') then raise exception 'ERR_BAD_DRAW_METHOD'; end if;
   if jsonb_typeof(p_assignments) <> 'array' then raise exception 'ERR_BAD_PAYLOAD'; end if;
+
+  -- The commit below deletes every group's entries for this event before
+  -- rewriting from the payload (a plain replace is simpler and safer than a
+  -- diff). A payload naming fewer groups than the event has configured would
+  -- therefore silently empty the groups it omitted. The draw studio always
+  -- sends every group (js/admin/tournament-draw.js saveDraw() builds its
+  -- payload from groupLetters().map(...)), so this was never reachable
+  -- through the UI as built, but the RPC defends against it directly: found
+  -- and fixed while testing, not via the client.
+  select count(*) into v_group_count from tournament_groups where tournament_id = p_event_id;
+  select array_agg(distinct value->>'letter') into v_payload_letters
+    from jsonb_array_elements(p_assignments);
+  if coalesce(array_length(v_payload_letters, 1), 0) <> v_group_count then
+    raise exception 'ERR_BAD_PAYLOAD' using
+      detail = format('assignments must cover every group (%s configured, %s given)',
+                      v_group_count, coalesce(array_length(v_payload_letters, 1), 0));
+  end if;
+  if exists (select 1 from tournament_groups g
+              where g.tournament_id = p_event_id and g.letter <> all(v_payload_letters)) then
+    raise exception 'ERR_BAD_PAYLOAD' using detail = 'a configured group is missing from the payload';
+  end if;
 
   -- ---- validate before writing ---------------------------------------------
   for v_grp in select * from jsonb_array_elements(p_assignments) loop

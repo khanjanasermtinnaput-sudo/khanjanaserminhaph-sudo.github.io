@@ -101,11 +101,16 @@ window.AdminV2 = window.AdminV2 || {};
       });
       container.querySelectorAll('[data-event]').forEach(row => {
         row.onclick = () => {
-          // A V2 event (one carrying a structure) opens the Roster & Draw
-          // Studio; pre-V2 rows keep the old one-slot-at-a-time detail screen.
+          // A V2 event (one carrying a structure) routes by lifecycle: still
+          // being assembled -> Roster & Draw Studio, under way or finished ->
+          // the Operations Dashboard. Pre-V2 rows keep the old one-slot detail
+          // screen.
           const id = Number(row.dataset.event);
           const t = tournamentsList.find(x => x.id === id);
-          if (t && t.structure && AdminV2.tournamentDraw) {
+          const opsStages = ['group_stage', 'knockout', 'completed', 'selection_completed'];
+          if (t && t.structure && opsStages.includes(t.lifecycle_status) && AdminV2.tournamentOps) {
+            AdminV2.tournamentOps.open(container, id);
+          } else if (t && t.structure && AdminV2.tournamentDraw) {
             AdminV2.tournamentDraw.open(container, id);
           } else {
             renderEventDetail(container, id);
