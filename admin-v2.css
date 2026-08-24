@@ -314,3 +314,115 @@
     transition-duration: 0.01ms !important; scroll-behavior: auto !important;
   }
 }
+
+/* ── Roster & Draw Studio (js/admin/tournament-draw.js) ─────────────────────
+   A doubles pair is one card, never a row per player. Drag targets all have a
+   keyboard-operable "move to group" select beside them. */
+.avd { max-width: 1100px; margin: 0 auto; }
+.avd-head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.avd-head .btn { min-height: 44px; }
+.avd-title { font-size: 1.02rem; margin: 0 0 4px; }
+.avd-sub { display: flex; gap: 6px; flex-wrap: wrap; }
+.avd-chip {
+  font-size: 0.72rem; padding: 4px 9px; border-radius: 999px;
+  background: rgba(255,255,255,0.10); color: var(--muted);
+}
+.avd-chip-sm { font-size: 0.68rem; padding: 2px 7px; }
+.avd-chip-warn { background: rgba(255,196,0,0.16); color: #ffd479; }
+.avd-chip-bad { background: rgba(255,107,107,0.18); color: #ff9c9c; }
+.avd-status { min-height: 20px; font-size: 0.8rem; color: var(--neon2, #21e6c1); margin: 6px 0; }
+
+.avd-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 14px; margin-bottom: 12px;
+}
+.avd-card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.avd-card-head h3 { font-size: 0.95rem; margin: 0; }
+.avd-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.avd-card-actions .btn { min-height: 44px; width: auto; }
+.avd-count { font-size: 0.76rem; color: var(--muted); margin-left: 8px; }
+.avd-hint { font-size: 0.79rem; color: var(--muted); margin: 0 0 10px; line-height: 1.5; }
+.avd-err { color: #ff8080; font-size: 0.75rem; margin-top: 4px; min-height: 1em; }
+.avd-empty { font-size: 0.8rem; color: var(--muted); padding: 10px 0; }
+.avd-warn {
+  font-size: 0.78rem; color: #ffd479; background: rgba(255,196,0,0.08);
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 10px;
+}
+
+.avd-next {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; background: rgba(33,230,193,0.08);
+  border: 1px solid rgba(33,230,193,0.28); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 12px; font-size: 0.85rem;
+}
+.avd-next-hint { font-size: 0.75rem; color: var(--muted); margin-top: 3px; }
+.avd-next .btn { min-height: 44px; width: auto; }
+
+.avd-add { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 6px; }
+.avd-add .inp { min-height: 44px; }
+.avd-add .btn { min-height: 44px; width: auto; }
+
+.avd-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+.avd-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04);
+  min-height: 44px; flex-wrap: wrap;
+}
+.avd-item-bad { border: 1px solid rgba(255,107,107,0.4); }
+.avd-item-main { flex: 1 1 220px; min-width: 0; }
+.avd-item-name { font-size: 0.88rem; font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.avd-seed { font-size: 0.68rem; padding: 2px 7px; border-radius: 999px; background: rgba(33,230,193,0.18); color: #7dffd0; }
+.avd-item-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.avd-item-players { font-size: 0.74rem; color: var(--muted); }
+.avd-item-actions { display: flex; gap: 6px; }
+.avd-item-actions .btn { min-height: 44px; width: auto; }
+.avd-inactive { margin-top: 12px; }
+.avd-inactive summary { cursor: pointer; font-size: 0.8rem; color: var(--muted); min-height: 44px; display: flex; align-items: center; }
+
+.avd-draw { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.avd-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.avd-group, .avd-unassigned {
+  background: rgba(255,255,255,0.04); border-radius: 12px; padding: 10px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.avd-group-over { border-color: rgba(255,107,107,0.5); }
+.avd-group-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 700; font-size: 0.82rem; margin-bottom: 8px; color: var(--neon2, #21e6c1);
+}
+.avd-group-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; min-height: 48px; }
+.avd-drop { outline: 2px dashed var(--neon2, #21e6c1); outline-offset: 3px; border-radius: 8px; }
+.avd-slot {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 9px;
+  background: rgba(255,255,255,0.06); font-size: 0.82rem; min-height: 44px; cursor: grab;
+}
+.avd-slot.avd-dragging { opacity: 0.45; }
+.avd-slot-no {
+  width: 22px; height: 22px; flex: 0 0 22px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.7rem; background: rgba(255,255,255,0.12);
+}
+.avd-slot-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.avd-move { min-height: 36px; font-size: 0.72rem; background: transparent; color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.18); border-radius: 8px; padding: 2px 4px; }
+.avd-draw-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.avd-draw-actions .btn { min-height: 46px; width: auto; padding-inline: 18px; }
+
+.avd-sr {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+@media (min-width: 720px) {
+  .avd-add { grid-template-columns: 1fr 1fr auto; align-items: end; }
+  .avd-draw { grid-template-columns: minmax(180px, 260px) 1fr; align-items: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avd *, .avd *::before, .avd *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

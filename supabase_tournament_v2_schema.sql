@@ -586,9 +586,24 @@ drop policy if exists tournament_groups_read on public.tournament_groups;
 create policy tournament_groups_read on public.tournament_groups
   for select using (true);
 
+-- The group ASSIGNMENTS are the draw. Hiding tournament_draw_versions alone was
+-- not enough: with this table world-readable, an anonymous visitor could
+-- reconstruct an unpublished draw row by row and treat a draft as the real
+-- thing. Assignments therefore appear only once the event is published.
+-- Group letters and advance counts (tournament_groups) stay public — that is
+-- event configuration, not the draw.
 drop policy if exists tournament_group_entries_read on public.tournament_group_entries;
 create policy tournament_group_entries_read on public.tournament_group_entries
-  for select using (true);
+  for select using (
+    public.is_admin_caller()
+    or exists (
+      select 1
+        from public.tournament_groups g
+        join public.tournaments t on t.id = g.tournament_id
+       where g.id = tournament_group_entries.group_id
+         and t.is_published
+    )
+  );
 
 -- An unpublished draw is an admin working document: never show a draft bracket
 -- to players, or they will treat a preview as the real draw.

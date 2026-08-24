@@ -100,7 +100,17 @@ window.AdminV2 = window.AdminV2 || {};
         btn.onclick = () => renderAIImportPaste(container, Number(btn.dataset.aiImport));
       });
       container.querySelectorAll('[data-event]').forEach(row => {
-        row.onclick = () => renderEventDetail(container, Number(row.dataset.event));
+        row.onclick = () => {
+          // A V2 event (one carrying a structure) opens the Roster & Draw
+          // Studio; pre-V2 rows keep the old one-slot-at-a-time detail screen.
+          const id = Number(row.dataset.event);
+          const t = tournamentsList.find(x => x.id === id);
+          if (t && t.structure && AdminV2.tournamentDraw) {
+            AdminV2.tournamentDraw.open(container, id);
+          } else {
+            renderEventDetail(container, id);
+          }
+        };
       });
     } catch (e) {
       AdminV2.state(container, 'error', { message: e.message, retry: () => renderList(container) });

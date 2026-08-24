@@ -2,7 +2,7 @@
 // Strategy: network-first, fallback to cache. Supabase API calls are never cached.
 // CACHE version is bumped on every deploy by CI (replace __BUILD_HASH__ via build script)
 // If you deploy manually, increment the number suffix each time (MED-05)
-const CACHE = 'bk-v67';
+const CACHE = 'bk-v68';
 
 // App shell to pre-cache. Paths are RELATIVE to the SW location so the app works
 // when served from a project-page subpath (…/<repo>/). Runtime requests with a
@@ -63,6 +63,7 @@ const ASSETS = [
   'js/admin/bracket.js',
   'js/admin/tournaments.js',
   'js/admin/tournament-wizard.js',
+  'js/admin/tournament-draw.js',
   'js/admin/achievements.js',
   'js/admin/rewards.js',
   'js/admin/logs.js',
