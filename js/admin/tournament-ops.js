@@ -319,7 +319,7 @@ window.AdminV2 = window.AdminV2 || {};
     });
 
     host.querySelectorAll('.avo-record').forEach(function (btn) {
-      btn.onclick = function () { openRecordResult(Number(btn.dataset.match)); };
+      btn.onclick = function () { openReferee(Number(btn.dataset.match)); };
     });
     host.querySelectorAll('.avo-correct').forEach(function (btn) {
       btn.onclick = function () { openCorrectResult(Number(btn.dataset.match)); };
@@ -329,40 +329,17 @@ window.AdminV2 = window.AdminV2 || {};
     if (fin) fin.onclick = function () { finalizeSelection(fin); };
   }
 
-  // ── quick result entry (placeholder for the Phase 6 Referee Center) ───────
-  function openRecordResult(matchId) {
-    var m = matches.filter(function (x) { return x.id === matchId; })[0];
-    if (!m) return;
-    var cfg = Svc.scoringConfigFor(ev);
-
-    AdminV2.drawer({
-      title: 'บันทึกผลแมตช์',
-      body:
-        '<p class="avd-hint">' + esc(entryName(m.entry_a_id)) + ' vs ' + esc(entryName(m.entry_b_id)) +
-          ' · เล่น ' + cfg.max_games + ' เกม ชนะ ' + cfg.games_to_win + ' เกม · ' +
-          cfg.points_to_win + ' แต้ม เพดาน ' + cfg.cap + '</p>' +
-        gamesFormHTML(cfg) +
-        '<div class="avd-err" id="avoResultErr"></div>',
-      actions: '<button type="button" class="btn btn-ghost btn-sm" id="avoResultCancel">ยกเลิก</button>' +
-        '<button type="button" class="btn btn-primary btn-sm" id="avoResultOk">บันทึกผล</button>',
-      onMount: function () {
-        document.getElementById('avoResultCancel').onclick = AdminV2.closeDrawer;
-        var ok = document.getElementById('avoResultOk');
-        ok.onclick = async function () {
-          var games = readGamesForm(cfg);
-          if (!games) {
-            document.getElementById('avoResultErr').textContent = 'กรุณากรอกคะแนนให้ครบ';
-            return;
-          }
-          await withBusy(ok, async function () {
-            var res = await Svc.submitResult(matchId, games);
-            AdminV2.closeDrawer();
-            await load();
-            announce('บันทึกผลแล้ว' + (res.advanced_to ? ' — เข้ารอบถัดไปแล้ว' : ''));
-          });
-        };
-      }
-    });
+  // ── live scoring: hand off to the Referee Center ──────────────────────────
+  // Large +1 targets, undo, a match timer, and walkover/retire/DQ paths live
+  // in js/admin/referee-v2.js. It takes over this same container and calls
+  // back into load() when the match is submitted, so the dashboard is exactly
+  // where the referee left it.
+  function openReferee(matchId) {
+    if (!window.AdminV2.refereeV2) {
+      if (window.toast) toast('ยังไม่ได้โหลดโมดูลผู้ตัดสิน', 'error');
+      return;
+    }
+    AdminV2.refereeV2.open(host, matchId, function () { load(); });
   }
 
   function openCorrectResult(matchId) {

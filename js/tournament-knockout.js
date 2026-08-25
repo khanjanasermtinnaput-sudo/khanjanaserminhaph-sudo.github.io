@@ -404,22 +404,43 @@ async function koGenerateKnockout(tournamentId) {
       if (standings[0]) entrants.push({ group: grp.letter, winnerId: standings[0].id });
     }
     if (entrants.length < 2) return toast('ต้องมีอย่างน้อย 2 กลุ่มที่แข่งขันครบแล้ว', 'error');
-    if (!confirm(`จับสาย Knockout จาก ${entrants.length} กลุ่ม? หลังจากนี้จะแก้ผลรอบกลุ่มไม่ได้แล้ว`)) return;
-    await dbTournamentGenerateKnockout(tournamentId, entrants);
-    toast('จับสาย Knockout เรียบร้อย 🎲', 'success');
-    renderTournamentSection();
-    if (document.getElementById('tournamentTabContent')) renderTournamentTab();
+    // AdminV2.confirm, not the native confirm(): a leftover from before this
+    // legacy knockout path was migrated to the AdminV2 dialog primitives.
+    // AdminV2.confirm has no cancel callback (cancel just closes the dialog),
+    // so the follow-through has to live inside onConfirm rather than after an
+    // awaited boolean.
+    AdminV2.confirm({
+      level: 'warn',
+      title: 'จับสายน็อกเอาต์?',
+      body: `จับสาย Knockout จาก ${entrants.length} กลุ่ม หลังจากนี้จะแก้ผลรอบกลุ่มไม่ได้แล้ว`,
+      confirmLabel: 'จับสาย',
+      onConfirm: async () => {
+        try {
+          await dbTournamentGenerateKnockout(tournamentId, entrants);
+          toast('จับสาย Knockout เรียบร้อย 🎲', 'success');
+          renderTournamentSection();
+          if (document.getElementById('tournamentTabContent')) renderTournamentTab();
+        } catch (e) { toast('จับสายไม่ได้: ' + _tourRegErrText(e), 'error'); }
+      },
+    });
   } catch (e) { toast('จับสายไม่ได้: ' + _tourRegErrText(e), 'error'); }
 }
-async function koCompleteSingleGroup(tournamentId, winnerId) {
+function koCompleteSingleGroup(tournamentId, winnerId) {
   if (!isAdminUser() || !winnerId) return;
-  if (!confirm('ยืนยันแชมป์นี้? หลังจากนี้จะแก้ไขไม่ได้')) return;
-  try {
-    await dbTournamentCompleteSingleGroup(tournamentId, winnerId);
-    toast('ประกาศแชมป์แล้ว 🏆', 'success');
-    renderTournamentSection();
-    if (document.getElementById('tournamentTabContent')) renderTournamentTab();
-  } catch (e) { toast('ไม่สำเร็จ: ' + _tourRegErrText(e), 'error'); }
+  AdminV2.confirm({
+    level: 'warn',
+    title: 'ยืนยันแชมป์นี้?',
+    body: 'หลังจากนี้จะแก้ไขไม่ได้',
+    confirmLabel: 'ยืนยันแชมป์',
+    onConfirm: async () => {
+      try {
+        await dbTournamentCompleteSingleGroup(tournamentId, winnerId);
+        toast('ประกาศแชมป์แล้ว 🏆', 'success');
+        renderTournamentSection();
+        if (document.getElementById('tournamentTabContent')) renderTournamentTab();
+      } catch (e) { toast('ไม่สำเร็จ: ' + _tourRegErrText(e), 'error'); }
+    },
+  });
 }
 
 // ── Reward granting UI: recently-completed tournaments awaiting payout ─────
