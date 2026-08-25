@@ -308,6 +308,16 @@
   .avw-groups { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 }
 
+/* Global reduced-motion switch for all of Admin V2 — the four blocks below
+   this one predate it and are scoped to their own components; this covers
+   everything else in the admin panel. */
+@media (prefers-reduced-motion: reduce) {
+  #adminV2Section *, #adminV2Section *::before, #adminV2Section *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .avw *, .avw *::before, .avw *::after {
     animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;

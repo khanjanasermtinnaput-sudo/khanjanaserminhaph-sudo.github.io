@@ -1710,9 +1710,16 @@ function _renderDrawPreview(cfg) {
 }
 
 
-// ── Tournament Tab (public view for all users) ────────────────────────────────
-async function renderTournamentTab() {
-  const container = document.getElementById('tournamentTabContent');
+// ── Legacy Tournament Tab (pre-V2 tournaments only) ───────────────────────────
+// Renamed from renderTournamentTab(): js/tournament/hub.js now owns that name
+// and is the public entry point for #tournamentTabContent. It renders the V2
+// Tournament Hub for published series, then calls this function to render any
+// remaining pre-V2 tournament (one with no `structure` column set) beneath it
+// into #tournamentLegacySection. Kept otherwise unchanged — the Hall of Fame
+// button, group registration, and referee UI below are all still pre-V2 and
+// still live until a real tournament exercises the V2 path end to end.
+async function renderLegacyTournamentTab() {
+  const container = document.getElementById('tournamentLegacySection') || document.getElementById('tournamentTabContent');
   if (!container) return;
   const isAdmin = isAdminUser();
 
@@ -1723,7 +1730,11 @@ async function renderTournamentTab() {
   try {
     const tournaments = await dbGetTournaments();
     // ทุก tier โชว์ให้ทุกคนเห็น — Super 1000 admin จัดเอง (คนทั่วไปดูได้แต่สมัครไม่ได้)
-    const visible = tournaments.filter(t => t.status !== 'completed');
+    // V2 events (identified by a non-null `structure` column) are excluded:
+    // they are rendered by the V2 hub above this section instead, and their
+    // `groups` column is a dormant empty array this legacy code would not
+    // know how to read.
+    const visible = tournaments.filter(t => t.status !== 'completed' && !t.structure);
 
     if (!visible.length) {
       html += `<div style="text-align:center;color:var(--muted);padding:36px 16px">

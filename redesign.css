@@ -176,3 +176,119 @@
 [data-style="lite"] .bk-ripple,[data-style="lite"] .bk-sheet-backdrop{animation:none !important}
 [data-style="lite"] .bk-ripple{display:none !important}
 [data-style="lite"] .bk-sheet-panel{animation:none !important}
+
+/* Global reduced-motion switch — redesign.css had none; styles.css already
+   has one scoped to its own selectors (search "[perf 1]"). This mirrors it
+   for everything defined in this file. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Tournament Hub (js/tournament/hub.js) — public/participant view ────────
+   Lives in redesign.css alongside the rest of the tournament visual layer. */
+.th { max-width: 900px; margin: 0 auto; }
+.th-status { min-height: 20px; font-size: 0.8rem; color: var(--neon2, #21e6c1); margin-bottom: 6px; }
+.th-empty { text-align: center; color: var(--muted); padding: 36px 16px; }
+.th-empty-icon { font-size: 2.6rem; margin-bottom: 8px; }
+.th-empty-title { font-size: 0.9rem; font-weight: 600; }
+.th-empty-sub { font-size: 0.76rem; margin-top: 6px; }
+.th-hint { font-size: 0.8rem; color: var(--muted); margin: 8px 0; line-height: 1.5; }
+
+.th-mine { margin-bottom: 16px; }
+.th-mine h3 { font-size: 0.9rem; margin: 0 0 8px; }
+.th-mine-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.th-mine-item {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05);
+  font-size: 0.82rem; min-height: 44px;
+}
+.th-mine-item .btn { min-height: 40px; width: auto; }
+
+.th-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 16px; margin-bottom: 14px;
+}
+.th-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.th-card-head h3 { margin: 0; font-size: 1rem; }
+.th-card-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); margin: 8px 0 12px; }
+.th-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.th-chip {
+  min-height: 44px; padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04); color: inherit; cursor: pointer; text-align: left;
+  display: flex; flex-direction: column; gap: 2px; font-size: 0.82rem; font-weight: 600;
+}
+.th-chip-sub { font-size: 0.68rem; font-weight: 400; color: var(--muted); }
+
+.th-event-title { font-size: 1.05rem; margin: 8px 0 4px; }
+.th-tabs {
+  display: flex; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch;
+  padding: 10px 0; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.th-tab {
+  flex: 0 0 auto; min-height: 44px; padding: 8px 14px; border-radius: 10px; border: none;
+  background: transparent; color: var(--muted); font-size: 0.82rem; cursor: pointer; white-space: nowrap;
+}
+.th-tab-on { background: rgba(33,230,193,0.12); color: var(--neon2, #21e6c1); font-weight: 700; }
+.th-panel { padding-top: 6px; }
+
+.th-stat-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.th-stat { background: rgba(255,255,255,0.04); border-radius: 10px; padding: 8px 12px; }
+.th-stat span { display: block; font-size: 0.7rem; color: var(--muted); }
+.th-stat strong { font-size: 0.88rem; }
+
+.th-action-box {
+  background: rgba(33,230,193,0.06); border: 1px solid rgba(33,230,193,0.2);
+  border-radius: 12px; padding: 14px;
+}
+.th-action-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.th-action-box .btn { min-height: 44px; width: auto; }
+.th-action-box .inp { width: 100%; min-height: 44px; margin-top: 6px; }
+
+.th-entry-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.th-entry {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.04); min-height: 44px; font-size: 0.84rem;
+}
+
+/* ── Spectator bracket full-screen overlay (js/tournament/bracket-view.js) ── */
+#thBracketOverlay { position: fixed; inset: 0; z-index: 9600; display: none; }
+#thBracketOverlay.th-ov-open { display: block; }
+.th-ov-backdrop { position: absolute; inset: 0; background: rgba(4,6,10,0.85); backdrop-filter: blur(6px); }
+.th-ov-panel {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: var(--bg, #0b0f14); max-width: 1100px; margin: 0 auto;
+}
+.th-ov-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; }
+.th-ov-head h3 { margin: 0; font-size: 0.95rem; }
+.th-ov-close {
+  min-width: 44px; min-height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06); color: inherit; font-size: 1rem; cursor: pointer;
+}
+.th-ov-rounds {
+  display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 12px; -webkit-overflow-scrolling: touch;
+}
+.th-ov-chip {
+  flex: 0 0 auto; min-height: 44px; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.04); color: var(--muted); font-size: 0.8rem; cursor: pointer; white-space: nowrap;
+}
+.th-ov-chip-on { background: var(--neon2, #21e6c1); color: #04231f; font-weight: 700; border-color: transparent; }
+.th-ov-scroll { flex: 1; overflow: auto; padding: 0 16px 24px; }
+.th-ov-bracket { display: flex; gap: 16px; }
+.th-ov-bracket-single { justify-content: center; }
+
+@media (max-width: 640px) {
+  .th-ov-bracket { flex-direction: column; overflow: visible; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .th *, .th *::before, .th *::after,
+  #thBracketOverlay *, #thBracketOverlay *::before, #thBracketOverlay *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

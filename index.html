@@ -80,8 +80,8 @@ function initCrownSparkle(canvas, W, H) {
 </script>
 <title>🏸 Badminton Club</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=Rajdhani:wght@400;500;600;700&family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fredoka+One&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20260817b">
-<link rel="stylesheet" href="redesign.css?v=20260627c">
+<link rel="stylesheet" href="styles.css?v=20260825a">
+<link rel="stylesheet" href="redesign.css?v=20260825a">
 <link rel="stylesheet" href="admin-v2.css?v=20260825b">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#f0c040">
@@ -230,7 +230,7 @@ function initCrownSparkle(canvas, W, H) {
   <button class="nf-prompt-no" onclick="dismissNotifPrompt()">✕</button>
 </div>
 
-<div class="toast-wrap" id="toastWrap"></div>
+<div class="toast-wrap" id="toastWrap" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <!-- SPLASH SCREEN -->
 <div id="splashScreen">
@@ -284,14 +284,16 @@ function initCrownSparkle(canvas, W, H) {
         <button class="tab" id="regTabBtn" role="tab" aria-selected="false" aria-controls="regForm" onclick="switchLoginTab('register')">สมัครสมาชิก</button>
       </div>
       <div id="loginForm">
-        <div class="form-group"><label id="loginNameLabel">ชื่อผู้ใช้</label><input class="inp" id="loginName" placeholder="ชื่อจริงของคุณ" autocomplete="username" maxlength="50" aria-label="ชื่อผู้ใช้"></div>
-        <div class="form-group"><label id="loginPinLabel">PIN 4 หลัก</label><input class="inp" id="loginPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="current-password" aria-label="PIN 4 หลัก"></div>
+        <div class="form-group"><label id="loginNameLabel" for="loginName">ชื่อผู้ใช้</label><input class="inp" id="loginName" placeholder="ชื่อจริงของคุณ" autocomplete="username" maxlength="50"></div>
+        <div class="form-group"><label id="loginPinLabel" for="loginPin">PIN 4 หลัก</label><input class="inp" id="loginPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="current-password"></div>
         <button class="btn btn-primary" id="loginBtnEl" onclick="login()">เข้าสู่ระบบ</button>
+        <div id="loginErrorMsg" class="text-muted mt-12" style="font-size:0.78rem;color:#ff9c9c" role="alert"></div>
       </div>
       <div id="registerForm" class="hidden">
-        <div class="form-group"><label id="regNameLabel">ชื่อจริง</label><input class="inp" id="regName" placeholder="ชื่อที่ต้องการใช้" autocomplete="username" maxlength="50" aria-label="ชื่อจริง"></div>
-        <div class="form-group"><label id="regPinLabel">PIN 4 หลัก (ตั้งรหัส)</label><input class="inp" id="regPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="new-password" aria-label="PIN 4 หลัก"></div>
+        <div class="form-group"><label id="regNameLabel" for="regName">ชื่อจริง</label><input class="inp" id="regName" placeholder="ชื่อที่ต้องการใช้" autocomplete="username" maxlength="50"></div>
+        <div class="form-group"><label id="regPinLabel" for="regPin">PIN 4 หลัก (ตั้งรหัส)</label><input class="inp" id="regPin" type="password" maxlength="4" placeholder="xxxx" inputmode="numeric" autocomplete="new-password"></div>
         <button class="btn btn-primary" id="regBtnEl" onclick="register()">สมัครสมาชิก</button>
+        <div id="regErrorMsg" class="text-muted mt-12" style="font-size:0.78rem;color:#ff9c9c" role="alert"></div>
       </div>
       <div class="text-muted mt-12" style="font-size:0.72rem">ข้อมูลถูกเก็บใน Supabase</div>
     </div>
@@ -1038,8 +1040,13 @@ function initCrownSparkle(canvas, W, H) {
 <script src="js/avatar.js?v=20260703a"></script>
 <script src="js/gacha.js?v=20260707a"></script>
 <script src="js/mailbox.js?v=20260625a"></script>
-<script src="js/tournament.js?v=20260821a"></script>
+<script src="js/tournament.js?v=20260825a"></script>
 <script src="js/tournament-knockout.js?v=20260825a"></script>
+<!-- The V2 public Hub. Loads after tournament.js/tournament-knockout.js so it
+     can call renderLegacyTournamentTab()/dbGetTournaments(), and overwrites
+     the global renderTournamentTab() those files defined with its own router. -->
+<script src="js/tournament/hub.js?v=20260825d"></script>
+<script src="js/tournament/bracket-view.js?v=20260825a"></script>
 
 <script src="js/notifications.js?v=20260625a"></script>
 <script src="js/perf.js?v=20260602p"></script>
@@ -1393,15 +1400,15 @@ loadAll = async function() {
 .pwa-info{flex:1;min-width:0}
 .pwa-info-title{font-size:1rem;font-weight:700;color:#f0f2f8;line-height:1.2}
 .pwa-info-sub{font-size:0.78rem;color:#8090b0;margin-top:3px}
-#pwaInstallBtn{padding:10px 22px;border:none;border-radius:50px;background:#f0c040;color:#0a0d12;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;flex-shrink:0;transition:transform 0.12s,box-shadow 0.12s;box-shadow:0 2px 12px rgba(240,192,64,0.4)}
+#pwaInstallBtn{padding:10px 22px;min-height:44px;border:none;border-radius:50px;background:#f0c040;color:#0a0d12;font-weight:700;font-size:0.88rem;cursor:pointer;font-family:'Sarabun',sans-serif;white-space:nowrap;flex-shrink:0;transition:transform 0.12s,box-shadow 0.12s;box-shadow:0 2px 12px rgba(240,192,64,0.4)}
 #pwaInstallBtn:active{transform:scale(0.94)}
-#pwaDismissBtn{width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#6070a0;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s}
+#pwaDismissBtn{width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);color:#6070a0;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background 0.15s}
 #pwaDismissBtn:hover{background:rgba(255,255,255,0.1)}
 #pwaIOSGuide{display:none;margin-top:14px;padding:11px 14px;background:rgba(240,192,64,0.07);border:1px solid rgba(240,192,64,0.18);border-radius:12px;font-size:0.82rem;color:#a0b0cc;line-height:1.6;text-align:center}
 #pwaIOSGuide strong{color:#f0c040}
 .ios-share-icon{display:inline-block;width:18px;height:18px;vertical-align:middle;margin:0 2px;opacity:0.9}
 </style>
-<div id="pwaSheet" role="dialog" aria-label="ติดตั้งแอป">
+<div id="pwaSheet" role="dialog" aria-modal="true" aria-label="ติดตั้งแอป">
   <div id="pwaSheetInner">
     <div class="pwa-handle"></div>
     <div class="pwa-row">
@@ -1469,27 +1476,59 @@ loadAll = async function() {
 (function(){
   var DISMISS_KEY = 'bk_pwa_dismiss', THREE_DAYS = 3*24*60*60*1000;
   var deferredPrompt = null;
+  var promptReady = false;   // beforeinstallprompt fired, or we're on iOS
+  var shown = false;         // shown once already this page load
+  var loginCheckTimer = null;
+  var lastFocused = null;
 
   function dismissed(){ return (Date.now() - (+localStorage.getItem(DISMISS_KEY)||0)) < THREE_DAYS; }
   function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
   function isStandalone(){ return window.matchMedia('(display-mode: standalone)').matches || !!navigator.standalone; }
+  function isLoggedIn(){ return typeof currentUser !== 'undefined' && !!currentUser; }
 
-  function show(){
+  // Only after login and a few seconds of real use — never compete with the
+  // login task itself. tryShow() is safe to call repeatedly; it no-ops until
+  // every condition is met, so callers don't need to coordinate.
+  function tryShow(){
+    if (shown || !promptReady || dismissed() || isStandalone()) return;
     var sheet = document.getElementById('pwaSheet');
-    if (!sheet || dismissed() || isStandalone()) return;
-    setTimeout(function(){ sheet.classList.add('pwa-visible'); }, 1500);
+    if (!sheet) return;
+    if (!isLoggedIn()) {
+      if (!loginCheckTimer) loginCheckTimer = setInterval(tryShow, 1000);
+      return;
+    }
+    if (loginCheckTimer) { clearInterval(loginCheckTimer); loginCheckTimer = null; }
+    shown = true;
+    setTimeout(function(){ reveal(sheet); }, 4000);
   }
 
-  function hide(){
+  function reveal(sheet){
+    if (dismissed() || isStandalone()) return;
+    lastFocused = document.activeElement;
+    sheet.classList.add('pwa-visible');
+    var firstBtn = document.getElementById('pwaInstallBtn');
+    var focusTarget = (firstBtn && firstBtn.style.display !== 'none') ? firstBtn : document.getElementById('pwaDismissBtn');
+    if (focusTarget) focusTarget.focus();
+  }
+
+  function hide(persistDismiss){
     var sheet = document.getElementById('pwaSheet');
-    if (sheet) sheet.classList.remove('pwa-visible');
+    if (!sheet || !sheet.classList.contains('pwa-visible')) return;
+    if (persistDismiss) localStorage.setItem(DISMISS_KEY, Date.now());
+    sheet.classList.remove('pwa-visible');
+    // Return focus to whatever the user was doing before the sheet opened.
+    if (lastFocused && document.contains(lastFocused) && typeof lastFocused.focus === 'function') {
+      lastFocused.focus();
+    }
+    lastFocused = null;
   }
 
   // Android / Chrome — native install prompt
   window.addEventListener('beforeinstallprompt', function(e){
     e.preventDefault();
     deferredPrompt = e;
-    show();
+    promptReady = true;
+    tryShow();
   });
 
   // iOS — show manual instructions
@@ -1500,7 +1539,8 @@ loadAll = async function() {
     if (btn) btn.style.display = 'none';         // no native prompt on iOS
     if (guide) guide.style.display = 'block';
     if (sub) sub.textContent = 'เพิ่มที่หน้าจอหลักได้เลย!';
-    show();
+    promptReady = true;
+    tryShow();
   }
 
   document.addEventListener('click', function(e){
@@ -1508,14 +1548,38 @@ loadAll = async function() {
     if (t && t.id === 'pwaInstallBtn') {
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.finally(function(){ deferredPrompt = null; hide(); });
+      deferredPrompt.userChoice.finally(function(){ deferredPrompt = null; hide(false); });
     } else if (t && t.id === 'pwaDismissBtn') {
-      localStorage.setItem(DISMISS_KEY, Date.now());
-      hide();
+      hide(true);
     }
   });
 
-  window.addEventListener('appinstalled', hide);
+  // Escape closes the sheet like the dismiss button would, and a simple two-
+  // control focus trap keeps keyboard focus from leaking to the page behind
+  // it while the sheet is the active dialog.
+  document.addEventListener('keydown', function(e){
+    var sheet = document.getElementById('pwaSheet');
+    if (!sheet || !sheet.classList.contains('pwa-visible')) return;
+    if (e.key === 'Escape') { hide(true); return; }
+    if (e.key !== 'Tab') return;
+    var install = document.getElementById('pwaInstallBtn');
+    var dismiss = document.getElementById('pwaDismissBtn');
+    var focusable = [install, dismiss].filter(function(el){ return el && el.style.display !== 'none'; });
+    if (!focusable.length) return;
+    var first = focusable[0], last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  });
+
+  window.addEventListener('appinstalled', function(){ hide(false); });
+
+  // afterLogin() (js/auth.js) is the "user has logged in" signal this prompt
+  // waits for. Wrapping it here follows the same pattern the rest of this
+  // file already uses for post-login hooks.
+  if (typeof afterLogin === 'function') {
+    var _origAfterLoginForPwa = afterLogin;
+    afterLogin = function(){ _origAfterLoginForPwa(); tryShow(); };
+  }
 })();
 </script>
 <script>

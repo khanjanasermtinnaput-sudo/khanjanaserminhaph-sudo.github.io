@@ -4,6 +4,8 @@ function normalizeMatch(m) { const ts = m.played_at ? new Date(m.played_at).getT
 async function login() {
   const name = document.getElementById('loginName').value.trim();
   const pin = document.getElementById('loginPin').value.trim();
+  const errEl = document.getElementById('loginErrorMsg');
+  if (errEl) errEl.textContent = '';
   if (!name || !pin) return toast('กรุณากรอกข้อมูลให้ครบ', 'error');
   toast('กำลังเข้าสู่ระบบ...', 'info');
   try {
@@ -13,7 +15,14 @@ async function login() {
     saveDeviceUser(currentUser);
     await loadMatches();
     afterLogin();
-  } catch(e) { toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error'); }
+  } catch(e) {
+    toast('ชื่อหรือ PIN ไม่ถูกต้อง', 'error');
+    // The toast alone disappears after a few seconds and leaves the form
+    // looking unchanged. A persistent message with a real next step replaces
+    // it, deliberately worded to never confirm or deny that a given
+    // username exists.
+    if (errEl) errEl.textContent = 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบชื่อผู้ใช้และ PIN อีกครั้ง หากยังเข้าไม่ได้ กรุณาติดต่อผู้ดูแลเพื่อรีเซ็ต PIN';
+  }
 }
 async function register() {
   const name = document.getElementById('regName').value.trim();

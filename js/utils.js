@@ -474,7 +474,13 @@ function showSection(name) {
 function switchLoginTab(tab) {
   document.getElementById('loginForm').classList.toggle('hidden', tab !== 'login');
   document.getElementById('registerForm').classList.toggle('hidden', tab !== 'register');
-  document.querySelectorAll('#loginSection .tab').forEach((b,i) => { b.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register')); });
+  // aria-selected must move with .active, not just the visual state, or a
+  // screen reader keeps announcing the tab the user switched away from.
+  document.querySelectorAll('#loginSection .tab').forEach((b,i) => {
+    const selected = (i===0 && tab==='login') || (i===1 && tab==='register');
+    b.classList.toggle('active', selected);
+    b.setAttribute('aria-selected', String(selected));
+  });
 }
 function switchMatchTab(tab) {
   document.getElementById('singlesSetup').classList.toggle('hidden', tab !== 'singles');
